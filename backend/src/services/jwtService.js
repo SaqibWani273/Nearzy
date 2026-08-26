@@ -1,0 +1,89 @@
+const jwt = require('jsonwebtoken');
+
+/**
+ * JWT Service — handles token generation, verification, and claims extraction.
+ * Uses lazy access to env vars so dotenv has time to load.
+ */
+const jwtService = {
+  /**
+   * @returns {string} The JWT secret key from environment.
+   */
+  _getSecretKey() {
+    return process.env.JWT_SECRET_KEY;
+  },
+
+  /**
+   * @returns {number} Token expiration in hours.
+   */
+  _getExpirationHours() {
+    return parseInt(process.env.JWT_EXPIRATION_HOURS || '48', 10);
+  },
+
+  /**
+   * Generate a JWT token for the given user.
+   * @param {{ email: string, roles: string }} user
+   * @returns {string} Signed JWT token.
+   */
+  generateToken(user) {
+    const payload = {
+      name: user.email,
+      role: `ROLE_${user.roles}`,
+      sub: user.email,
+    };
+    return jwt.sign(payload, this._getSecretKey(), {
+      expiresIn: `${this._getExpirationHours()}h`,
+    });
+  },
+
+  /**
+   * Verify a token and return decoded payload, or null if invalid.
+   * @param {string} token
+   * @returns {object|null}
+   */
+  verifyToken(token) {
+    try {
+      return jwt.verify(token, this._getSecretKey());
+    } catch (err) {
+      return null;
+    }
+  },
+
+  /**
+   * Extract all claims from a token.
+   * @param {string} token
+   * @returns {object|null}
+   */
+  extractClaims(token) {
+    try {
+      return jwt.verify(token, this._getSecretKey());
+    } catch (err) {
+      return null;
+    }
+  },
+
+  /**
+   * Extract the email (subject) from a token.
+   * @param {string} token
+   * @returns {string|null}
+   */
+  extractEmail(token) {
+    const claims = this.extractClaims(token);
+    return claims ? claims.sub : null;
+  },
+
+  /**
+   * Check whether a token is valid and not expired.
+   * @param {string} token
+   * @returns {boolean}
+   */
+  isTokenValid(token) {
+    try {
+      jwt.verify(token, this._getSecretKey());
+      return true;
+    } catch (err) {
+      return false;
+    }
+  },
+};
+
+module.exports = jwtService;
