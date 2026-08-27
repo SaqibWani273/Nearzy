@@ -26,7 +26,7 @@ const authorize = require('../middleware/authorize');
  *           schema:
  *             type: object
  *             properties:
- *               myUser:
+ *               user:
  *                 type: object
  *                 properties:
  *                   email: { type: string }
@@ -38,8 +38,9 @@ const authorize = require('../middleware/authorize');
  */
 router.post('/register', async (req, res, next) => {
   try {
-    const { myUser, secretCode } = req.body;
-    const result = await adminService.registerAdmin(myUser, secretCode);
+    const userData = req.body.user || req.body.myUser;
+    const { secretCode } = req.body;
+    const result = await adminService.registerAdmin(userData, secretCode);
     if (result.error) {
       return res.status(result.status || 400).json(result.error);
     }
@@ -135,9 +136,11 @@ router.post('/login', async (req, res, next) => {
  *             type: object
  *             properties:
  *               name: { type: string }
+ *               slug: { type: string }
  *               imageUrl: { type: string }
  *               description: { type: string }
  *               isTopCategory: { type: boolean }
+ *               displayOrder: { type: integer }
  *     responses:
  *       200: { description: Category added successfully }
  */

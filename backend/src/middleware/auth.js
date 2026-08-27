@@ -1,5 +1,5 @@
 const jwtService = require('../services/jwtService');
-const { MyUser } = require('../models');
+const { NearzyUser } = require('../models');
 
 /**
  * JWT Authentication middleware.
@@ -28,7 +28,7 @@ const authenticate = async (req, res, next) => {
       return next();
     }
 
-    const user = await MyUser.findOne({ where: { email } });
+    const user = await NearzyUser.findOne({ where: { email } });
     if (!user) {
       return next();
     }
@@ -37,8 +37,8 @@ const authenticate = async (req, res, next) => {
     req.user = {
       id: user.id,
       email: user.email,
-      roles: user.roles,
-      role: claims.role, // e.g. ROLE_CUSTOMER
+      role: claims.role || `ROLE_${user.role}`, // e.g. ROLE_CUSTOMER, ROLE_SHOP_OWNER, ROLE_ADMIN
+      rawRole: user.role,
     };
   } catch (err) {
     // Token invalid — proceed unauthenticated

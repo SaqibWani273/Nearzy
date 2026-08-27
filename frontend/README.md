@@ -1,8 +1,8 @@
-# Localezy E-commerce App
+# Nearzy E-commerce App
 
 ![Frame 3_1](https://github.com/user-attachments/assets/cabf5acf-6710-41ca-97fa-fe1d53a7d837)
 
-Welcome to Localezy, an innovative e-commerce platform designed to integrate local shops, allowing users to discover and purchase products based on their preferred location.
+Welcome to Nearzy, an innovative e-commerce platform designed to integrate local shops, allowing users to discover and purchase products based on their preferred location.
 
 https://github.com/user-attachments/assets/499a4210-d814-45ab-989d-9cfae648e7bc
 

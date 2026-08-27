@@ -12,14 +12,29 @@ module.exports = (sequelize) => {
       unique: true,
       allowNull: false,
     },
-    createDate: {
+    userId: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+      field: 'user_id',
+    },
+    createdAt: {
       type: DataTypes.DATE,
-      allowNull: true,
-      field: 'create_date',
+      field: 'created_at',
+    },
+    expiresAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      field: 'expires_at',
+    },
+    used: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
     },
   }, {
     tableName: 'email_confirmations',
-    timestamps: false,
+    timestamps: true,
+    updatedAt: false,
+    underscored: true,
   });
 
   return EmailConfirmation;

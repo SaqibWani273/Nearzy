@@ -14,21 +14,33 @@ module.exports = (sequelize) => {
     },
     latitude: {
       type: DataTypes.DOUBLE,
-      allowNull: true,
+      allowNull: false,
     },
     longitude: {
       type: DataTypes.DOUBLE,
-      allowNull: true,
-      field: 'longtitude',
+      allowNull: false,
     },
     completeAddress: {
       type: DataTypes.STRING,
       allowNull: true,
       field: 'complete_address',
     },
+    city: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    state: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    pincode: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   }, {
     tableName: 'location_infos',
     timestamps: false,
+    underscored: true,
   });
 
   return LocationInfo;

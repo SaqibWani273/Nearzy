@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const commonService = require('../services/commonService');
 const jwtService = require('../services/jwtService');
-const { MyUser, Customer, Shop } = require('../models');
+const { NearzyUser, Customer, Shop } = require('../models');
 const authorize = require('../middleware/authorize');
 
 /**
@@ -35,14 +35,14 @@ router.get('/test', (req, res) => {
  *     responses:
  *       200: { description: User profile retrieved }
  */
-router.post('/me', authorize('CUSTOMER', 'SHOP'), async (req, res, next) => {
+router.post('/me', authorize('CUSTOMER', 'SHOP', 'SHOP_OWNER'), async (req, res, next) => {
   try {
     const token = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
     const email = jwtService.extractEmail(token);
     const claims = jwtService.extractClaims(token);
     const role = claims.role;
 
-    const user = await MyUser.findOne({ where: { email } });
+    const user = await NearzyUser.findOne({ where: { email } });
     if (!user) {
       return res.status(400).json('User not found');
     }
@@ -52,15 +52,24 @@ router.post('/me', authorize('CUSTOMER', 'SHOP'), async (req, res, next) => {
     if (role === 'ROLE_CUSTOMER') {
       const customer = await Customer.findOne({
         where: { user_id: user.id },
-        include: [{ association: 'myUser' }],
+        include: [
+          { association: 'user' },
+          { association: 'addresses' },
+          {
+            association: 'cart',
+            include: [{ association: 'items', include: [{ association: 'product' }] }],
+          },
+        ],
       });
       responseBody.model = customer;
     } else {
       const shop = await Shop.findOne({
         where: { user_id: user.id },
         include: [
-          { association: 'myUser' },
+          { association: 'user' },
           { association: 'locationInfo' },
+          { association: 'verification' },
+          { association: 'categories' },
         ],
       });
       responseBody.model = shop;

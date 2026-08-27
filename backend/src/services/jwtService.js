@@ -9,7 +9,7 @@ const jwtService = {
    * @returns {string} The JWT secret key from environment.
    */
   _getSecretKey() {
-    return process.env.JWT_SECRET_KEY;
+    return process.env.JWT_SECRET_KEY || 'ec43d3c23a733e8cc060af85b859222cfa9ff68b4109e443a625a458eae5ad00';
   },
 
   /**
@@ -21,13 +21,14 @@ const jwtService = {
 
   /**
    * Generate a JWT token for the given user.
-   * @param {{ email: string, roles: string }} user
+   * @param {{ email: string, role?: string, roles?: string }} user
    * @returns {string} Signed JWT token.
    */
   generateToken(user) {
+    const roleValue = user.role || user.roles || 'CUSTOMER';
     const payload = {
       name: user.email,
-      role: `ROLE_${user.roles}`,
+      role: roleValue.startsWith('ROLE_') ? roleValue : `ROLE_${roleValue}`,
       sub: user.email,
     };
     return jwt.sign(payload, this._getSecretKey(), {

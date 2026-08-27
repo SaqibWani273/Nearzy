@@ -7,26 +7,39 @@ module.exports = (sequelize) => {
       primaryKey: true,
       autoIncrement: true,
     },
-    cartItems: {
-      type: DataTypes.TEXT,
+    userId: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+      unique: true,
+      field: 'user_id',
+    },
+    firstName: {
+      type: DataTypes.STRING,
       allowNull: true,
-      field: 'cart_items',
-      get() {
-        const raw = this.getDataValue('cartItems');
-        if (raw === null || raw === undefined) return null;
-        try {
-          return JSON.parse(raw);
-        } catch (e) {
-          return raw;
-        }
-      },
-      set(val) {
-        this.setDataValue('cartItems', val ? JSON.stringify(val) : null);
-      },
+      field: 'first_name',
+    },
+    lastName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'last_name',
+    },
+    phoneNumber: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'phone_number',
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      field: 'created_at',
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      field: 'updated_at',
     },
   }, {
     tableName: 'customers',
-    timestamps: false,
+    timestamps: true,
+    underscored: true,
   });
 
   return Customer;

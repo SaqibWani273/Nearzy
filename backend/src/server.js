@@ -12,12 +12,15 @@ async function start() {
     console.log('Database connection established successfully.');
 
     // Sync models (equivalent to JPA ddl-auto=update)
+    //alter:true will update the tables to match the models without dropping them
+    //but it is not recommended for production use, as it may lead 
+    // to data loss or corruption if the models change significantly.
     await sequelize.sync({ alter: true });
     console.log('Database models synchronized.');
 
     // Start server
     app.listen(PORT, () => {
-      console.log(`Welcome to Localezy!`);
+      console.log(`Welcome to Nearzy!`);
       console.log(`Server running on port ${PORT}`);
       console.log(`Swagger UI: http://localhost:${PORT}/swagger-ui`);
     });

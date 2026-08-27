@@ -6,13 +6,13 @@ const options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Localezy API',
-      description: `**Localezy** is a local e-commerce marketplace REST API.
+      title: 'Nearzy API',
+      description: `**Nearzy** is a hyper-local e-commerce marketplace REST API.
 
 ## Overview
-- **Shops** register, get verified, and list products for sale
-- **Customers** browse products, manage shopping carts, and place orders
-- **Admins** manage product categories and oversee the platform
+- **Shops** register, get verified, and list products with multiple images and colors
+- **Customers** browse products, manage multi-address profiles, manage shopping carts, write reviews, and place orders
+- **Admins** manage hierarchical product categories and verify shops
 
 ## Authentication
 All authenticated endpoints require a **JWT Bearer token** obtained via the login endpoints.
@@ -21,10 +21,10 @@ Include it in the \`Authorization\` header as \`Bearer <token>\`.
 ## Roles
 | Role | Description |
 |------|-------------|
-| \`ROLE_CUSTOMER\` | Registered customer — can browse, cart, and purchase |
-| \`ROLE_SHOP\` | Registered shop owner — can list and manage products |
-| \`ROLE_ADMIN\` | Platform administrator — manages categories and shops |`,
-      version: '1.0.0',
+| \`ROLE_CUSTOMER\` | Registered customer — can browse, manage cart, add addresses, write reviews, and order |
+| \`ROLE_SHOP_OWNER\` / \`ROLE_SHOP\` | Registered shop owner — can list and manage products, images, and shop profile |
+| \`ROLE_ADMIN\` | Platform administrator — manages categories and verifies shops |`,
+      version: '2.0.0',
       contact: {
         name: 'Saqib Wani',
         email: 'saqibwani273@gmail.com',

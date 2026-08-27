@@ -1,7 +1,7 @@
 {
-  "name": "localezy",
+  "name": "nearzy",
   "version": "1.0.0",
-  "description": "Localezy - Local e-commerce marketplace API",
+  "description": "Nearzy - Local e-commerce marketplace API",
   "main": "src/server.js",
   "engines": {
     "node": ">=18.0.0"

@@ -7,11 +7,25 @@ module.exports = (sequelize) => {
       primaryKey: true,
       autoIncrement: true,
     },
-    isVerifiedByAdmin: {
-      type: DataTypes.BOOLEAN,
+    userId: {
+      type: DataTypes.BIGINT,
       allowNull: false,
-      defaultValue: false,
-      field: 'is_verified_by_admin',
+      unique: true,
+      field: 'user_id',
+    },
+    locationId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      field: 'location_id',
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    slug: {
+      type: DataTypes.STRING,
+      unique: true,
+      allowNull: false,
     },
     shopPicUrl: {
       type: DataTypes.STRING,
@@ -29,46 +43,26 @@ module.exports = (sequelize) => {
       allowNull: true,
     },
     description: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: true,
     },
-    createDate: {
+    isActive: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+      field: 'is_active',
+    },
+    createdAt: {
       type: DataTypes.DATE,
-      allowNull: true,
-      field: 'create_date',
+      field: 'created_at',
     },
-    ownerName: {
-      type: DataTypes.STRING,
-      allowNull: true,
-      field: 'owner_name',
-    },
-    ownerPicUrl: {
-      type: DataTypes.STRING,
-      allowNull: true,
-      field: 'owner_pic_url',
-    },
-    pancardPicUrl: {
-      type: DataTypes.STRING,
-      allowNull: true,
-      field: 'pancard_pic_url',
-    },
-    ownerIdPicUrl: {
-      type: DataTypes.STRING,
-      allowNull: true,
-      field: 'owner_id_pic_url',
-    },
-    businessLicense: {
-      type: DataTypes.STRING,
-      allowNull: true,
-      field: 'business_license',
-    },
-    categories: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
-      allowNull: true,
+    updatedAt: {
+      type: DataTypes.DATE,
+      field: 'updated_at',
     },
   }, {
     tableName: 'shops',
-    timestamps: false,
+    timestamps: true,
+    underscored: true,
   });
 
   return Shop;

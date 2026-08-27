@@ -17,8 +17,9 @@ class OrderItem {
     required this.quantity,
     required this.price,
   });
-  factory OrderItem.fromCartItemDetails(
-      {required CartItemDetails cartItemDetails}) {
+  factory OrderItem.fromCartItemDetails({
+    required CartItemDetails cartItemDetails,
+  }) {
     return OrderItem(
       productId: cartItemDetails.product.id!,
       quantity: cartItemDetails.quantity,
@@ -66,20 +67,19 @@ class StripeService {
         var paymentIntent = await createPaymentIntent(paymentData);
         if (paymentIntent == null) return false;
         final result1 = await Stripe.instance.initPaymentSheet(
-            paymentSheetParameters: SetupPaymentSheetParameters(
-          paymentIntentClientSecret: paymentIntent['client_secret'],
-          style: ThemeMode.dark,
-          merchantDisplayName: "LocalEzy Shop Integration",
-          customerEphemeralKeySecret: paymentIntent['ephemeralKey'],
-          customerId: paymentIntent['id'],
-        ));
+          paymentSheetParameters: SetupPaymentSheetParameters(
+            paymentIntentClientSecret: paymentIntent['client_secret'],
+            style: ThemeMode.dark,
+            merchantDisplayName: "Nearzy Shop Integration",
+            customerEphemeralKeySecret: paymentIntent['ephemeralKey'],
+            customerId: paymentIntent['id'],
+          ),
+        );
         log("result1 --------------->$result1");
         // if (result1 != PaymentSheetPaymentOption) return false;
-        final result2 = await displayPaymentSheet(
-          () {
-            paymentIntent = null;
-          },
-        );
+        final result2 = await displayPaymentSheet(() {
+          paymentIntent = null;
+        });
         if (result2 == false) return false;
         return true;
       } catch (e) {
@@ -90,23 +90,20 @@ class StripeService {
   }
 
   static Future<Map<String, dynamic>?> createPaymentIntent(
-      PaymentData paymentData) async {
+    PaymentData paymentData,
+  ) async {
     try {
       final secretKey = dotenv.env['STRIPE_SECRET_KEY'];
       Map<String, dynamic> body = {
         'amount': calculateAmount(paymentData.amount).toString(),
         'currency': paymentData.currency.toLowerCase(),
-        // 'automatic_payment_methods_enabled': true,
 
+        // 'automatic_payment_methods_enabled': true,
         'description': jsonEncode({
           "shippingAddress": paymentData.shippingAddress,
           "contactNumber": paymentData.phoneNumber,
           "billingAddress": paymentData.billingAddress,
-          "orderItems": paymentData.orderItems
-              .map(
-                (e) => e.toMap(),
-              )
-              .toList(),
+          "orderItems": paymentData.orderItems.map((e) => e.toMap()).toList(),
           "customerId": paymentData.customerId,
           "shopId": paymentData.shopId,
           "totalPrice": paymentData.amount,
@@ -121,17 +118,19 @@ class StripeService {
         // 'payment_method_types[]': 'card'
       };
       final response = await http.post(
-          Uri.parse('https://api.stripe.com/v1/payment_intents'),
-          headers: {
-            'Authorization': 'Bearer $secretKey',
-            'Content-Type': 'application/x-www-form-urlencoded'
-          },
-          body: body);
+        Uri.parse('https://api.stripe.com/v1/payment_intents'),
+        headers: {
+          'Authorization': 'Bearer $secretKey',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: body,
+      );
       if (response.statusCode != 200) return null;
       log("Response: ${jsonDecode(response.body)}");
       // return null;
       return Map<String, dynamic>.from(
-          jsonDecode(response.body)); //  jsonDecode(response.body)
+        jsonDecode(response.body),
+      ); //  jsonDecode(response.body)
     } catch (e) {
       log("Error in creating payment intent: $e");
       return null;

@@ -18,56 +18,64 @@ class AppBarWidget extends StatelessWidget {
       title: BlocBuilder<CustomerDataBloc, CustomerDataState>(
         builder: (context, state) {
           if (state is CustomerDataLoadedState) {
-            Customer? customer =
-                context.read<CustomerDataRepository>().customer;
+            Customer? customer = context
+                .read<CustomerDataRepository>()
+                .customer;
             return Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
                   child: InkWell(
-                    onTap: () =>
-                        Navigator.of(context).pushReplacement(MaterialPageRoute(
-                      builder: (context) => const CustomerHomePage(),
-                    )),
+                    onTap: () => Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                        builder: (context) => const CustomerHomePage(),
+                      ),
+                    ),
                     child: Container(
-                        alignment: Alignment.center,
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 16.0, vertical: 6.0),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(10),
-                          color: Colors.grey.shade100,
-                          // color: Colors.blueGrey.withOpacity(0.8)
+                      alignment: Alignment.center,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 16.0,
+                        vertical: 6.0,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        color: Colors.grey.shade100,
+                        // color: Colors.blueGrey.withOpacity(0.8)
+                      ),
+                      child: Text(
+                        'Nearzy',
+                        style: TextStyle(
+                          fontSize: 25,
+                          color: Colors.purple,
+                          fontFamily: GoogleFonts.aBeeZeeTextTheme()
+                              .headlineLarge
+                              ?.fontFamily,
                         ),
-                        child: Text(
-                          'LocalEzy',
-                          style: TextStyle(
-                            fontSize: 25,
-                            color: Colors.purple,
-                            fontFamily: GoogleFonts.aBeeZeeTextTheme()
-                                .headlineLarge
-                                ?.fontFamily,
-                          ),
-                        )),
+                      ),
+                    ),
                   ),
                 ),
                 Row(
                   children: [
                     IconButton(
-                        onPressed: () {},
-                        icon:
-                            const Icon(size: 30, Icons.notifications_outlined)),
+                      onPressed: () {},
+                      icon: const Icon(size: 30, Icons.notifications_outlined),
+                    ),
                     IconButton(
-                        onPressed: () {},
-                        icon: const Icon(
-                            size: 30, Icons.favorite_outline_outlined)),
+                      onPressed: () {},
+                      icon: const Icon(
+                        size: 30,
+                        Icons.favorite_outline_outlined,
+                      ),
+                    ),
                     CartIcon(customer: customer),
                   ],
-                )
+                ),
               ],
             );
           }
 
-          return const Text('LocalEzy');
+          return const Text('Nearzy');
         },
       ),
     );
@@ -75,10 +83,7 @@ class AppBarWidget extends StatelessWidget {
 }
 
 class CartIcon extends StatelessWidget {
-  const CartIcon({
-    super.key,
-    required this.customer,
-  });
+  const CartIcon({super.key, required this.customer});
 
   final Customer? customer;
 
@@ -87,12 +92,17 @@ class CartIcon extends StatelessWidget {
     return Stack(
       children: [
         IconButton(
-            onPressed: () {
-              Navigator.of(context).push(MaterialPageRoute(builder: (context) {
-                return CartScreen();
-              }));
-            },
-            icon: const Icon(size: 30, Icons.shopping_cart_outlined)),
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) {
+                  return CartScreen();
+                },
+              ),
+            );
+          },
+          icon: const Icon(size: 30, Icons.shopping_cart_outlined),
+        ),
         Positioned(
           child: Text(
             customer == null ||
@@ -104,7 +114,7 @@ class CartIcon extends StatelessWidget {
           ),
           right: 0,
           top: 0,
-        )
+        ),
       ],
     );
   }

@@ -23,7 +23,7 @@ const startTime = Date.now();
 router.get('/', async (req, res) => {
   const health = {
     status: 'UP',
-    application: 'localezy',
+    application: 'Nearzy',
     timestamp: new Date().toISOString(),
     uptime: getUptime(),
     database: await checkDatabase(),

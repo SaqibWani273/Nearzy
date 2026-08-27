@@ -7,7 +7,17 @@ module.exports = (sequelize) => {
       primaryKey: true,
       autoIncrement: true,
     },
+    parentId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      field: 'parent_id',
+    },
     name: {
+      type: DataTypes.STRING,
+      unique: true,
+      allowNull: false,
+    },
+    slug: {
       type: DataTypes.STRING,
       unique: true,
       allowNull: false,
@@ -23,46 +33,28 @@ module.exports = (sequelize) => {
     },
     isTopCategory: {
       type: DataTypes.BOOLEAN,
-      allowNull: true,
+      defaultValue: false,
       field: 'is_top_category',
     },
-    catSpecificMustAttributes: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-      field: 'cat_specific_must_attributes',
-      get() {
-        const raw = this.getDataValue('catSpecificMustAttributes');
-        if (raw === null || raw === undefined) return null;
-        try {
-          return JSON.parse(raw);
-        } catch (e) {
-          return raw;
-        }
-      },
-      set(val) {
-        this.setDataValue('catSpecificMustAttributes', val ? JSON.stringify(val) : null);
-      },
+    displayOrder: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      field: 'display_order',
     },
-    catSpecificOptionalAttributes: {
-      type: DataTypes.TEXT,
+    requiredAttributes: {
+      type: DataTypes.JSON,
       allowNull: true,
-      field: 'cat_specific_optional_attributes',
-      get() {
-        const raw = this.getDataValue('catSpecificOptionalAttributes');
-        if (raw === null || raw === undefined) return null;
-        try {
-          return JSON.parse(raw);
-        } catch (e) {
-          return raw;
-        }
-      },
-      set(val) {
-        this.setDataValue('catSpecificOptionalAttributes', val ? JSON.stringify(val) : null);
-      },
+      field: 'required_attributes',
+    },
+    optionalAttributes: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      field: 'optional_attributes',
     },
   }, {
     tableName: 'product_categories',
     timestamps: false,
+    underscored: true,
   });
 
   return ProductCategory;

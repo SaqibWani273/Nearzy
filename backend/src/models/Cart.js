@@ -1,28 +1,28 @@
 const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize) => {
-  const Admin = sequelize.define('Admin', {
+  const Cart = sequelize.define('Cart', {
     id: {
       type: DataTypes.BIGINT,
       primaryKey: true,
       autoIncrement: true,
     },
-    userId: {
+    customerId: {
       type: DataTypes.BIGINT,
       allowNull: false,
       unique: true,
-      field: 'user_id',
+      field: 'customer_id',
     },
-    createdAt: {
+    updatedAt: {
       type: DataTypes.DATE,
-      field: 'created_at',
+      field: 'updated_at',
     },
   }, {
-    tableName: 'admins',
+    tableName: 'carts',
     timestamps: true,
-    updatedAt: false,
+    createdAt: false,
     underscored: true,
   });
 
-  return Admin;
+  return Cart;
 };
