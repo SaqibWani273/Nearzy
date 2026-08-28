@@ -14,25 +14,35 @@ import 'data/models/customer.dart';
 import 'data/repositories/customer/customer_data_repository.dart';
 import 'presentation/features/customer/customer_home_page.dart';
 import 'presentation/features/customer/dashboard/view_model/customer_data_bloc.dart';
+import 'presentation/features/onboarding/view/onboarding_screen.dart';
 import 'presentation/features/shop/product_upload/view_model/shop_bloc.dart';
 import 'presentation/features/shop/shop_authentication/view_model/shop_auth_bloc.dart';
 import 'theme/theme.dart';
+import 'utils/secure_storage.dart';
 
 Future<void> main() async {
   WidgetsBinding wb = WidgetsFlutterBinding.ensureInitialized();
 
   FlutterNativeSplash.preserve(widgetsBinding: wb);
-  //do async tasks like user-authentication
   UserModel? userModel = await mainAsyncTasks();
+  String? hasSeenOnboarding =
+      await SecureStorage.getData(key: 'has_seen_onboarding');
   runApp(MyApp(
     userModel: userModel,
+    hasSeenOnboarding: hasSeenOnboarding == 'true',
   ));
   FlutterNativeSplash.remove();
 }
 
 class MyApp extends StatelessWidget {
   final UserModel? userModel;
-  const MyApp({super.key, required this.userModel});
+  final bool hasSeenOnboarding;
+
+  const MyApp({
+    super.key,
+    required this.userModel,
+    required this.hasSeenOnboarding,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -43,11 +53,20 @@ class MyApp extends StatelessWidget {
     } else if (userModel is ShopModel1) {
       shopModel = userModel as ShopModel1;
     }
+
+    Widget homeScreen;
+    if (userModel == null && !hasSeenOnboarding) {
+      homeScreen = const OnboardingScreen();
+    } else if (userModel is Customer || userModel == null) {
+      homeScreen = const CustomerHomePage();
+    } else if (userModel is ShopModel1) {
+      homeScreen = const ShopHomePage();
+    } else {
+      homeScreen = const NoInternetScreen();
+    }
+
     return MultiRepositoryProvider(
       providers: [
-        // RepositoryProvider(
-        //   create: (context) => CustomerProfileRepository(customer: customer),
-        // ),
         RepositoryProvider(
           create: (context) => CustomerDataRepository(customer: customer),
         ),
@@ -58,34 +77,35 @@ class MyApp extends StatelessWidget {
       child: MultiBlocProvider(
         providers: [
           BlocProvider(
-              create: (context) => CustomerAuthBloc(
-                    customerDataRepository:
-                        RepositoryProvider.of<CustomerDataRepository>(context),
-                  )),
+            create: (context) => CustomerAuthBloc(
+              customerDataRepository:
+                  RepositoryProvider.of<CustomerDataRepository>(context),
+            ),
+          ),
           BlocProvider(
             create: (context) => CustomerDataBloc(
-                customerDataRepository:
-                    RepositoryProvider.of<CustomerDataRepository>(context)),
+              customerDataRepository:
+                  RepositoryProvider.of<CustomerDataRepository>(context),
+            ),
           ),
           BlocProvider(
             create: (context) => ShopAuthBloc(
-                shopDataRepository:
-                    RepositoryProvider.of<ShopDataRepository>(context)),
+              shopDataRepository:
+                  RepositoryProvider.of<ShopDataRepository>(context),
+            ),
           ),
           BlocProvider(
-              create: (context) => ShopBloc(
-                  shopDataRepository:
-                      RepositoryProvider.of<ShopDataRepository>(context))),
+            create: (context) => ShopBloc(
+              shopDataRepository:
+                  RepositoryProvider.of<ShopDataRepository>(context),
+            ),
+          ),
         ],
         child: MaterialApp(
-          title: 'MCA Project',
-          theme: AppTheme,
+          title: 'Nearzy',
+          theme: nearzyTheme,
           debugShowCheckedModeBanner: false,
-          home: userModel is Customer || userModel == null
-              ? const CustomerHomePage()
-              : userModel is ShopModel1
-                  ? const ShopHomePage()
-                  : const NoInternetScreen(),
+          home: homeScreen,
         ),
       ),
     );

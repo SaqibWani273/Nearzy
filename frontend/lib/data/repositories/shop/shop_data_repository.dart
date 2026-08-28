@@ -7,6 +7,7 @@ import '/data/models/shop_model/shop_model1.dart';
 import '../../../services/geo_locator_service.dart';
 import '/services/cloudinary_service.dart';
 
+import '../../../constants/bottom_navbar_items.dart';
 import '../../../services/api_service.dart';
 import '../../../utils/exceptions/custom_exception.dart';
 import '../../models/category/category_data.dart';

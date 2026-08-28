@@ -1,11 +1,11 @@
-import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mca_project/constants/bottom_navbar_items.dart';
-import 'package:mca_project/presentation/common/widgets/loading_widgets.dart';
-import 'product_upload/view/upload_product_screen.dart';
+import '../../common/widgets/animated_bottom_nav.dart';
+import '../../common/widgets/shimmer_loading.dart';
+import '../../../theme/app_colors.dart';
+import '../../../theme/app_spacing.dart';
 import '/presentation/features/shop/shop_authentication/view/shop_auth_screen.dart';
-
 import 'product_upload/view_model/shop_bloc.dart';
 import 'shop_authentication/view_model/shop_auth_bloc.dart';
 
@@ -17,65 +17,59 @@ class ShopHomePage extends StatefulWidget {
 }
 
 class _ShopHomePageState extends State<ShopHomePage> {
-  int currentIndex = 1;
-  void changeIndex(int index) {
-    setState(() {
-      currentIndex = index;
-    });
+  int _currentIndex = 1; // Start on Inventory
+  late final PageController _pageController;
+
+  void _changeIndex(int index) {
+    setState(() => _currentIndex = index);
+    _pageController.animateToPage(
+      index,
+      duration: AppSpacing.durationNormal,
+      curve: AppSpacing.curveDefault,
+    );
   }
 
   @override
   void initState() {
-    context.read<ShopBloc>().add(ShopLoadProductsEvent());
     super.initState();
+    _pageController = PageController(initialPage: _currentIndex);
+    context.read<ShopBloc>().add(ShopLoadProductsEvent());
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final double deviceWidth = MediaQuery.of(context).size.width;
     return Scaffold(
+      backgroundColor: AppColors.surface,
       body: BlocConsumer<ShopAuthBloc, ShopAuthState>(
         listener: (context, state) {
           if (state is ShopAuthLoggedOutState) {
             Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const ShopAuthScreen()),
-                (route) => false);
+              MaterialPageRoute(builder: (_) => const ShopAuthScreen()),
+              (route) => false,
+            );
           }
         },
         builder: (context, state) {
           if (state is ShopAuthLoadingState) {
-            return LoadingWidgets.SpinKitFading(deviceWidth);
+            return ShimmerLoading.productGrid();
           }
-          return shopMainScreens[currentIndex];
+          return PageView(
+            controller: _pageController,
+            physics: const NeverScrollableScrollPhysics(),
+            children: shopMainScreens,
+          );
         },
       ),
-      bottomNavigationBar: CurvedNavigationBar(
-        maxWidth: deviceWidth,
-        index: 1,
-        items: shopBottomNavbarItems
-            .asMap()
-            .entries
-            .map((e) => Container(
-                  padding: const EdgeInsets.only(bottom: 8.0),
-                  // height: deviceHeight * 0.05,
-
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Icon(currentIndex == e.key
-                          ? e.value.selectedIcon
-                          : e.value.unselectedIcon),
-                      Text(
-                        e.value.label,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ))
-            .toList(),
-        onTap: (value) => {
-          changeIndex(value),
-        },
+      bottomNavigationBar: NearzyBottomNav(
+        currentIndex: _currentIndex,
+        onTap: _changeIndex,
+        items: shopNavItems,
       ),
     );
   }

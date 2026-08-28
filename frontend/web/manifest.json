@@ -1,6 +1,6 @@
 {
-    "name": "mca_project",
-    "short_name": "mca_project",
+    "name": "Nearzy",
+    "short_name": "Nearzy",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#202046",

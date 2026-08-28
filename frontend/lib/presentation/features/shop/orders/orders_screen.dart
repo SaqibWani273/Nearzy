@@ -4,10 +4,9 @@ import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:mca_project/presentation/common/widgets/loading_widgets.dart';
 import 'package:mca_project/presentation/features/shop/product_upload/view_model/shop_bloc.dart';
 
+import '../../../../constants/bottom_navbar_items.dart';
 import '../../../../data/models/Order.dart';
 import '../../../../data/repositories/shop/shop_data_repository.dart';
-
-enum Roles { ROLE_CUSTOMER, ROLE_SHOP }
 
 class OrdersScreen extends StatefulWidget {
   final Roles role;

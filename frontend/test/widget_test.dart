@@ -14,6 +14,7 @@ void main() {
     // Build our app and trigger a frame.
     await tester.pumpWidget(const MyApp(
       userModel: null,
+      hasSeenOnboarding: true,
     ));
 
     // Verify that our counter starts at 0.

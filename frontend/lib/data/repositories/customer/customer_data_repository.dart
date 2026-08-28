@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
 
+import '../../../constants/bottom_navbar_items.dart';
 import '../../../constants/rest_api_const.dart';
 import '../../models/Order.dart';
 import '/data/models/cart.dart';
