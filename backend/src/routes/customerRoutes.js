@@ -232,4 +232,223 @@ router.post('/get-products-by-ids', authorize('CUSTOMER'), async (req, res, next
   }
 });
 
+/**
+ * @swagger
+ * /customer/shops-near-location:
+ *   get:
+ *     tags: [Customer]
+ *     summary: Browse shops near a given location
+ *     description: >
+ *       Returns paginated active shops filtered by city/state/pincode (text match)
+ *       and/or a geographic radius (Haversine) around a lat-lng coordinate.
+ *       At least one location param must be supplied.
+ *     parameters:
+ *       - in: query
+ *         name: city
+ *         schema: { type: string }
+ *         description: City name (case-insensitive partial match)
+ *       - in: query
+ *         name: state
+ *         schema: { type: string }
+ *         description: State name (case-insensitive partial match)
+ *       - in: query
+ *         name: pincode
+ *         schema: { type: string }
+ *         description: Pincode (case-insensitive partial match)
+ *       - in: query
+ *         name: latitude
+ *         schema: { type: number }
+ *         description: Customer latitude for radius search
+ *       - in: query
+ *         name: longitude
+ *         schema: { type: number }
+ *         description: Customer longitude for radius search
+ *       - in: query
+ *         name: radiusKm
+ *         schema: { type: number, default: 10 }
+ *         description: Search radius in kilometres (default 10)
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 20 }
+ *     responses:
+ *       200:
+ *         description: Paginated shops list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 total: { type: integer }
+ *                 page: { type: integer }
+ *                 limit: { type: integer }
+ *                 totalPages: { type: integer }
+ *                 shops: { type: array }
+ *       400: { description: No location params provided }
+ */
+router.get('/shops-near-location', async (req, res, next) => {
+  try {
+    const { city, state, pincode, latitude, longitude, radiusKm, page, limit } = req.query;
+
+    if (!city && !state && !pincode && (latitude == null || longitude == null)) {
+      return res.status(400).json({
+        error: 'At least one location parameter is required: city, state, pincode, or latitude+longitude',
+      });
+    }
+
+    const result = await customerService.getShopsNearLocation({
+      city, state, pincode, latitude, longitude, radiusKm, page, limit,
+    });
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * @swagger
+ * /customer/location-specialities:
+ *   get:
+ *     tags: [Customer]
+ *     summary: Get location-specific specialities and discovery feed
+ *     description: >
+ *       Returns a curated discovery feed for the given location.
+ *       Sections include category spotlights (e.g. "Kashmiri Kehwa & Tea",
+ *       "Handcrafted Shawls") derived from product categories present in
+ *       local shops, plus an "Affordable Finds" section.
+ *     parameters:
+ *       - in: query
+ *         name: city
+ *         schema: { type: string }
+ *       - in: query
+ *         name: state
+ *         schema: { type: string }
+ *       - in: query
+ *         name: pincode
+ *         schema: { type: string }
+ *       - in: query
+ *         name: latitude
+ *         schema: { type: number }
+ *       - in: query
+ *         name: longitude
+ *         schema: { type: number }
+ *       - in: query
+ *         name: radiusKm
+ *         schema: { type: number, default: 10 }
+ *     responses:
+ *       200:
+ *         description: Discovery feed with sections
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 location: { type: object }
+ *                 locationLabel: { type: string }
+ *                 sections:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       sectionTitle: { type: string }
+ *                       sectionSubtitle: { type: string }
+ *                       type:
+ *                         type: string
+ *                         enum: [AFFORDABLE, CATEGORY_SPOTLIGHT]
+ *                       products: { type: array }
+ *       400: { description: No location params provided }
+ */
+router.get('/location-specialities', async (req, res, next) => {
+  try {
+    const { city, state, pincode, latitude, longitude, radiusKm } = req.query;
+
+    if (!city && !state && !pincode && (latitude == null || longitude == null)) {
+      return res.status(400).json({
+        error: 'At least one location parameter is required: city, state, pincode, or latitude+longitude',
+      });
+    }
+
+    const result = await customerService.getLocationSpecialities({
+      city, state, pincode, latitude, longitude, radiusKm,
+    });
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * @swagger
+ * /customer/affordable-products:
+ *   get:
+ *     tags: [Customer]
+ *     summary: Get affordable products in a location
+ *     description: >
+ *       Returns paginated products from shops in the given location, sorted
+ *       cheapest-first. Optionally cap results by `maxPriceInPaise`.
+ *     parameters:
+ *       - in: query
+ *         name: city
+ *         schema: { type: string }
+ *       - in: query
+ *         name: state
+ *         schema: { type: string }
+ *       - in: query
+ *         name: pincode
+ *         schema: { type: string }
+ *       - in: query
+ *         name: latitude
+ *         schema: { type: number }
+ *       - in: query
+ *         name: longitude
+ *         schema: { type: number }
+ *       - in: query
+ *         name: radiusKm
+ *         schema: { type: number, default: 10 }
+ *       - in: query
+ *         name: maxPriceInPaise
+ *         schema: { type: integer }
+ *         description: Upper price cap in paise (e.g. 50000 = ₹500)
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 20 }
+ *     responses:
+ *       200:
+ *         description: Paginated products sorted cheapest-first
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 total: { type: integer }
+ *                 page: { type: integer }
+ *                 limit: { type: integer }
+ *                 totalPages: { type: integer }
+ *                 products: { type: array }
+ *       400: { description: No location params provided }
+ */
+router.get('/affordable-products', async (req, res, next) => {
+  try {
+    const { city, state, pincode, latitude, longitude, radiusKm, maxPriceInPaise, page, limit } = req.query;
+
+    if (!city && !state && !pincode && (latitude == null || longitude == null)) {
+      return res.status(400).json({
+        error: 'At least one location parameter is required: city, state, pincode, or latitude+longitude',
+      });
+    }
+
+    const result = await customerService.getAffordableProductsByLocation({
+      city, state, pincode, latitude, longitude, radiusKm, maxPriceInPaise, page, limit,
+    });
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;
