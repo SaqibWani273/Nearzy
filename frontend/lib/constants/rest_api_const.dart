@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 class ApiConst {
-  static final String baseApiUrl = 'http://localhost:8080';
+  static final String baseApiUrl = 'https://clarinet-playlist-wharf.ngrok-free.dev';
   static final String baseCustomerUrl = '$baseApiUrl/customer';
   static final String baseShopUrl = '$baseApiUrl/shop';
   static final String baseAdminUrl = '$baseApiUrl/admin';
