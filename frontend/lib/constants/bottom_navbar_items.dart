@@ -95,6 +95,10 @@ List<NearzyNavItem> adminNavItems = [
 ];
 
 /// Roles enum shared across the app.
+// These names are wire values: `Roles.ROLE_CUSTOMER.name` is compared against
+// the `role` claim the backend issues (ROLE_CUSTOMER / ROLE_SHOP / ROLE_ADMIN),
+// so renaming them to lowerCamelCase would break role-based routing.
+// ignore: constant_identifier_names
 enum Roles { ROLE_CUSTOMER, ROLE_SHOP, ROLE_ADMIN }
 
 /// Legacy BottomNavbarItem for backwards compat during migration.

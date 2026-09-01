@@ -8,19 +8,18 @@ class ClothingFashionCategory extends SpecificCategory {
   final Gender gender;
   final FitType? fitType;
   final Season? season;
-  final String name;
   /* more attributes 
 List<Color> colors;
 
   */
   ClothingFashionCategory({
-    required this.name,
+    required super.name,
     required this.size,
     required this.material,
     required this.gender,
     this.fitType,
     this.season,
-  }) : super(name: name);
+  });
 
   factory ClothingFashionCategory.fromMap(Map<String, dynamic> map) {
     return ClothingFashionCategory(

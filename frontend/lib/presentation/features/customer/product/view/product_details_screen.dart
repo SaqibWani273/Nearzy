@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mca_project/data/models/shop_model/shop_model1.dart';
-import 'package:mca_project/presentation/common/widgets/shimmer_loading.dart';
 import '/data/repositories/customer/customer_data_repository.dart';
 import '/presentation/features/customer/cart/cart_screen.dart';
 import '/utils/utils.dart';

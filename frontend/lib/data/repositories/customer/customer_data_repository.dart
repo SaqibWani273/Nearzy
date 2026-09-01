@@ -1,11 +1,8 @@
-import 'dart:developer';
 
-import 'package:flutter/material.dart';
 import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
 
 import '../../../constants/bottom_navbar_items.dart';
-import '../../../constants/rest_api_const.dart';
-import '../../models/Order.dart';
+import '../../models/order.dart';
 import '/data/models/cart.dart';
 import '/data/models/shop_model/shop_model1.dart';
 import '/services/api_service.dart';
@@ -26,7 +23,10 @@ class CustomerDataRepository {
 
   Customer? customer;
   List<CartItemDetails> cartItemDetails = [];
-  late PagingController<int, Product> globalPagingController;
+  /// Set by the dashboard once it builds its paging controller. Nullable so
+  /// that callers refreshing before the dashboard mounts are a no-op instead
+  /// of a LateInitializationError.
+  PagingController<int, Product>? globalPagingController;
   CustomerDataRepository({
     this.customer,
   });
@@ -64,25 +64,21 @@ class CustomerDataRepository {
     customer = null;
   }
 
-  Future<void> fetchProducts(
-    int pageKey,
-
-    //  PagingController pagingController
-  ) async {
+  /// Fetches a single page of products and returns it.
+  ///
+  /// infinite_scroll_pagination 5.x drives paging through this return value,
+  /// so the controller is no longer mutated from here.
+  Future<List<Product>> fetchProducts(int pageKey) async {
     try {
-      //fetch products
       final newProducts =
           await ApiService.fetchProducts(currentSelectedLocation, pageKey);
-      products.addAll(newProducts);
-      final isLastPage = newProducts.length < ApiConst.pageSize;
-      if (isLastPage) {
-        globalPagingController.appendLastPage(newProducts);
-      } else {
-        final nextPageKey = pageKey + 1;
-        // final nextPageKey = pageKey + newProducts.length;
-        globalPagingController.appendPage(newProducts, nextPageKey);
+      // A refresh restarts at page 0, so drop the previously cached pages
+      // instead of appending duplicates to them.
+      if (pageKey == 0) {
+        products.clear();
       }
-      //fetch categories
+      products.addAll(newProducts);
+      return newProducts;
     } catch (e) {
       rethrow;
     }
@@ -150,7 +146,7 @@ class CustomerDataRepository {
 
       //update locally
       customer = customer!.copyWith(
-        cartItems: await Utils.addToCart(
+        cartItems: Utils.addToCart(
             product: product, cartItems: customer!.cartItems),
       );
       //update at server
@@ -166,7 +162,7 @@ class CustomerDataRepository {
     try {
       //update cart locally
       customer = customer!.copyWith(
-        cartItems: await Utils.removeFromCart(
+        cartItems: Utils.removeFromCart(
             product: product, cartItems: customer!.cartItems!),
       );
       cartItemDetails.removeWhere(
@@ -183,7 +179,7 @@ class CustomerDataRepository {
     try {
       //update cart locally
       customer = customer!.copyWith(
-        cartItems: await Utils.increaseQuantityByOne(
+        cartItems: Utils.increaseQuantityByOne(
             product: product, cartItems: customer!.cartItems!),
       );
       CartItemDetails x = cartItemDetails
@@ -206,7 +202,7 @@ class CustomerDataRepository {
     try {
       //update cart locally
       customer = customer!.copyWith(
-        cartItems: await Utils.decreaseQuantityByOne(
+        cartItems: Utils.decreaseQuantityByOne(
             product: product, cartItems: customer!.cartItems!),
       );
       cartItemDetails

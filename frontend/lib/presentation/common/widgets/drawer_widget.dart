@@ -70,7 +70,7 @@ class DrawerWidget extends StatelessWidget {
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(vertical: 12),
               itemCount: menuItems.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 2),
+              separatorBuilder: (_, _) => const SizedBox(height: 2),
               itemBuilder: (context, index) {
                 final item = menuItems[index];
                 final isSelected = currentIndex == index;

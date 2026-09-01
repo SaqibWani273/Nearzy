@@ -63,7 +63,7 @@ class ShopAuthBloc extends Bloc<ShopAuthEvent, ShopAuthState> {
     } catch (error) {
       log("error in ShopAuthBloc: $error");
       emit(ShopAuthErrorState(CustomException(
-          message: "${error.toString()}", errorType: ErrorType.unknown)));
+          message: error.toString(), errorType: ErrorType.unknown)));
     }
   }
 

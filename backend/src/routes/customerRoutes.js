@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const customerService = require('../services/customerService');
+const paymentService = require('../services/paymentService');
 const authorize = require('../middleware/authorize');
 
 /**
@@ -10,6 +11,8 @@ const authorize = require('../middleware/authorize');
  *     description: Customer registration, email verification, and login
  *   - name: Customer
  *     description: Customer profile, cart management, and product browsing
+ *   - name: Customer Payments
+ *     description: Razorpay order creation and payment verification
  */
 
 /**
@@ -445,6 +448,134 @@ router.get('/affordable-products', async (req, res, next) => {
     const result = await customerService.getAffordableProductsByLocation({
       city, state, pincode, latitude, longitude, radiusKm, maxPriceInPaise, page, limit,
     });
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Resolves the Customer row for the caller's JWT. Payment routes never take a
+ * customerId from the request body — that would let one customer order under
+ * another's account.
+ */
+async function requireCustomerId(req, res) {
+  const customerId = await customerService.getCustomerIdByUserId(req.user.id);
+  if (!customerId) {
+    res.status(404).json({ message: 'No customer profile for this account' });
+    return null;
+  }
+  return customerId;
+}
+
+/**
+ * @swagger
+ * /customer/payment/config:
+ *   get:
+ *     tags: [Customer Payments]
+ *     summary: Public Razorpay checkout config (key id only — never the secret)
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Checkout config }
+ *       503: { description: Payment gateway not configured }
+ */
+router.get('/payment/config', authorize('CUSTOMER'), async (req, res, next) => {
+  try {
+    const result = paymentService.getConfig();
+    if (result.error) {
+      return res.status(result.status || 400).json({ message: result.error });
+    }
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * @swagger
+ * /customer/payment/create-order:
+ *   post:
+ *     tags: [Customer Payments]
+ *     summary: Create a pending order and its matching Razorpay order
+ *     description: >
+ *       The order total is computed server-side from current product prices.
+ *       The client supplies only product ids and quantities.
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               orderItems:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     productId: { type: integer }
+ *                     quantity: { type: integer }
+ *               shippingAddress: { type: string }
+ *               billingAddress: { type: string }
+ *               phoneNumber: { type: string }
+ *     responses:
+ *       200: { description: Razorpay order created }
+ *       400: { description: Invalid order }
+ *       502: { description: Razorpay rejected the order }
+ *       503: { description: Payment gateway not configured }
+ */
+router.post('/payment/create-order', authorize('CUSTOMER'), async (req, res, next) => {
+  try {
+    const customerId = await requireCustomerId(req, res);
+    if (!customerId) return;
+
+    const { orderItems, shippingAddress, billingAddress, phoneNumber } = req.body;
+    const result = await paymentService.createOrder(customerId, orderItems, {
+      shippingAddress,
+      billingAddress,
+      phoneNumber,
+    });
+    if (result.error) {
+      return res.status(result.status || 400).json({ message: result.error });
+    }
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * @swagger
+ * /customer/payment/verify:
+ *   post:
+ *     tags: [Customer Payments]
+ *     summary: Verify a Razorpay payment signature and mark the order paid
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               razorpayOrderId: { type: string }
+ *               razorpayPaymentId: { type: string }
+ *               razorpaySignature: { type: string }
+ *     responses:
+ *       200: { description: Payment verified }
+ *       400: { description: Signature verification failed }
+ *       403: { description: Order belongs to another customer }
+ *       404: { description: Unknown Razorpay order }
+ */
+router.post('/payment/verify', authorize('CUSTOMER'), async (req, res, next) => {
+  try {
+    const customerId = await requireCustomerId(req, res);
+    if (!customerId) return;
+
+    const result = await paymentService.verifyPayment(customerId, req.body);
+    if (result.error) {
+      return res.status(result.status || 400).json({ message: result.error });
+    }
     res.json(result);
   } catch (err) {
     next(err);

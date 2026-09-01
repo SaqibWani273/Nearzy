@@ -9,7 +9,11 @@ class ProductCategory {
   int id;
   String name;
   String description;
+  // Wire names come straight from the Sequelize ProductCategory model
+  // (res.json(categories) serialises raw attributes).
+  @JsonKey(name: 'imageUrl')
   String image;
+  @JsonKey(name: 'isTopCategory')
   bool isTopProductCategory;
 
   ProductCategory({

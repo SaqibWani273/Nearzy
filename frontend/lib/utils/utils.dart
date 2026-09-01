@@ -37,7 +37,7 @@ class Utils {
             children: [
               Text(message),
               Spacer(),
-              if (actionWidget != null) actionWidget
+              ?actionWidget
             ],
           ),
         ),

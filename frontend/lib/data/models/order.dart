@@ -142,8 +142,13 @@ class ShopOrderItem {
       ShopOrderItem.fromMap(json.decode(source) as Map<String, dynamic>);
 }
 
+// These names are wire values: `OrderStatus.PENDING.name` is compared directly
+// against the status string the API returns, so renaming them to lowerCamelCase
+// would silently break order filtering.
+// ignore: constant_identifier_names
 enum PaymentStatus { PAID, COD }
 
+// ignore: constant_identifier_names
 enum OrderStatus { PENDING, PROCESSING, SHIPPED, DELIVERED }
 
 OrderStatus stringToOrderStatus(String status) {
@@ -172,8 +177,6 @@ Color colorForOrderStatus(String status) {
       return Colors.green;
     case OrderStatus.DELIVERED:
       return Colors.green;
-    default:
-      return Colors.orange;
   }
 }
 

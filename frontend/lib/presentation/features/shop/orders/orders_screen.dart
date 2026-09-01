@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:mca_project/presentation/common/widgets/loading_widgets.dart';
 import 'package:mca_project/presentation/features/shop/product_upload/view_model/shop_bloc.dart';
 
 import '../../../../constants/bottom_navbar_items.dart';
-import '../../../../data/models/Order.dart';
+import '../../../../data/models/order.dart';
 import '../../../../data/repositories/shop/shop_data_repository.dart';
 
 class OrdersScreen extends StatefulWidget {
@@ -36,7 +35,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
             listener: (context, state) {},
             builder: (context, state) {
               if (state is ShopLoadingState) {
-                return LoadingWidgets.SpinKitFading(deviceWidth);
+                return LoadingWidgets.spinKitFading(deviceWidth);
               }
               orders = context.read<ShopDataRepository>().myOrders;
               if (orders.isEmpty) {
@@ -63,7 +62,7 @@ class OrderCard extends StatelessWidget {
   final Order order;
   final Roles role;
 
-  OrderCard({required this.order, required this.role});
+  const OrderCard({super.key, required this.order, required this.role});
 
   @override
   Widget build(BuildContext context) {
@@ -83,7 +82,7 @@ class OrderCard extends StatelessWidget {
                 ),
               ),
               Text(
-                '\₹${order.totalPrice}',
+                '₹${order.totalPrice}',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ],
@@ -113,7 +112,7 @@ class OrderCard extends StatelessWidget {
                             Border.all(color: Colors.grey.shade300, width: 2),
                       ),
                       child: Text(
-                        '${order.status}',
+                        order.status,
                         style: TextStyle(fontSize: 16, color: Colors.white),
                       )),
                 ],
@@ -194,7 +193,7 @@ class OrderCard extends StatelessWidget {
                                               width: 2),
                                         ),
                                         child: Text(
-                                          '${getNextOrderStatus(order.status)}',
+                                          getNextOrderStatus(order.status),
                                           style: TextStyle(
                                               fontSize: 16,
                                               color: Colors.white),
@@ -272,7 +271,7 @@ class OrderCard extends StatelessWidget {
 class OrderItemCard extends StatelessWidget {
   final ShopOrderItem orderItem;
 
-  OrderItemCard({required this.orderItem});
+  const OrderItemCard({super.key, required this.orderItem});
 
   @override
   Widget build(BuildContext context) {

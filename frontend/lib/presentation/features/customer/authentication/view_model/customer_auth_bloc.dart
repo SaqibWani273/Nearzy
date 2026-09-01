@@ -1,6 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '/data/repositories/customer/customer_data_repository.dart';
-import '/data/repositories/customer/customer_profile_repository.dart';
 import '/utils/exceptions/customer_exception.dart';
 
 part 'customer_auth_event.dart';

@@ -22,12 +22,11 @@ class GeneralSpecificCategory extends SpecificCategory {
   //of adding the product
   SpecificAttributesMap? mustHaveSpecificAttributes;
   SpecificAttributesMap? canHaveSpecificAttributes;
-  String name;
   GeneralSpecificCategory({
     this.canHaveSpecificAttributes,
     this.mustHaveSpecificAttributes,
-    required this.name,
-  }) : super(name: name);
+    required super.name,
+  });
 
   Map<String, dynamic> toMap() {
     return <String, dynamic>{

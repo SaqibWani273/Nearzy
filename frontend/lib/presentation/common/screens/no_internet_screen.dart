@@ -14,16 +14,18 @@ class NoInternetScreen extends StatelessWidget {
       body: BlocBuilder<CustomerAuthBloc, CustomerAuthState>(
         builder: (context, state) {
           if (state is CustomerAuthLoadingState) {
-            return LoadingWidgets.SpinKitFading(deviceWidth);
+            return LoadingWidgets.spinKitFading(deviceWidth);
           }
           if (state is CustomerAuthVerifiedState) {
+            // Capture the navigator before the delay so the context is not
+            // reached for across the async gap.
+            final navigator = Navigator.of(context);
             Future.delayed(Durations.extralong1).then(
-              (value) => Navigator.pushReplacement(
-                  context,
+              (value) => navigator.pushReplacement(
                   MaterialPageRoute(
                       builder: (context) => const CustomerHomePage())),
             );
-            return LoadingWidgets.SpinKitFading(deviceWidth);
+            return LoadingWidgets.spinKitFading(deviceWidth);
           }
           return Center(
             child: Column(
@@ -48,7 +50,7 @@ class NoInternetScreen extends StatelessWidget {
                     },
                     style: ButtonStyle(
                       backgroundColor: WidgetStatePropertyAll<Color>(
-                          Colors.blue.withOpacity(0.4)),
+                          Colors.blue.withValues(alpha: 0.4)),
                     ),
                     child: const Text('Retry')),
               ],

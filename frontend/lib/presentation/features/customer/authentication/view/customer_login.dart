@@ -23,7 +23,6 @@ class _CustomerLoginState extends State<CustomerLogin> {
 
   @override
   Widget build(BuildContext context) {
-    final deviceWidth = MediaQuery.of(context).size.width;
     return Scaffold(
       body: BlocConsumer<CustomerAuthBloc, CustomerAuthState>(
           listener: (context, state) {

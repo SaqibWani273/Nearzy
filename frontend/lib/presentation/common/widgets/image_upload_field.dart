@@ -79,7 +79,7 @@ class _ImageUploadFieldState extends State<ImageUploadField> {
                   ),
                 ),
               )
-            : Container(
+            : SizedBox(
                 height: imageHeight,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(10.0),

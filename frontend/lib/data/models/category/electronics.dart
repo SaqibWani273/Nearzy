@@ -5,13 +5,12 @@ import 'specific_category/specific_category.dart';
 class ElectronicsCategory extends SpecificCategory {
   final String brand;
   final String warrantyPeriod;
-  final String name;
 
   ElectronicsCategory({
     required this.brand,
     required this.warrantyPeriod,
-    required this.name,
-  }) : super(name: name);
+    required super.name,
+  });
 
   factory ElectronicsCategory.fromMap(Map<String, dynamic> map) {
     return ElectronicsCategory(

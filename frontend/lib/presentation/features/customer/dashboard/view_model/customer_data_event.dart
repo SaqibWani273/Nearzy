@@ -40,11 +40,8 @@ class CustomerDataSearchProductEvent extends CustomerDataEvent {
   CustomerDataSearchProductEvent({required this.keyword});
 }
 
-final class CustomerDataLoadProductsEvent extends CustomerDataEvent {
-  final int pageKey;
-
-  CustomerDataLoadProductsEvent({required this.pageKey});
-}
+/// Reloads the paginated product feed from the first page.
+final class CustomerDataLoadProductsEvent extends CustomerDataEvent {}
 
 final class CustomerDataFetchNearbyShopsEvent extends CustomerDataEvent {}
 

@@ -1,7 +1,6 @@
 import 'dart:developer';
 
-import 'package:geocoding/geocoding.dart' as geocoding;
-import 'package:mca_project/data/models/Order.dart';
+import 'package:mca_project/data/models/order.dart';
 import '/data/models/shop_model/shop_model1.dart';
 
 import '../../../services/geo_locator_service.dart';

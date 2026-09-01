@@ -111,7 +111,7 @@ class _NearzyProductCardState extends State<NearzyProductCard>
                       child: Image.network(
                         widget.imageUrl,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
+                        errorBuilder: (_, _, _) => Container(
                           color: AppColors.inputFill,
                           child: const Icon(
                             Icons.image_outlined,
@@ -134,7 +134,7 @@ class _NearzyProductCardState extends State<NearzyProductCard>
                             borderRadius: AppSpacing.borderRadiusSm,
                           ),
                           child: Text(
-                            '${_discountPercent}% OFF',
+                            '$_discountPercent% OFF',
                             style: AppTextStyles.badge,
                           ),
                         ),

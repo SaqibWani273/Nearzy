@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:image_picker/image_picker.dart';
 import '/presentation/common/screens/error_screen.dart';
 import '/presentation/common/widgets/loading_widgets.dart';
@@ -29,10 +28,10 @@ class UploadProductScreen extends StatefulWidget {
 
 class _UploadProductScreenState extends State<UploadProductScreen> {
   late List<String> _formFields;
-  Map<String, TextEditingController> _formControllers = {};
+  final Map<String, TextEditingController> _formControllers = {};
   final _formKey = GlobalKey<FormState>();
   XFile? _mainProductImage;
-  List<XFile>? _moreProductImages = [];
+  final List<XFile> _moreProductImages = [];
   //these are used to set category name and attributes...
   CategoryData? _selectedCategory;
   GeneralSpecificCategory _generalSpecificCategory =
@@ -42,6 +41,7 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
   late SpecificAttributesMap _canHaveSpecificAttributes;
 
 //... till here
+  @override
   void initState() {
     if (context.read<ShopDataRepository>().categoriesData.isEmpty) {
       context.read<ShopBloc>().add(LoadAllCategoriesEvent());
@@ -78,7 +78,7 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
     final image = await getImage(_picker!);
     if (image != null) {
       setState(() {
-        _moreProductImages!.add(image);
+        _moreProductImages.add(image);
       });
     }
   }
@@ -88,7 +88,8 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
     _canHaveSpecificAttributes = SpecificAttributesMap.empty();
   }
 
-  void updatGenSpecCat(mustAtt, canAtt) {
+  void updatGenSpecCat(
+      SpecificAttributesMap mustAtt, SpecificAttributesMap canAtt) {
     _generalSpecificCategory = _generalSpecificCategory.copyWith(
         mustHaveSpecificAttributes: mustAtt, canHaveSpecificAttributes: canAtt);
   }
@@ -137,7 +138,7 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
                   ],
                 ),
               )
-              .toList(),
+              ,
         if (boolFields.isNotEmpty)
           ...boolFields.map((e) {
             //set bool values initially to false if not present
@@ -177,14 +178,14 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
                 ),
               ],
             );
-          }).toList(),
+          }),
         if (enumFields.isNotEmpty)
           ...enumFields.entries
               .map(
                 (MapEntry<String, List<String>> e) => Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8.0),
                   child: DropdownButtonFormField<String>(
-                    value: null, //categories[0].name,
+                    initialValue: null, //categories[0].name,
                     validator: FormHandler.nullCheck,
                     items: e.value
                         .map(
@@ -198,9 +199,9 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
                       if (value == null) return;
                       type == AttributesType.must
                           ? _mustHaveSpecificAttributes
-                              .enumAttributes["${e.key}"] = value
+                              .enumAttributes[e.key] = value
                           : _canHaveSpecificAttributes
-                              .enumAttributes["${e.key}"] = value;
+                              .enumAttributes[e.key] = value;
                       updatGenSpecCat(_mustHaveSpecificAttributes,
                           _canHaveSpecificAttributes);
                     },
@@ -210,7 +211,7 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
                   ),
                 ),
               )
-              .toList(),
+              ,
       ],
     );
   }
@@ -223,7 +224,7 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
       child: BlocBuilder<ShopBloc, ShopState>(
         builder: (context, state) {
           if (state is ShopLoadingState) {
-            return LoadingWidgets.SpinKitFading(deviceWidth);
+            return LoadingWidgets.spinKitFading(deviceWidth);
           }
           if (state is ShopUploadedProductState) {
             return UploadSuccessScreen();
@@ -268,7 +269,7 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
                               ),
                             ),
                           )
-                        : Container(
+                        : SizedBox(
                             height: 200.0,
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(10.0),
@@ -289,7 +290,7 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
                             icon: Icon(Icons.image),
                             onPressed: _getMoreImages,
                             label: Text("add another")),
-                        ..._moreProductImages!
+                        ..._moreProductImages
                             .map(
                               (e) => Container(
                                 height: 50.0,
@@ -315,7 +316,7 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
                                 ),
                               ),
                             )
-                            .toList(),
+                            ,
                       ],
                     ),
                   ),
@@ -351,9 +352,9 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
                       // SizedBox(
                       //   height: 20,
                       // ),
-                      ).toList(),
+                      ),
                   DropdownButtonFormField<CategoryData?>(
-                    value: null, //categories[0].name,
+                    initialValue: null, //categories[0].name,
                     validator: FormHandler.nullCheck,
                     items: categories
                         .map(
@@ -380,7 +381,7 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
                   // Submit button
                   ElevatedButton(
                     onPressed: () async {
-                      log('${_generalSpecificCategory.toString()}');
+                      log(_generalSpecificCategory.toString());
                       if (_formKey.currentState!.validate()) {
                         if (_mainProductImage == null) {
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -390,18 +391,19 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
                           );
                           return;
                         }
-                        List<Object> moreImages = [];
-                        _moreProductImages!.forEach((element) async {
-                          kIsWeb
-                              ? moreImages.add(await element.readAsBytes())
-                              : moreImages.add(element.path);
-                        });
+                        final List<Object> moreImages = [];
+                        for (final element in _moreProductImages) {
+                          moreImages.add(kIsWeb
+                              ? await element.readAsBytes()
+                              : element.path);
+                        }
                         final List<Object> imageObjects = [
                           kIsWeb
                               ? await _mainProductImage!.readAsBytes()
                               : _mainProductImage!.path,
                           ...moreImages
                         ];
+                        if (!context.mounted) return;
                         context.read<ShopBloc>().add(UploadProductEvent(
                             product: Product(
                               name: _formControllers['name']!.text.trim(),

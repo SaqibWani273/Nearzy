@@ -1,7 +1,7 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'dart:convert';
 
-import 'package:mca_project/data/models/Order.dart';
+import 'package:mca_project/data/models/order.dart';
 
 import '/data/models/cart.dart';
 
@@ -31,7 +31,7 @@ class Customer extends UserModel {
     return Customer(
       user: user ?? this.user,
       cartItems: cartItems ?? this.cartItems,
-      id: this.id,
+      id: id,
       orders: orders ?? this.orders,
     );
   }

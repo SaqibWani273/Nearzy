@@ -24,18 +24,20 @@ if (flutterVersionName == null) {
 
 android {
     namespace "com.example.mca_project"
-    // compileSdk flutter.compileSdkVersion
-    compileSdkVersion 34
-    // ndkVersion flutter.ndkVersion
-     ndkVersion "25.1.8937393"
+    // flutter_secure_storage 11 compiles against Android SDK 37, so the app
+    // must compile against at least that (SDK levels are backward compatible).
+    compileSdk 37
+    // Pinned to the NDK already installed in the local SDK; Flutter's default
+    // (28.2.13676358) is not present and pulling it costs ~3 GB.
+    ndkVersion "29.0.14033849"
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = '17'
     }
 
     sourceSets {
@@ -66,4 +68,8 @@ flutter {
     source '../..'
 }
 
-dependencies {}
+dependencies {
+    // Supplies Theme.MaterialComponents, referenced by NormalTheme in
+    // res/values/styles.xml and required by flutter_stripe.
+    implementation 'com.google.android.material:material:1.13.0'
+}

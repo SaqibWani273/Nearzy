@@ -47,7 +47,7 @@ class NearzyShopCard extends StatelessWidget {
                     child: Image.network(
                       imageUrl,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
+                      errorBuilder: (_, _, _) => Container(
                         color: AppColors.primarySurface,
                         child: Icon(
                           Icons.storefront_outlined,

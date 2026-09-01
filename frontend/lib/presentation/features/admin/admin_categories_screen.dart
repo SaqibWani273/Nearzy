@@ -16,7 +16,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
   final _descriptionController = TextEditingController();
   final _imageUrlController = TextEditingController();
   bool _isTopCategory = false;
-  bool _isSubmitting = false;
+  final bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -89,7 +89,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                   style: AppTextStyles.bodySmall,
                 ),
                 value: _isTopCategory,
-                activeColor: AppColors.primary,
+                activeThumbColor: AppColors.primary,
                 onChanged: (v) => setSheetState(() => _isTopCategory = v),
               ),
               const SizedBox(height: 20),

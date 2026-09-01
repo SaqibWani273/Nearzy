@@ -50,6 +50,22 @@ module.exports = (sequelize) => {
       defaultValue: 0,
       field: 'discount_amount_paise',
     },
+    razorpayOrderId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      unique: true,
+      field: 'razorpay_order_id',
+    },
+    razorpayPaymentId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'razorpay_payment_id',
+    },
+    razorpaySignature: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'razorpay_signature',
+    },
     placedAt: {
       type: DataTypes.DATE,
       field: 'placed_at',

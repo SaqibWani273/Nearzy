@@ -8,15 +8,16 @@ part of 'product_category.dart';
 
 ProductCategory _$ProductCategoryFromJson(Map<String, dynamic> json) =>
     ProductCategory(
-      id: json['id'] as int,
+      id: (json['id'] as num).toInt(),
       name: json['name'] as String,
       image: json['imageUrl'] as String,
-      isTopProductCategory: json['topCategory'] as bool,
+      isTopProductCategory: json['isTopCategory'] as bool,
       description: json['description'] as String,
     );
 
 Map<String, dynamic> _$ProductCategoryToJson(ProductCategory instance) =>
     <String, dynamic>{
+      'id': instance.id,
       'name': instance.name,
       'description': instance.description,
       'imageUrl': instance.image,

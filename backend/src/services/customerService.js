@@ -57,6 +57,12 @@ const customerService = {
     return customer;
   },
 
+  /** Maps an authenticated NearzyUser id to its Customer row id. */
+  async getCustomerIdByUserId(userId) {
+    const customer = await Customer.findOne({ where: { user_id: userId } });
+    return customer ? customer.id : null;
+  },
+
   async getAllProducts() {
     const products = await Product.findAll({
       include: [

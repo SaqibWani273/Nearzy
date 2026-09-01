@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mca_project/presentation/common/widgets/loading_widgets.dart';
-import 'package:mca_project/presentation/features/customer/dashboard/view_model/customer_data_bloc.dart';
-import 'package:mca_project/services/stripe_service.dart';
+import 'package:mca_project/services/razorpay_service.dart';
 
 import '../../../../data/models/cart.dart';
 import '../../../../data/repositories/customer/customer_data_repository.dart';
@@ -12,18 +11,11 @@ class CheckoutScreen extends StatefulWidget {
   final List<CartItemDetails> cartItemDetailst;
   const CheckoutScreen({super.key, required this.cartItemDetailst});
   @override
-  _CheckoutScreenState createState() => _CheckoutScreenState();
+  State<CheckoutScreen> createState() => _CheckoutScreenState();
 }
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
-  late int customerId;
   bool showLoadingScreen = false;
-  @override
-  void initState() {
-    //delete the items from db
-    customerId = context.read<CustomerDataRepository>().customer!.id!;
-    super.initState();
-  }
 
   final _formKey = GlobalKey<FormState>();
   String _shippingAddress = '';
@@ -40,7 +32,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         title: Text('Checkout'),
       ),
       body: showLoadingScreen
-          ? LoadingWidgets.SpinKitFading(deviceWidth)
+          ? LoadingWidgets.spinKitFading(deviceWidth)
           : Padding(
               padding: EdgeInsets.all(16.0),
               child: Form(
@@ -103,7 +95,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 trailing: Text(
                     '₹${cartItemDetails.product.price * cartItemDetails.quantity}'),
               );
-            }).toList(),
+            }),
             ListTile(
               title: Text('Shipping'),
               trailing: Text('₹100'),
@@ -172,6 +164,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
+  // Parked: call site is commented out in build() — Razorpay's checkout sheet
+  // now owns payment method selection.
+  // ignore: unused_element
   Widget _buildPaymentInformation() {
     return Card(
       child: Padding(
@@ -183,7 +178,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             Divider(),
             DropdownButtonFormField<String>(
-              value: _paymentMethod,
+              initialValue: _paymentMethod,
               decoration: InputDecoration(labelText: 'Payment Method'),
               items: <String>['Credit Card', 'Debit Card', 'Net Banking', 'UPI']
                   .map((String value) {
@@ -204,6 +199,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
+  // Parked: call site is commented out in build().
+  // ignore: unused_element
   Widget _buildOrderReview() {
     return Card(
       child: Padding(
@@ -242,27 +239,26 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       setState(() {
         showLoadingScreen = true;
       });
-      // Here you can add the logic to handle the order placement
-      final result = await StripeService.makePayment(PaymentData(
-        buyerName: 'Jenny Rosen',
-        amount: calculateTotalPrice(widget.cartItemDetailst),
-        currency: 'INR',
+      final customer = context.read<CustomerDataRepository>().customer!;
+      // The order total is priced by the backend from these line items.
+      final result = await RazorpayService.makePayment(PaymentData(
+        buyerName: customer.user.username,
+        email: customer.user.email,
         shippingAddress: _shippingAddress,
         billingAddress: _billingAddress,
         phoneNumber: _phoneNumber,
-        customerId: customerId,
-        shopId: widget.cartItemDetailst.first.product.shop.id!,
         orderItems: widget.cartItemDetailst
             .map((e) => OrderItem.fromCartItemDetails(cartItemDetails: e))
             .toList(),
       ));
 
+      // The checkout sheet can outlive this screen, so bail out if it was
+      // popped while the payment was in flight.
+      if (!mounted) return;
       setState(() {
         showLoadingScreen = false;
       });
-      //if result is false add the items back to db
-      if (result == false) {}
-      if (result == true) {
+      if (result.isSuccess) {
         context.read<CustomerDataRepository>().cartItemDetails = [];
         context.read<CustomerDataRepository>().customer!.cartItems = [];
       }
@@ -270,11 +266,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         context: context,
         builder: (context) => AlertDialog(
           title: Text('Order Status',
-              style:
-                  TextStyle(color: result == true ? Colors.green : Colors.red)),
-          content: result == true
-              ? Text('Your order has been placed successfully!')
-              : Text('Your order could not be placed!'),
+              style: TextStyle(
+                  color: result.isSuccess ? Colors.green : Colors.red)),
+          content: Text(result.isSuccess
+              ? 'Your order ${result.orderNumber} has been placed successfully!'
+              : result.message),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),

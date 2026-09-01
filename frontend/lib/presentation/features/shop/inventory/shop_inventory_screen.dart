@@ -29,7 +29,7 @@ class ShopInventoryScreen extends StatelessWidget {
           },
           builder: (context, state) {
             if (state is ShopLoadingState) {
-              return LoadingWidgets.SpinKitFading(deviceWidth);
+              return LoadingWidgets.spinKitFading(deviceWidth);
             }
             products = state.runtimeType == ShopSearchProductState
                 ? (state as ShopSearchProductState).products
@@ -102,7 +102,7 @@ class ShopInventoryScreen extends StatelessWidget {
 class ProductCard extends StatelessWidget {
   final Product product;
 
-  ProductCard({required this.product});
+  const ProductCard({super.key, required this.product});
 
   @override
   Widget build(BuildContext context) {

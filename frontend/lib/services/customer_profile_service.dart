@@ -1,11 +1,9 @@
 import 'dart:developer';
 import 'dart:convert';
-import 'dart:ffi';
 
 import 'package:http/http.dart' as http;
 import '/constants/rest_api_const.dart';
 import '/utils/exceptions/custom_exception.dart';
-import '/utils/utils.dart';
 import '../data/models/cart.dart';
 import '../data/models/product.dart';
 import '/utils/exceptions/customer_exception.dart';
@@ -25,7 +23,7 @@ class CustomerProfileService {
               {'username': name, 'email': email, 'password': password}));
       if (response.statusCode == 400) {
         log(response.body);
-        throw CustomerException("Status Code 400: " + response.body);
+        throw CustomerException("Status Code 400: ${response.body}");
       }
       if (response.statusCode != 200) {
         log(response.body);

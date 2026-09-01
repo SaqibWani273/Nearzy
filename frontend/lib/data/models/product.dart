@@ -42,7 +42,7 @@ class Product {
     // required this.reviews,
   });
   //used at product upload screen by shop module
-  void set setImages(List<String> imgUrls) => images = imgUrls;
+  set setImages(List<String> imgUrls) => images = imgUrls;
   factory Product.fromJson(Map<String, dynamic> json) =>
       _$ProductFromJson(json);
 

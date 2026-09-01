@@ -1,4 +1,3 @@
-import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -93,6 +92,7 @@ class _CartScreenState extends State<CartScreen> {
                     MaterialPageRoute(
                         builder: (context) => const CustomerLogin()),
                   );
+                  if (!mounted) return;
                   customer = context.read<CustomerDataRepository>().customer;
                   if (customer != null) {
                     isCartEmpty = checkIsCartEmpty(customer);
@@ -148,7 +148,7 @@ class _CartScreenState extends State<CartScreen> {
           return ListView.separated(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
             itemCount: cartItemDetailsList.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            separatorBuilder: (_, _) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final cartItem = cartItemDetailsList[index];
               return Container(
@@ -178,7 +178,7 @@ class _CartScreenState extends State<CartScreen> {
                           width: 72,
                           height: 72,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
+                          errorBuilder: (_, _, _) => Container(
                             width: 72,
                             height: 72,
                             color: AppColors.inputFill,

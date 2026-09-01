@@ -9,6 +9,8 @@ import '../shop_authentication/view/shop_auth_screen.dart';
 import 'package:flutter/material.dart';
 
 class ShopProfileScreen extends StatelessWidget {
+  const ShopProfileScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     ShopModel1 shop;
@@ -65,7 +67,7 @@ class ShopHeader extends StatelessWidget {
 
   final String shopName;
 
-  ShopHeader({
+  const ShopHeader({super.key, 
     required this.shopPicUrl,
     required this.ownerPicUrl,
     required this.ownerName,
@@ -147,7 +149,7 @@ class ShopHeader extends StatelessWidget {
 class ShopDescription extends StatelessWidget {
   final String description;
 
-  ShopDescription({required this.description});
+  const ShopDescription({super.key, required this.description});
 
   @override
   Widget build(BuildContext context) {
@@ -177,7 +179,7 @@ class ShopDetails extends StatelessWidget {
   final String? pancardPicUrl;
   final String? ownerIdPicUrl;
 
-  ShopDetails({
+  const ShopDetails({super.key, 
     required this.categories,
     required this.address,
     required this.phoneNumber,

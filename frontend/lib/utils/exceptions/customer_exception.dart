@@ -28,7 +28,5 @@ String getCustomerAuthExceptionMessage(
       return "Wrong password";
     case CustomerAuthExceptionType.emailNotVerified:
       return "Email not verified";
-    default:
-      return "Something went wrong";
   }
 }

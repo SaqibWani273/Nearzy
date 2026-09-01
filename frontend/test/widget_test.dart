@@ -1,32 +1,28 @@
-// This is a basic Flutter widget test.
+// Smoke test for the Nearzy app shell.
 //
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+// The onboarding path is used because it is the only entry point that renders
+// without hitting the network: a null user that has not seen onboarding yet.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mca_project/main.dart';
+import 'package:mca_project/presentation/features/onboarding/view/onboarding_screen.dart';
+import 'package:mca_project/theme/theme.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp(
-      userModel: null,
-      hasSeenOnboarding: true,
-    ));
-
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
+  testWidgets('MyApp builds the onboarding flow for a first-time visitor',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MyApp(userModel: null, hasSeenOnboarding: false),
+    );
     await tester.pump();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.byType(MaterialApp), findsOneWidget);
+    expect(find.byType(OnboardingScreen), findsOneWidget);
+
+    final MaterialApp app = tester.widget(find.byType(MaterialApp));
+    expect(app.title, 'Nearzy');
+    expect(app.theme, nearzyTheme);
+    expect(app.debugShowCheckedModeBanner, isFalse);
   });
 }

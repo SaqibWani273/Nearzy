@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import '/constants/rest_api_const.dart';
 import '/utils/exceptions/custom_exception.dart';
 
-import 'package:flutter_image_compress/flutter_image_compress.dart' as IC;
+import 'package:flutter_image_compress/flutter_image_compress.dart' as image_compress;
 
 const maxImageSizeForCloudinary = 10485760; //10mb
 
@@ -28,7 +28,7 @@ class CloudinaryService {
       var multipartFile =
           // await kIsWeb ?
           http.MultipartFile.fromBytes(
-              'file', compressedImageObject as Uint8List,
+              'file', compressedImageObject,
               filename: "test ${DateTime.now()}");
       // : await http.MultipartFile.fromPath(
       //     'file', compressedImageObject as String,
@@ -73,7 +73,7 @@ class CloudinaryService {
       Uint8List compressesdImage;
       do {
         final result =
-            await IC.FlutterImageCompress.compressWithFile(imagePath);
+            await image_compress.FlutterImageCompress.compressWithFile(imagePath);
         compressesdImage = result!;
       } while (compressesdImage.length > maxImageSizeForCloudinary);
 
@@ -89,7 +89,7 @@ class CloudinaryService {
       Uint8List compressesdImage;
       do {
         final result =
-            await IC.FlutterImageCompress.compressWithList(unit8List);
+            await image_compress.FlutterImageCompress.compressWithList(unit8List);
         compressesdImage = result;
       } while (compressesdImage.length > maxImageSizeForCloudinary);
 

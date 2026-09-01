@@ -13,7 +13,7 @@ class ShopBloc extends Bloc<ShopEvent, ShopState> {
   final ShopDataRepository shopDataRepository;
   ShopBloc({required this.shopDataRepository}) : super(ShopInitialState()) {
     on<LoadAllCategoriesEvent>(_loadAllCategories);
-    on<UploadProductEvent>(_UploadProduct);
+    on<UploadProductEvent>(_uploadProduct);
     on<ShopInitialEvent>(_shopInitial);
     on<ShopLoadProductsEvent>(_shopLoadProducts);
     on<ShopSearchProductEvent>(_shopSearchProduct);
@@ -80,7 +80,7 @@ class ShopBloc extends Bloc<ShopEvent, ShopState> {
     await _handleEvent(event, emit);
   }
 
-  Future<void> _UploadProduct(
+  Future<void> _uploadProduct(
       UploadProductEvent event, Emitter<ShopState> emit) async {
     await _handleEvent(event, emit);
   }

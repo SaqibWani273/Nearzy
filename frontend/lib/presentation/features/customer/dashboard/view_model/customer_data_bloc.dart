@@ -1,9 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
 import 'package:mca_project/data/models/shop_model/shop_model1.dart';
 import '/utils/exceptions/custom_exception.dart';
-import '/utils/exceptions/customer_exception.dart';
 import '../../../../../data/models/cart.dart';
 import '../../../../../data/models/product.dart';
 import '/data/repositories/customer/customer_data_repository.dart';
@@ -54,13 +51,13 @@ class CustomerDataBloc extends Bloc<CustomerDataEvent, CustomerDataState> {
           break;
         case ChangeCustomerCurrentLocationEvent _:
           await customerDataRepository.fetchLocation(event.currentLocation);
-          emit(CustomerDataLoadedState(loadingProducts: true));
-          await customerDataRepository.fetchProducts(0);
-          customerDataRepository.globalPagingController.refresh();
+          // refresh() re-runs the page-0 fetch through the paging controller,
+          // which renders its own first-page progress indicator.
+          customerDataRepository.globalPagingController?.refresh();
           emit(CustomerDataLoadedState());
           break;
         case CustomerDataLoadProductsEvent _:
-          await customerDataRepository.fetchProducts(event.pageKey);
+          customerDataRepository.globalPagingController?.refresh();
           emit(CustomerDataLoadedState());
           break;
         case CustomerDataAddProductToCartEvent _:

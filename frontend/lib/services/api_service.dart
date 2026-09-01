@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:developer';
 
-import 'package:mca_project/data/models/Order.dart';
+import 'package:mca_project/data/models/order.dart';
 import 'package:mca_project/data/models/category/product_category/product_category.dart';
 
 import '/data/models/shop_model/shop_model1.dart';

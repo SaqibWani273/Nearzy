@@ -7,11 +7,7 @@ part of 'specific_category.dart';
 // **************************************************************************
 
 SpecificCategory _$SpecificCategoryFromJson(Map<String, dynamic> json) =>
-    SpecificCategory(
-      name: json['name'] as String,
-    );
+    SpecificCategory(name: json['name'] as String);
 
 Map<String, dynamic> _$SpecificCategoryToJson(SpecificCategory instance) =>
-    <String, dynamic>{
-      'name': instance.name,
-    };
+    <String, dynamic>{'name': instance.name};

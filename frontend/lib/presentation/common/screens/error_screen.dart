@@ -21,7 +21,7 @@ class ErrorScreen extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color:
-            Colors.blue.withOpacity(0.4), // const Color(0xFF87CEFA), //sky blue
+            Colors.blue.withValues(alpha: 0.4), // const Color(0xFF87CEFA), //sky blue
         borderRadius: BorderRadius.circular(10.0),
       ),
       margin: EdgeInsets.symmetric(vertical: 16.0),

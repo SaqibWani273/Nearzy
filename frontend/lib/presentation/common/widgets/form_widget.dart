@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../theme/app_colors.dart';
-import '../../../../theme/app_spacing.dart';
 import '../../../../theme/app_text_styles.dart';
 import '/data/repositories/shop/shop_data_repository.dart';
 import '/presentation/common/widgets/image_upload_field.dart';
@@ -190,15 +189,19 @@ class _FormWidgetState extends State<FormWidget> {
                 onPressed: () async {
                   if (_formKey.currentState!.validate()) {
                     _formKey.currentState!.save();
-                    if (await ApiService.emailExists(_email) == true &&
-                        currentForm == FormType.register) {
+                    final emailTaken =
+                        await ApiService.emailExists(_email) == true;
+                    if (!context.mounted) return;
+                    if (emailTaken && currentForm == FormType.register) {
                       Utils.showScaffoldMessage(
                           message: "Email already registered",
                           context: context);
                       return;
                     }
-                    if (await ApiService.usernameExists(_username) == true &&
-                        currentForm == FormType.register) {
+                    final usernameTaken =
+                        await ApiService.usernameExists(_username) == true;
+                    if (!context.mounted) return;
+                    if (usernameTaken && currentForm == FormType.register) {
                       Utils.showScaffoldMessage(
                           message: "Username already taken", context: context);
                       return;
@@ -211,7 +214,9 @@ class _FormWidgetState extends State<FormWidget> {
                     } else if (currentForm == FormType.register) {
                       if (widget.userType == UserType.shop) {
                         if (!_childKey.currentState!.formKey.currentState!
-                            .validate()) return;
+                            .validate()) {
+                          return;
+                        }
                         final allImagesFilled =
                             _childKey.currentState?.checkImagesFilled();
                         if (allImagesFilled != true) return;

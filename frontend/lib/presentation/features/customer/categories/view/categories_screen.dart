@@ -118,7 +118,7 @@ class _CategoryCard extends StatelessWidget {
             Image.network(
               imageUrl,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
+              errorBuilder: (_, _, _) => Container(
                 color: AppColors.primarySurface,
                 child: const Icon(
                   Icons.category_outlined,

@@ -24,7 +24,7 @@ void showCupertinoAlertDialog({
               children: [
                 TextButton.icon(
                   style: TextButton.styleFrom(
-                    backgroundColor: Colors.blue.withOpacity(0.1),
+                    backgroundColor: Colors.blue.withValues(alpha: 0.1),
                   ),
                   onPressed: () {
                     context.read<CustomerDataBloc>().add(
@@ -49,7 +49,7 @@ void showCupertinoAlertDialog({
             //use current location
             TextButton.icon(
                 style: TextButton.styleFrom(
-                  backgroundColor: Colors.blue.withOpacity(0.1),
+                  backgroundColor: Colors.blue.withValues(alpha: 0.1),
                 ),
                 onPressed: () {
                   context.read<CustomerDataBloc>().add(

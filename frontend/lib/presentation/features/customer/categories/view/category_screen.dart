@@ -1,14 +1,8 @@
-import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mca_project/data/repositories/customer/customer_data_repository.dart';
 import '../../../../../data/models/category/product_category/product_category.dart';
-import '../../../../../data/models/product.dart';
-import '../../../../../services/api_service.dart';
-import '../../../../../utils/exceptions/custom_exception.dart';
-import '../../../../common/screens/error_screen.dart';
-import '../../../../common/widgets/loading_widgets.dart';
 import '../../product/view/product_details_screen.dart';
 
 class CategoryScreen extends StatelessWidget {
@@ -24,7 +18,6 @@ class CategoryScreen extends StatelessWidget {
         .where((product) => product.category.name == category.name)
         .toSet()
         .toList();
-    double deviceWidth = MediaQuery.of(context).size.width;
     var deviceHeight = MediaQuery.of(context).size.height;
     return Scaffold(
         body: products.isEmpty
@@ -79,7 +72,7 @@ class CategoryScreen extends StatelessWidget {
                                 Expanded(child: Text(item.name)),
                                 Padding(
                                   padding: const EdgeInsets.only(left: 8.0),
-                                  child: Text("₹" + item.price.toString()),
+                                  child: Text("₹${item.price}"),
                                 ),
                               ],
                             ),

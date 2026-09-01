@@ -18,14 +18,11 @@ class CustomerHomePage extends StatefulWidget {
   State<CustomerHomePage> createState() => _CustomerHomePageState();
 }
 
-class _CustomerHomePageState extends State<CustomerHomePage>
-    with TickerProviderStateMixin {
+class _CustomerHomePageState extends State<CustomerHomePage> {
   int _currentIndex = 2; // Start on Home
-  int _currentDrawerItemIndex = 0;
+  final int _currentDrawerItemIndex = 0;
   Customer? customer;
   late final PageController _pageController;
-  late final AnimationController _fabController;
-  late final Animation<double> _fabAnimation;
 
   void _changeIndex(int index) {
     setState(() => _currentIndex = index);
@@ -41,21 +38,11 @@ class _CustomerHomePageState extends State<CustomerHomePage>
     super.initState();
     customer = context.read<CustomerDataRepository>().customer;
     _pageController = PageController(initialPage: _currentIndex);
-    _fabController = AnimationController(
-      duration: AppSpacing.durationSlow,
-      vsync: this,
-    );
-    _fabAnimation = CurvedAnimation(
-      parent: _fabController,
-      curve: AppSpacing.curveSnap,
-    );
-    _fabController.forward();
   }
 
   @override
   void dispose() {
     _pageController.dispose();
-    _fabController.dispose();
     super.dispose();
   }
 
@@ -81,12 +68,8 @@ class _CustomerHomePageState extends State<CustomerHomePage>
                     .read<CustomerAuthBloc>()
                     .add(CustomerAuthVerificationEvent());
                 context
-                    .read<CustomerDataRepository>()
-                    .globalPagingController
-                    .refresh();
-                context
                     .read<CustomerDataBloc>()
-                    .add(CustomerDataLoadProductsEvent(pageKey: 0));
+                    .add(CustomerDataLoadProductsEvent());
               },
               child: PageView(
                 controller: _pageController,

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class UploadSuccessScreen extends StatelessWidget {
   final String? msg; // Optional to display uploaded category details
 
-  const UploadSuccessScreen({Key? key, this.msg}) : super(key: key);
+  const UploadSuccessScreen({super.key, this.msg});
 
   @override
   Widget build(BuildContext context) {

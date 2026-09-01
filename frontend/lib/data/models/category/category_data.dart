@@ -6,8 +6,13 @@ part 'category_data.g.dart';
 @JsonSerializable()
 class CategoryData {
   final String name;
+  // The wire names differ from the Dart names. These were previously only
+  // present in the generated file, so regenerating it silently broke parsing.
+  @JsonKey(name: 'imageUrl')
   final String image;
+  @JsonKey(name: 'catSpecificMustAttributes')
   final CategoryFields? mustFields;
+  @JsonKey(name: 'catSpecificOptionalAttributes')
   final CategoryFields? optionalFields;
   CategoryData({
     required this.name,
@@ -17,6 +22,7 @@ class CategoryData {
   });
   factory CategoryData.fromJson(Map<String, dynamic> json) =>
       _$CategoryDataFromJson(json);
+  Map<String, dynamic> toJson() => _$CategoryDataToJson(this);
   // factory CategoryData.fromMap(Map<String, dynamic> map) {
   //   final mustFields = map['catSpecificMustAttributes'];
   //   final optionalFields = map['catSpecificOptionalAttributes'];
@@ -45,6 +51,7 @@ class CategoryFields {
   });
   factory CategoryFields.fromJson(Map<String, dynamic> json) =>
       _$CategoryFieldsFromJson(json);
+  Map<String, dynamic> toJson() => _$CategoryFieldsToJson(this);
   // factory CategoryFields.fromMap(Map<String, dynamic> map) {
   //   final Map<String, dynamic>? enumAttMap = map["enumAttributes"];
   //   return CategoryFields(

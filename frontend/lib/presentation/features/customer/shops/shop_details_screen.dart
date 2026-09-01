@@ -25,7 +25,7 @@ class ShopDetailsScreen extends StatelessWidget {
         future: ApiService.fetchProductsByShopId(shop.id!),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return LoadingWidgets.SpinKitFading(deviceWidth);
+            return LoadingWidgets.spinKitFading(deviceWidth);
           }
 
           if (snapshot.connectionState == ConnectionState.done) {
@@ -114,7 +114,7 @@ class ShopDetailsScreen extends StatelessWidget {
                                   Expanded(child: Text(item.name)),
                                   Padding(
                                     padding: const EdgeInsets.only(left: 8.0),
-                                    child: Text("₹" + item.price.toString()),
+                                    child: Text("₹${item.price}"),
                                   ),
                                 ],
                               ),

@@ -1,7 +1,6 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 
 import 'package:json_annotation/json_annotation.dart';
-import 'package:mca_project/services/api_service.dart';
 part 'basic_user_model.g.dart';
 
 @JsonSerializable()

@@ -57,6 +57,7 @@ Include it in the \`Authorization\` header as \`Bearer <token>\`.
       { name: 'Shop Auth', description: 'Shop registration, email verification, and login' },
       { name: 'Admin Auth', description: 'Admin registration, email verification, and login' },
       { name: 'Customer', description: 'Customer profile, cart management, and product browsing' },
+      { name: 'Customer Payments', description: 'Razorpay order creation and payment verification' },
       { name: 'Shop', description: 'Shop profile and product management' },
       { name: 'Admin', description: 'Platform administration — categories and oversight' },
       { name: 'Common', description: 'Shared endpoints for all authenticated users' },
