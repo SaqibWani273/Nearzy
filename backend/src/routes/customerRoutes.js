@@ -3,6 +3,7 @@ const router = express.Router();
 const customerService = require('../services/customerService');
 const paymentService = require('../services/paymentService');
 const authorize = require('../middleware/authorize');
+const { toCustomerDto } = require('../dto/productDto');
 
 /**
  * @swagger
@@ -150,7 +151,7 @@ router.post('/me', authorize('CUSTOMER'), async (req, res, next) => {
     if (!customer) {
       return res.status(400).json('invalid token');
     }
-    res.json(customer);
+    res.json(toCustomerDto(customer));
   } catch (err) {
     next(err);
   }

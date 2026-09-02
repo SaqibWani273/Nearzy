@@ -4,15 +4,20 @@ const nodemailer = require('nodemailer');
 const jwtService = require('./jwtService');
 const { NearzyUser, EmailConfirmation } = require('../models');
 
+// MAIL_USER doubles as the From address, so it stays set even for local
+// catchers like Mailpit that accept mail without credentials. Offer AUTH only
+// when a password exists — authenticating against a server that advertises no
+// AUTH support fails the send outright.
+const mailAuth = process.env.MAIL_PASS
+  ? { user: process.env.MAIL_USER, pass: process.env.MAIL_PASS }
+  : undefined;
+
 // Create mail transporter
 const transporter = nodemailer.createTransport({
   host: process.env.MAIL_HOST || 'smtp.gmail.com',
   port: parseInt(process.env.MAIL_PORT || '587', 10),
   secure: false,
-  auth: {
-    user: process.env.MAIL_USER,
-    pass: process.env.MAIL_PASS,
-  },
+  auth: mailAuth,
 });
 
 const authService = {
@@ -73,12 +78,21 @@ const authService = {
       text: `Email verification link: ${verificationLink}`,
     };
 
-    // Send asynchronously (don't block)
-    transporter.sendMail(mailOptions).catch((err) => {
-      console.error('Failed to send email:', err);
-    });
-
-    return { message: `Email verification link sent to ${user.email}` };
+    // The account row is already committed, so a mail failure must not fail the
+    // request — but it must not be reported as success either. Await the send so
+    // the response reflects what actually happened.
+    try {
+      await transporter.sendMail(mailOptions);
+      return { message: `Email verification link sent to ${user.email}`, emailSent: true };
+    } catch (err) {
+      console.error('Failed to send verification email:', err);
+      return {
+        message: `Account created, but the verification email to ${user.email} could not be sent.`,
+        emailSent: false,
+        // The SMTP error names hosts and credentials, so keep it out of production responses.
+        ...(process.env.NODE_ENV === 'development' ? { emailError: err.message } : {}),
+      };
+    }
   },
 
   /**

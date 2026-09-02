@@ -135,6 +135,29 @@ function toProductDto(product) {
   };
 }
 
+/**
+ * Customer -> the client's `Customer.fromMap` shape.
+ *
+ * The client reads the nested user from `myUser` and a flat `cartItems` list,
+ * neither of which matches the raw Sequelize entity (`user`, `cart.items`) the
+ * profile endpoints used to return — so `Customer.fromMap` threw on a null
+ * cast and every sign-in failed after the token check passed. Orders are left
+ * off deliberately: the client loads them from its own endpoint and treats a
+ * missing key as "not loaded yet".
+ */
+function toCustomerDto(customer) {
+  const items = customer?.cart?.items ?? [];
+
+  return {
+    id: customer?.id ?? null,
+    myUser: toBasicUserDto(customer?.user),
+    cartItems: items.map((item) => ({
+      productId: numOr(item?.productId),
+      quantity: numOr(item?.quantity, 1),
+    })),
+  };
+}
+
 module.exports = {
   haversineKm,
   toProductDto,
@@ -142,4 +165,5 @@ module.exports = {
   toCategoryDto,
   toLocationDto,
   toBasicUserDto,
+  toCustomerDto,
 };

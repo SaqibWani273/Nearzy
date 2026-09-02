@@ -41,10 +41,14 @@ async function seed() {
     await sequelize.authenticate();
     console.log('✅ DB connected');
 
-    // Check if data already exists
+    // Check if data already exists. The guard is all-or-nothing on users, so a
+    // single real signup blocks the whole seed; SEED_FORCE=1 runs it anyway.
+    // Safe because every seeded account uses an @nearzy.com address of its own,
+    // but it will collide if the demo data is seeded twice.
     const existingUsers = await NearzyUser.count();
-    if (existingUsers > 0) {
+    if (existingUsers > 0 && process.env.SEED_FORCE !== '1') {
       console.log('⚠️  Database already has data. Skipping seed.');
+      console.log('   Re-run with SEED_FORCE=1 to seed alongside existing users.');
       process.exit(0);
     }
 

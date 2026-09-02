@@ -36,10 +36,6 @@ class _CustomerLoginState extends State<CustomerLogin> {
           });
         }
       }, builder: (context, state) {
-        if (state is CustomerAuthLoadingState) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
         if (state is CustomerAuthRegisteredState) {
           return EmailSentWidget(
             onPressed: () => context
@@ -47,27 +43,49 @@ class _CustomerLoginState extends State<CustomerLogin> {
                 .add(CustomerAuthInitialEvent()),
           );
         }
-        return FormWidget(
-          userType: UserType.customer,
-          registerCallback: (
-            _, {
-            required email,
-            required password,
-            required username,
-          }) =>
-              BlocProvider.of<CustomerAuthBloc>(context).add(
-            CustomerRegisterEvent(
-                name: username, email: email, password: password),
-          ),
-          loginCallback: ({
-            required email,
-            required password,
-          }) =>
-              BlocProvider.of<CustomerAuthBloc>(context).add(
-            CustomerLoginEvent(email: email, password: password),
-          ),
+
+        // The form stays mounted while the request is in flight, with the
+        // spinner laid over it. Swapping it out for a bare
+        // CircularProgressIndicator disposed the TextFormFields, so a failed
+        // login came back to a freshly built, empty form.
+        return Stack(
+          children: [
+            _buildForm(context),
+            if (state is CustomerAuthLoadingState)
+              const Positioned.fill(
+                child: AbsorbPointer(
+                  child: ColoredBox(
+                    color: Color(0x66000000),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                ),
+              ),
+          ],
         );
       }),
+    );
+  }
+
+  Widget _buildForm(BuildContext context) {
+    return FormWidget(
+      userType: UserType.customer,
+      registerCallback: (
+        _, {
+        required email,
+        required password,
+        required username,
+      }) =>
+          BlocProvider.of<CustomerAuthBloc>(context).add(
+        CustomerRegisterEvent(
+            name: username, email: email, password: password),
+      ),
+      loginCallback: ({
+        required email,
+        required password,
+      }) =>
+          BlocProvider.of<CustomerAuthBloc>(context).add(
+        CustomerLoginEvent(email: email, password: password),
+      ),
     );
   }
 }

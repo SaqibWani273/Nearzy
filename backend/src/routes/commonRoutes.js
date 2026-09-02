@@ -4,6 +4,7 @@ const commonService = require('../services/commonService');
 const jwtService = require('../services/jwtService');
 const { NearzyUser, Customer, Shop } = require('../models');
 const authorize = require('../middleware/authorize');
+const { toCustomerDto } = require('../dto/productDto');
 
 /**
  * @swagger
@@ -61,7 +62,7 @@ router.post('/me', authorize('CUSTOMER', 'SHOP', 'SHOP_OWNER'), async (req, res,
           },
         ],
       });
-      responseBody.model = customer;
+      responseBody.model = toCustomerDto(customer);
     } else {
       const shop = await Shop.findOne({
         where: { user_id: user.id },

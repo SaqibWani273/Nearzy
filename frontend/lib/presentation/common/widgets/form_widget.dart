@@ -189,22 +189,29 @@ class _FormWidgetState extends State<FormWidget> {
                 onPressed: () async {
                   if (_formKey.currentState!.validate()) {
                     _formKey.currentState!.save();
-                    final emailTaken =
-                        await ApiService.emailExists(_email) == true;
-                    if (!context.mounted) return;
-                    if (emailTaken && currentForm == FormType.register) {
-                      Utils.showScaffoldMessage(
-                          message: "Email already registered",
-                          context: context);
-                      return;
-                    }
-                    final usernameTaken =
-                        await ApiService.usernameExists(_username) == true;
-                    if (!context.mounted) return;
-                    if (usernameTaken && currentForm == FormType.register) {
-                      Utils.showScaffoldMessage(
-                          message: "Username already taken", context: context);
-                      return;
+
+                    // Both checks only ever gate registration, so running
+                    // them on sign-in just added two round trips ahead of the
+                    // login request — with an empty username at that.
+                    if (currentForm == FormType.register) {
+                      final emailTaken =
+                          await ApiService.emailExists(_email) == true;
+                      if (!context.mounted) return;
+                      if (emailTaken) {
+                        Utils.showScaffoldMessage(
+                            message: "Email already registered",
+                            context: context);
+                        return;
+                      }
+                      final usernameTaken =
+                          await ApiService.usernameExists(_username) == true;
+                      if (!context.mounted) return;
+                      if (usernameTaken) {
+                        Utils.showScaffoldMessage(
+                            message: "Username already taken",
+                            context: context);
+                        return;
+                      }
                     }
 
                     if (currentForm == FormType.forgotpassword) {
