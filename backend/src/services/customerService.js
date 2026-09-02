@@ -2,6 +2,7 @@ const { NearzyUser, Customer, Product, Cart, CartItem, Address, Shop, LocationIn
 const authService = require('./authService');
 const jwtService = require('./jwtService');
 const { Op, literal } = require('sequelize');
+const { toProductDto } = require('../dto/productDto');
 
 const customerService = {
   async registerCustomer(userData) {
@@ -63,16 +64,40 @@ const customerService = {
     return customer ? customer.id : null;
   },
 
-  async getAllProducts() {
+  /**
+   * Returns one page of products in the shape the Flutter client expects.
+   *
+   * `page` is 0-based: the client's PagingController starts at 0 and stops
+   * once a page comes back shorter than pageSize, so the offset must advance
+   * or it would re-request the same rows forever.
+   */
+  async getAllProducts({ page = 0, pageSize = 10 } = {}) {
+    const parsedSize = Number.parseInt(pageSize, 10);
+    const parsedPage = Number.parseInt(page, 10);
+    const limit = Math.min(Math.max(Number.isNaN(parsedSize) ? 10 : parsedSize, 1), 100);
+    const offset = Math.max(Number.isNaN(parsedPage) ? 0 : parsedPage, 0) * limit;
+
     const products = await Product.findAll({
       include: [
-        { association: 'shop' },
+        {
+          association: 'shop',
+          include: [
+            // Never load the hash; the DTO drops it, but it should not travel at all.
+            { association: 'user', attributes: { exclude: ['passwordHash'] } },
+            { association: 'locationInfo' },
+            { association: 'verification' },
+            { association: 'categories' },
+          ],
+        },
         { association: 'category' },
         { association: 'images' },
         { association: 'colors' },
       ],
+      order: [['id', 'ASC']],
+      limit,
+      offset,
     });
-    return products;
+    return products.map(toProductDto);
   },
 
   async updateCustomer(customerData) {

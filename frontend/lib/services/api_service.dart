@@ -16,6 +16,16 @@ import '../utils/secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 class ApiService {
+  /// Base headers included on every request.
+  /// The ngrok header bypasses the free-tier browser warning interstitial.
+  static Map<String, String> _h([Map<String, String>? extra]) {
+    final headers = <String, String>{
+      'ngrok-skip-browser-warning': 'true',
+    };
+    if (extra != null) headers.addAll(extra);
+    return headers;
+  }
+
   static Future<UserModel?> getUserModel() async {
     try {
       final token = await SecureStorage.getToken();
@@ -25,7 +35,7 @@ class ApiService {
 
       final response = await http.post(
         Uri.parse(ApiConst.userProfileUrl),
-        headers: {"Authorization": "Bearer $token"},
+        headers: _h({"Authorization": "Bearer $token"}),
         body: token,
       );
 
@@ -56,7 +66,7 @@ class ApiService {
   static Future<void> registerShop(ShopModel1 shopModel) async {
     try {
       final response = await http.post(Uri.parse(ApiConst.shopRegistrationUrl),
-          headers: {"Content-Type": "application/json"},
+          headers: _h({"Content-Type": "application/json"}),
           body: jsonEncode(shopModel.toJson()));
       if (response.statusCode == 200) {
         log(response.body);
@@ -77,7 +87,7 @@ class ApiService {
     try {
       final response = await http.post(
         Uri.parse(ApiConst.shopLoginUrl),
-        headers: {"Content-Type": "application/json"},
+        headers: _h({"Content-Type": "application/json"}),
         body: jsonEncode({'email': email, 'password': password}),
       );
       if (response.statusCode == 200) {
@@ -107,9 +117,7 @@ class ApiService {
     try {
       final response = await http.get(
         Uri.parse(ApiConst.loadAllCategoriesUrl),
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: _h({"Content-Type": "application/json"}),
       );
       if (response.statusCode == 200) {
         if (role == Roles.ROLE_CUSTOMER) {
@@ -138,10 +146,10 @@ class ApiService {
     try {
       final String? token = await SecureStorage.getToken();
       final response = await http.post(Uri.parse(ApiConst.uploadProductUrl),
-          headers: {
+          headers: _h({
             "Content-Type": "application/json",
             "Authorization": "Bearer $token"
-          },
+          }),
           body: jsonEncode(product.toJson()));
       if (response.statusCode != 200) {
         final String errorMessage =
@@ -162,9 +170,7 @@ class ApiService {
       final response = await http.get(
         Uri.parse(
             "${ApiConst.fetchAllProductsUrl}?page=$currentPageKey&pageSize=${ApiConst.pageSize}"),
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: _h({"Content-Type": "application/json"}),
       );
       if (response.statusCode == 200) {
         final products = <Product>[];
@@ -194,7 +200,7 @@ class ApiService {
   static Future<bool?> emailExists(String email) async {
     try {
       final response = await http.post(Uri.parse(ApiConst.emailExistsUrl),
-          headers: {"Content-Type": "application/json"},
+          headers: _h({"Content-Type": "application/json"}),
           body: jsonEncode({'email': email}));
       if (response.statusCode == 200) {
         return bool.fromEnvironment(response.body);
@@ -208,7 +214,7 @@ class ApiService {
   static Future<bool?> usernameExists(String username) async {
     try {
       final response = await http.post(Uri.parse(ApiConst.usernameExistsUrl),
-          headers: {"Content-Type": "application/json"},
+          headers: _h({"Content-Type": "application/json"}),
           body: jsonEncode({'username': username}));
       if (response.statusCode == 200) {
         return bool.fromEnvironment(response.body);
@@ -243,7 +249,7 @@ class ApiService {
           : "";
       final response = await http.get(
         Uri.parse("${ApiConst.shopsNearLocationUrl}$query"),
-        headers: {"Content-Type": "application/json"},
+        headers: _h({"Content-Type": "application/json"}),
       );
       if (response.statusCode == 200) {
         for (var element in jsonDecode(response.body)) {
@@ -266,7 +272,7 @@ class ApiService {
           : "";
       final response = await http.get(
         Uri.parse("${ApiConst.locationSpecialitiesUrl}$query"),
-        headers: {"Content-Type": "application/json"},
+        headers: _h({"Content-Type": "application/json"}),
       );
       if (response.statusCode == 200) {
         for (var element in jsonDecode(response.body)) {
@@ -289,7 +295,7 @@ class ApiService {
           : "";
       final response = await http.get(
         Uri.parse("${ApiConst.affordableProductsUrl}$query"),
-        headers: {"Content-Type": "application/json"},
+        headers: _h({"Content-Type": "application/json"}),
       );
       if (response.statusCode == 200) {
         for (var element in jsonDecode(response.body)) {
@@ -319,7 +325,7 @@ class ApiService {
   static Future<void> adminLogin(String email, String password) async {
     final response = await http.post(
       Uri.parse(ApiConst.adminLoginUrl),
-      headers: {"Content-Type": "application/json"},
+      headers: _h({"Content-Type": "application/json"}),
       body: jsonEncode({'email': email, 'password': password}),
     );
     if (response.statusCode == 200) {
@@ -339,10 +345,10 @@ class ApiService {
     final token = await SecureStorage.getToken();
     final response = await http.post(
       Uri.parse(ApiConst.adminAddCategoryUrl),
-      headers: {
+      headers: _h({
         "Content-Type": "application/json",
         "Authorization": "Bearer $token",
-      },
+      }),
       body: jsonEncode({
         'name': name,
         'description': description,

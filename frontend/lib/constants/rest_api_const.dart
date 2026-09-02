@@ -1,14 +1,5 @@
 class ApiConst {
-  // ── Host ────────────────────────────────────────────────────────────
-  // Defaults to a backend on this machine. To target one running on another
-  // machine, override at build time — no source edit, no stale IP in git:
-  //   flutter run --dart-define=API_HOST=http://192.168.1.23:8080
-  // Android emulator reaching a backend on its *own* host uses 10.0.2.2.
-  static const String baseApiUrl = String.fromEnvironment(
-    'API_HOST',
-    // defaultValue: 'http://localhost:8080',
-    defaultValue: 'https://clarinet-playlist-wharf.ngrok-free.dev',
-  );
+  static final String baseApiUrl = 'https://clarinet-playlist-wharf.ngrok-free.dev';
   static final String baseCustomerUrl = '$baseApiUrl/customer';
   static final String baseShopUrl = '$baseApiUrl/shop';
   static final String baseAdminUrl = '$baseApiUrl/admin';

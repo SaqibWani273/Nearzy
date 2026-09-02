@@ -1,4 +1,12 @@
 const { Sequelize } = require('sequelize');
+const pg = require('pg');
+
+// Postgres int8 (BIGINT) arrives as a *string* from node-pg, because a 64-bit
+// integer can exceed Number.MAX_SAFE_INTEGER. Sequelize's postgres dialect
+// defines a parser for int4 but not int8, so every BIGINT id and foreign key
+// would serialize to JSON as "1" instead of 1 and break typed clients.
+// These are autoIncrement surrogate keys, so the precision risk is theoretical.
+pg.defaults.parseInt8 = true;
 
 const sequelize = new Sequelize(
   process.env.DB_NAME,

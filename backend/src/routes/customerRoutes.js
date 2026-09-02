@@ -118,7 +118,10 @@ router.post('/login', async (req, res, next) => {
  */
 router.get('/get-all-products', async (req, res, next) => {
   try {
-    const products = await customerService.getAllProducts();
+    const products = await customerService.getAllProducts({
+      page: req.query.page,
+      pageSize: req.query.pageSize,
+    });
     res.json(products);
   } catch (err) {
     next(err);
