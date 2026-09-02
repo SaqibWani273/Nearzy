@@ -1,0 +1,161 @@
+---
+name: nearzy-design
+description: The Nearzy design system — palette, type, spacing, elevation, motion language, and component recipes for the Flutter app. Use whenever building, restyling, or reviewing any screen or widget in frontend/lib/presentation, adding animations, or touching frontend/lib/theme. Enforces the "Local Premium" visual language so screens stay one coherent product rather than a pile of Material defaults.
+---
+
+# Nearzy Design System — "Local Premium"
+
+Nearzy is a hyperlocal marketplace: real shops, a few streets away. The UI must feel
+like a **premium boutique catalogue**, not a discount bazaar. Calm, spacious, tactile.
+Colour is used sparingly and therefore lands hard.
+
+## 0. The three rules that matter most
+
+1. **Ink and paper, one accent.** Almost everything is near-black type on warm paper.
+   Lime appears only where the user should act or look. If a screen has more than
+   ~3 lime elements visible at once, it is wrong.
+2. **Nothing appears instantly.** Every list, card, sheet and screen transition
+   has an entrance. See §5 — always use the `Motion` helpers, never raw
+   `AnimationController` boilerplate in screen code.
+3. **Radius is large and consistent.** 20–28px on cards and sheets, pill (999) on
+   chips and buttons. Small radii read as "Android default app".
+
+## 1. Palette
+
+Defined in `lib/theme/app_colors.dart`. Never hardcode a hex in screen code.
+
+| Token | Hex | Use |
+|---|---|---|
+| `ink` | `#0F1A15` | Primary surface for dark blocks, primary buttons, headings |
+| `inkSoft` | `#1B2A23` | Raised dark surface, dark card |
+| `inkMuted` | `#3A4A42` | Dark-surface secondary text |
+| `lime` | `#C9F24E` | THE accent. CTAs, active nav, selection, price highlight |
+| `limeDeep` | `#A8D62F` | Pressed/hover state of lime, lime gradients |
+| `limeSurface` | `#EEF9D2` | Tinted lime background for chips/badges |
+| `sage` | `#8FA396` | Decorative strokes, map polygons, dividers on dark |
+| `sageSurface` | `#E4EBE4` | Secondary tinted surface |
+| `paper` | `#F7F6F1` | App scaffold background (warm off-white) |
+| `card` | `#FFFFFF` | Card / sheet surface |
+| `line` | `#E6E4DC` | Hairline borders on paper |
+| `textPrimary` | `#0F1A15` | Body + headings on paper |
+| `textSecondary` | `#5D6B63` | Supporting copy |
+| `textTertiary` | `#94A19A` | Meta, timestamps, placeholders |
+| `success` / `warning` / `error` | `#2E9E6B` / `#E0A03C` / `#D5533D` | Semantic only |
+
+**Contrast law:** text on `lime` is always `ink`, never white. Text on `ink` is
+always `paper` or `lime`, never pure `#FFF`.
+
+**Gradients** — only two exist, both in `AppColors`: `inkGradient` (for hero blocks)
+and `limeGradient` (for the single primary CTA on a screen). Do not invent more.
+
+## 2. Typography
+
+`lib/theme/app_text_styles.dart`. Two families only:
+
+- **Display / headings — `GoogleFonts.plusJakartaSans`**, weight 700/800, tight
+  tracking (`letterSpacing: -0.5` at 24px+, `-0.8` at 32px+). Headings are big and
+  confident: a screen title is 28–34px, not 20px.
+- **Body / UI — `GoogleFonts.inter`**, weights 400/500/600.
+
+Sizes: `display 34 / h1 28 / h2 22 / h3 18 / bodyLg 16 / body 14 / caption 12 /
+micro 10`. Prices use `AppTextStyles.price*` — tabular figures, weight 700.
+
+Never centre body copy. Screen titles are left-aligned, hugging a 20px gutter.
+
+## 3. Layout & spacing
+
+- Screen gutter: **20px** (`AppSpacing.gutter`). Cards inside grids: 14px gaps.
+- Vertical rhythm between sections: **28px**. Between a section header and its
+  content: **12px**.
+- Grids are 2-column with `mainAxisExtent` (never `childAspectRatio` — it breaks
+  when text wraps).
+- Content that scrolls under a bottom nav needs `AppSpacing.bottomNavInset` of
+  trailing padding.
+- Prefer `CustomScrollView` + slivers over nested scroll views.
+
+## 4. Component recipes
+
+Reusable widgets live in `lib/presentation/common/widgets/`. **Check there first —
+do not build a second version of an existing component.**
+
+- **`GlassCard` / `NearzyCard`** — white, radius 24, `AppSpacing.shadowSoft`, no
+  border. Elevation comes from shadow, never from Material `elevation:`.
+- **Product card** (`NearzyProductCard`) — image fills the top with radius 20, a
+  floating heart button top-right, name (2 lines max), shop name + distance in
+  caption, price row with strikethrough original. Tap = scale-down 0.97.
+- **Shop card** (`NearzyShopCard`) — cover image, avatar overlapping the cover's
+  bottom edge, name + verified tick, open/closed pill, distance chip, category chips.
+- **Pill chips** — height 36, radius full, unselected = `card` + `line` border,
+  selected = `ink` fill with `paper` text. Selection animates via `AnimatedContainer`.
+- **Primary CTA** — full width, height 56, radius full, `ink` fill with `lime` text,
+  OR `lime` fill with `ink` text for the single highest-intent action on screen.
+- **Bottom sheets** — radius 28 top corners, 4×44 drag handle in `line`, 20px gutter,
+  and always `isScrollControlled: true`.
+- **Empty states** — an outlined 88px circle holding an icon, an h3 title, one line
+  of caption, and (where useful) one text button. Never a bare "No data".
+- **Skeletons** — `ShimmerLoading.*` mirroring the real layout's silhouette.
+  A skeleton whose shape differs from the loaded content is a bug.
+
+## 5. Motion language
+
+All timing/curve tokens live in `lib/theme/app_motion.dart` as `Motion`. Use the
+helpers in `lib/presentation/common/animations/` rather than hand-rolling.
+
+**Durations:** `micro 120ms` (taps, toggles) · `quick 220ms` (chips, badges) ·
+`base 340ms` (entrances, sheets) · `slow 520ms` (hero, page) · `ambient 900ms+`
+(looping decorative motion).
+
+**Curves:** `Motion.easeOut` = `Curves.easeOutCubic` (default for anything
+entering) · `Motion.spring` = `Curves.easeOutBack` (things that should feel
+snappy/physical: badges, FABs, selection) · `Motion.emphasis` =
+`Curves.easeOutQuint` (page + sheet transitions) · `Motion.gentle` =
+`Curves.easeInOutSine` (looping ambient motion).
+
+**Patterns — use these, they are the app's signature:**
+
+- **Staggered reveal.** Lists and grids fade + slide up 16px, 45ms apart, capped at
+  ~10 items of stagger. Use `.animateEntrance(index: i)` extension.
+- **Press response.** Every tappable card/button scales to 0.97 over `micro` on
+  press-down. Use `PressableScale`. Pair meaningful actions with
+  `HapticFeedback.lightImpact()`.
+- **Hero images.** Product/shop images use `Hero` tags `product-<id>` / `shop-<id>`
+  so the grid→detail transition is continuous. The detail screen's image must have
+  the same radius mid-flight (wrap the Hero child in the same `ClipRRect`).
+- **Parallax detail header.** Detail screens use a `SliverAppBar` with an
+  expanded image that translates at 0.4× scroll speed and cross-fades its title
+  into the collapsed bar.
+- **Number transitions.** Prices, counts, quantities animate with
+  `AnimatedFlipCounter`-style `TweenAnimationBuilder`, never a hard swap.
+- **Skeleton → content.** Always cross-fade (`AnimatedSwitcher`, `base`,
+  `FadeThrough`). A hard cut from shimmer to content is a bug.
+- **Map markers.** Drop in with `spring` + a scale from 0.4, staggered by index.
+  The selected marker scales to 1.25 and raises its z-order.
+- **Page routes.** Use `NearzyPageRoute` (shared-axis: incoming slides 24px + fades
+  over `slow` with `emphasis`). Do not use bare `MaterialPageRoute` for
+  in-app navigation.
+
+**Restraint:** at most one *ambient* (looping) animation per screen. Everything
+else must be triggered by entrance, scroll, or input. No animation may block
+interaction, and none may exceed `slow` for anything the user is waiting on.
+
+## 6. Accessibility & platform
+
+- Minimum tap target 44×44. Icon buttons get `tooltip:`.
+- Text must survive `textScaleFactor: 1.3` — never fix a text container's height.
+- Every image has a `semanticLabel`; every icon-only button has a `Semantics` label.
+- Respect `MediaQuery.disableAnimations` — `Motion.duration(context, Motion.base)`
+  returns `Duration.zero` when the user has reduced motion on. Use it in custom
+  animation code.
+- Status bar style is set per-screen via `SystemUiOverlayStyle` — dark icons on
+  paper screens, light icons on `ink` screens.
+
+## 7. Checklist before calling a screen done
+
+- [ ] No hardcoded colours, text styles, radii, or durations — all from tokens.
+- [ ] Loading, empty, and error states all exist and are styled.
+- [ ] Content enters with a stagger; taps respond with scale + haptics.
+- [ ] Images are `CachedNetworkImage` with a shimmer placeholder and a styled
+      error fallback (never a raw broken-image icon).
+- [ ] Bottom padding clears the nav bar; nothing is hidden behind it.
+- [ ] Works at 320px width and at 1.3× text scale.
+- [ ] Reads as the same product as the Explore screen.

@@ -1,4 +1,7 @@
 
+import 'dart:convert';
+import 'dart:developer';
+
 import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
 
 import '../../../constants/bottom_navbar_items.dart';
@@ -9,6 +12,7 @@ import '/services/api_service.dart';
 
 import '../../../services/customer_profile_service.dart';
 import '../../../services/geo_locator_service.dart';
+import '../../../utils/secure_storage.dart';
 import '../../../utils/utils.dart';
 import '../../models/category/product_category/product_category.dart';
 import '../../models/customer.dart';
@@ -20,6 +24,22 @@ class CustomerDataRepository {
   LocationInfo? currentSelectedLocation = LocationInfo.defaultValue();
   List<ShopModel1>? shops = [];
   List<ProductCategory> productCategories = [];
+
+  /// How far out "nearby" reaches, in km. Surfaced as a radius control on the
+  /// Explore screen and echoed as the circle drawn on the map.
+  double radiusKm = 15;
+
+  /// Product ids the customer has saved. Held in memory and mirrored to
+  /// secure storage so the list survives a restart without needing a
+  /// server-side wishlist endpoint.
+  final Set<int> favouriteProductIds = <int>{};
+
+  /// Most recent product searches, newest first, capped at [_maxRecent].
+  final List<String> recentSearches = <String>[];
+  static const int _maxRecent = 8;
+
+  static const String _favouritesKey = 'favourite_product_ids';
+  static const String _recentSearchesKey = 'recent_searches';
 
   Customer? customer;
   List<CartItemDetails> cartItemDetails = [];
@@ -82,6 +102,91 @@ class CustomerDataRepository {
     } catch (e) {
       rethrow;
     }
+  }
+
+  /// Restores favourites and recent searches from disk. Safe to call more
+  /// than once; failures are swallowed because neither is critical enough to
+  /// block startup.
+  Future<void> restorePreferences() async {
+    try {
+      final favourites = await SecureStorage.getData(key: _favouritesKey);
+      if (favourites != null && favourites.isNotEmpty) {
+        favouriteProductIds
+          ..clear()
+          ..addAll(favourites
+              .split(',')
+              .map(int.tryParse)
+              .whereType<int>());
+      }
+
+      final searches = await SecureStorage.getData(key: _recentSearchesKey);
+      if (searches != null && searches.isNotEmpty) {
+        recentSearches
+          ..clear()
+          ..addAll(jsonDecode(searches).cast<String>());
+      }
+    } catch (e) {
+      log('restorePreferences failed: $e');
+    }
+  }
+
+  bool isFavourite(int? productId) =>
+      productId != null && favouriteProductIds.contains(productId);
+
+  /// Returns the new state so callers can show the right confirmation.
+  Future<bool> toggleFavourite(Product product) async {
+    final id = product.id;
+    if (id == null) return false;
+
+    final added = favouriteProductIds.contains(id)
+        ? (favouriteProductIds.remove(id), false).$2
+        : (favouriteProductIds.add(id), true).$2;
+
+    try {
+      await SecureStorage.storeData(
+        key: _favouritesKey,
+        value: favouriteProductIds.join(','),
+      );
+    } catch (e) {
+      log('persisting favourites failed: $e');
+    }
+    return added;
+  }
+
+  Future<void> rememberSearch(String keyword) async {
+    final term = keyword.trim();
+    if (term.length < 2) return;
+
+    recentSearches
+      ..removeWhere((e) => e.toLowerCase() == term.toLowerCase())
+      ..insert(0, term);
+    if (recentSearches.length > _maxRecent) {
+      recentSearches.removeRange(_maxRecent, recentSearches.length);
+    }
+
+    try {
+      await SecureStorage.storeData(
+        key: _recentSearchesKey,
+        value: jsonEncode(recentSearches),
+      );
+    } catch (e) {
+      log('persisting recent searches failed: $e');
+    }
+  }
+
+  Future<void> clearRecentSearches() async {
+    recentSearches.clear();
+    try {
+      await SecureStorage.storeData(key: _recentSearchesKey, value: '[]');
+    } catch (e) {
+      log('clearing recent searches failed: $e');
+    }
+  }
+
+  /// Applies a location chosen from the map picker. Unlike [fetchLocation]
+  /// this needs no geocoding round trip — the picker already resolved it.
+  void setLocation(LocationInfo? location) {
+    currentSelectedLocation = location;
   }
 
   Future<void> fetchShops() async {
@@ -238,7 +343,13 @@ class CustomerDataRepository {
 
   Future<List<Product>> searchProduct(String searchText) async {
     try {
-      return await ApiService.searchProducts(searchText);
+      // Scoped to the browsing area: a hyperlocal marketplace showing results
+      // from three states away is worse than showing none.
+      return await ApiService.searchProducts(
+        searchText,
+        location: currentSelectedLocation,
+        radiusKm: radiusKm,
+      );
     } catch (e) {
       rethrow;
     }
@@ -256,7 +367,10 @@ class CustomerDataRepository {
 
   Future<List<ShopModel1>> fetchNearbyShops() async {
     try {
-      shops = await ApiService.fetchNearbyShops(currentSelectedLocation);
+      shops = await ApiService.fetchNearbyShops(
+        currentSelectedLocation,
+        radiusKm: radiusKm,
+      );
       // customer = customer!.copyWith(shops: shops);
       return shops!;
     } catch (e) {

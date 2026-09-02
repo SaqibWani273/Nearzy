@@ -24,6 +24,11 @@ ShopModel1 _$ShopModel1FromJson(Map<String, dynamic> json) => ShopModel1(
   businessLicense: json['businessLicense'] as String,
   address: json['address'] as String,
   phoneNumber: json['phoneNumber'] as String,
+  name: json['name'] as String?,
+  slug: json['slug'] as String?,
+  distanceKm: (json['distanceKm'] as num?)?.toDouble(),
+  isVerified: json['isVerified'] as bool?,
+  productCount: (json['productCount'] as num?)?.toInt(),
 );
 
 Map<String, dynamic> _$ShopModel1ToJson(ShopModel1 instance) =>
@@ -41,6 +46,11 @@ Map<String, dynamic> _$ShopModel1ToJson(ShopModel1 instance) =>
       'businessLicense': instance.businessLicense,
       'address': instance.address,
       'phoneNumber': instance.phoneNumber,
+      'name': instance.name,
+      'slug': instance.slug,
+      'distanceKm': instance.distanceKm,
+      'isVerified': instance.isVerified,
+      'productCount': instance.productCount,
     };
 
 LocationInfo _$LocationInfoFromJson(Map<String, dynamic> json) => LocationInfo(

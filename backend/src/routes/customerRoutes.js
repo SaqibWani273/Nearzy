@@ -298,12 +298,9 @@ router.get('/shops-near-location', async (req, res, next) => {
   try {
     const { city, state, pincode, latitude, longitude, radiusKm, page, limit } = req.query;
 
-    if (!city && !state && !pincode && (latitude == null || longitude == null)) {
-      return res.status(400).json({
-        error: 'At least one location parameter is required: city, state, pincode, or latitude+longitude',
-      });
-    }
-
+    // No location params is a legitimate request: it's the client's "Global"
+    // mode, which browses every active shop. The result is paginated, so an
+    // unfiltered query is bounded either way.
     const result = await customerService.getShopsNearLocation({
       city, state, pincode, latitude, longitude, radiusKm, page, limit,
     });
@@ -450,6 +447,187 @@ router.get('/affordable-products', async (req, res, next) => {
 
     const result = await customerService.getAffordableProductsByLocation({
       city, state, pincode, latitude, longitude, radiusKm, maxPriceInPaise, page, limit,
+    });
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * @swagger
+ * /customer/shops/{shopId}/products:
+ *   get:
+ *     tags: [Customer]
+ *     summary: List a shop's catalogue
+ *     parameters:
+ *       - in: path
+ *         name: shopId
+ *         required: true
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 20 }
+ *       - in: query
+ *         name: includeUnavailable
+ *         schema: { type: boolean, default: false }
+ *     responses:
+ *       200: { description: Paginated products for the shop }
+ *       400: { description: Invalid shop id }
+ */
+router.get('/shops/:shopId/products', async (req, res, next) => {
+  try {
+    const result = await customerService.getProductsByShop(req.params.shopId, {
+      page: req.query.page,
+      limit: req.query.limit,
+      includeUnavailable: req.query.includeUnavailable === 'true',
+    });
+    if (result.error) {
+      return res.status(result.status || 400).json({ message: result.error });
+    }
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * @swagger
+ * /customer/products-by-category/{categoryId}:
+ *   get:
+ *     tags: [Customer]
+ *     summary: Browse products in a category (including its sub-categories)
+ *     parameters:
+ *       - in: path
+ *         name: categoryId
+ *         required: true
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: latitude
+ *         schema: { type: number }
+ *       - in: query
+ *         name: longitude
+ *         schema: { type: number }
+ *       - in: query
+ *         name: radiusKm
+ *         schema: { type: number, default: 10 }
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 20 }
+ *     responses:
+ *       200: { description: Paginated products in the category }
+ *       400: { description: Invalid category id }
+ */
+router.get('/products-by-category/:categoryId', async (req, res, next) => {
+  try {
+    const result = await customerService.getProductsByCategory(req.params.categoryId, {
+      page: req.query.page,
+      limit: req.query.limit,
+      latitude: req.query.latitude,
+      longitude: req.query.longitude,
+      radiusKm: req.query.radiusKm,
+    });
+    if (result.error) {
+      return res.status(result.status || 400).json({ message: result.error });
+    }
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * @swagger
+ * /customer/discounted-products:
+ *   get:
+ *     tags: [Customer]
+ *     summary: Products on discount nearby, deepest cut first
+ *     parameters:
+ *       - in: query
+ *         name: latitude
+ *         schema: { type: number }
+ *       - in: query
+ *         name: longitude
+ *         schema: { type: number }
+ *       - in: query
+ *         name: radiusKm
+ *         schema: { type: number, default: 10 }
+ *       - in: query
+ *         name: minPercent
+ *         schema: { type: number, default: 1 }
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 20 }
+ *     responses:
+ *       200: { description: Paginated discounted products }
+ */
+router.get('/discounted-products', async (req, res, next) => {
+  try {
+    const result = await customerService.getDiscountedProducts({
+      page: req.query.page,
+      limit: req.query.limit,
+      latitude: req.query.latitude,
+      longitude: req.query.longitude,
+      radiusKm: req.query.radiusKm,
+      minPercent: req.query.minPercent,
+    });
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * @swagger
+ * /customer/search-products:
+ *   get:
+ *     tags: [Customer]
+ *     summary: Search products by name, brand, SKU or description
+ *     description: >
+ *       Supply latitude+longitude to restrict results to shops within
+ *       `radiusKm`, so search honours the area the customer is browsing.
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         required: true
+ *         schema: { type: string }
+ *         description: Search term (minimum 2 characters)
+ *       - in: query
+ *         name: latitude
+ *         schema: { type: number }
+ *       - in: query
+ *         name: longitude
+ *         schema: { type: number }
+ *       - in: query
+ *         name: radiusKm
+ *         schema: { type: number, default: 10 }
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 20 }
+ *     responses:
+ *       200: { description: Paginated search results }
+ */
+router.get('/search-products', async (req, res, next) => {
+  try {
+    const result = await customerService.searchProducts({
+      q: req.query.q,
+      page: req.query.page,
+      limit: req.query.limit,
+      latitude: req.query.latitude,
+      longitude: req.query.longitude,
+      radiusKm: req.query.radiusKm,
     });
     res.json(result);
   } catch (err) {

@@ -17,7 +17,7 @@ const adminService = {
 
     adminData.role = 'ADMIN';
     const user = await NearzyUser.create(adminData);
-    await Admin.create({ user_id: user.id });
+    await Admin.create({ userId: user.id });
 
     const emailResult = await authService.sendVerificationEmail(user, 'admin/verify-email?token=');
     return emailResult;

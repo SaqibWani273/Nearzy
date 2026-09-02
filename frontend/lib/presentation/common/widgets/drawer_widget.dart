@@ -1,129 +1,184 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import '../../../../theme/app_colors.dart';
-import '../../../../theme/app_spacing.dart';
-import '../../../../theme/app_text_styles.dart';
-import '/utils/handle_drawer_item_tap.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
 import '../../../constants/drawer_data.dart';
+import '../../../data/repositories/customer/customer_data_repository.dart';
+import '../../../theme/app_colors.dart';
+import '../../../theme/app_motion.dart';
+import '../../../theme/app_spacing.dart';
+import '../../../theme/app_text_styles.dart';
+import '../../../utils/handle_drawer_item_tap.dart';
+import '../animations/entrance.dart';
+import '../animations/pressable_scale.dart';
+import 'nearzy_logo.dart';
 
 class DrawerWidget extends StatelessWidget {
-  final int currentIndex;
-  final BuildContext homePageContext;
-
   const DrawerWidget({
     super.key,
     required this.currentIndex,
     required this.homePageContext,
   });
 
+  final int currentIndex;
+  final BuildContext homePageContext;
+
   @override
   Widget build(BuildContext context) {
+    final repository = context.read<CustomerDataRepository>();
+    final customer = repository.customer;
+
     return Drawer(
-      backgroundColor: AppColors.card,
+      backgroundColor: AppColors.paper,
+      width: MediaQuery.of(context).size.width * 0.82,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.horizontal(
+          right: Radius.circular(AppSpacing.radiusXl),
+        ),
+      ),
       child: Column(
         children: [
+          // ── Header ──────────────────────────────────────────────
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
+            padding: EdgeInsets.fromLTRB(
+              24,
+              MediaQuery.of(context).padding.top + 28,
+              24,
+              28,
+            ),
             decoration: const BoxDecoration(
-              gradient: AppColors.primaryGradient,
+              gradient: AppColors.inkGradient,
+              borderRadius: BorderRadius.only(
+                bottomRight: Radius.circular(AppSpacing.radiusXl),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const NearzyLogo(size: 30, onInk: true),
+                const SizedBox(height: 18),
+                Text(
+                  customer == null
+                      ? 'Shops a few streets away'
+                      : 'Hi, ${customer.user.username}',
+                  style:
+                      AppTextStyles.heading3.copyWith(color: AppColors.paper),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 6),
                 Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.storefront_rounded,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Nearzy',
-                      style: GoogleFonts.poppins(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                    const Icon(Icons.place_rounded,
+                        size: 13, color: AppColors.lime),
+                    const SizedBox(width: 5),
+                    Expanded(
+                      child: Text(
+                        repository.currentSelectedLocation?.shortAddress ??
+                            'Everywhere',
+                        style: AppTextStyles.caption
+                            .copyWith(color: AppColors.sage),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  'Hyperlocal Marketplace at your doorstep',
-                  style: AppTextStyles.caption.copyWith(
-                    color: Colors.white.withValues(alpha: 0.8),
-                  ),
-                ),
               ],
             ),
           ),
+
+          // ── Menu ────────────────────────────────────────────────
           Expanded(
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(vertical: 12),
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 16,
+              ),
               itemCount: menuItems.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 2),
               itemBuilder: (context, index) {
                 final item = menuItems[index];
-                final isSelected = currentIndex == index;
-
-                return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? AppColors.primarySurface
-                        : Colors.transparent,
-                    borderRadius: AppSpacing.borderRadiusMd,
-                  ),
-                  child: ListTile(
-                    dense: true,
-                    leading: Icon(
-                      isSelected ? item.selectedIcon : item.unSelectedIcon,
-                      color: isSelected
-                          ? AppColors.primary
-                          : AppColors.textSecondary,
-                      size: 22,
-                    ),
-                    title: Text(
-                      item.title,
-                      style: AppTextStyles.labelLarge.copyWith(
-                        color: isSelected
-                            ? AppColors.primary
-                            : AppColors.textPrimary,
-                        fontWeight: isSelected
-                            ? FontWeight.w700
-                            : FontWeight.w500,
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      handleDrawerItemTap(
-                        enumValue: item.enumValue,
-                        context: context,
-                        homepageContext: homePageContext,
-                      );
-                    },
-                  ),
-                );
+                return _DrawerRow(
+                  item: item,
+                  selected: currentIndex == index,
+                  onTap: () {
+                    Navigator.pop(context);
+                    handleDrawerItemTap(
+                      enumValue: item.enumValue,
+                      context: context,
+                      homepageContext: homePageContext,
+                    );
+                  },
+                ).animateEntrance(index: index, offset: 12);
               },
             ),
           ),
+
+          const Divider(indent: 24, endIndent: 24),
           Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Text(
-              'Nearzy v2.0 • Local First',
-              style: AppTextStyles.caption,
+            padding: const EdgeInsets.fromLTRB(24, 14, 24, 20),
+            child: Row(
+              children: [
+                Text('Nearzy', style: AppTextStyles.labelSmall),
+                const SizedBox(width: 6),
+                Text('v2.0 · Local first', style: AppTextStyles.micro),
+              ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _DrawerRow extends StatelessWidget {
+  const _DrawerRow({
+    required this.item,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final MenuItem item;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: PressableScale(
+        onTap: onTap,
+        scale: 0.97,
+        child: AnimatedContainer(
+          duration: Motion.duration(context, Motion.quick),
+          curve: Motion.easeOut,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.ink : Colors.transparent,
+            borderRadius: AppSpacing.borderRadiusFull,
+          ),
+          child: Row(
+            children: [
+              Icon(
+                selected ? item.selectedIcon : item.unSelectedIcon,
+                size: 20,
+                color: selected ? AppColors.lime : AppColors.textSecondary,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  item.title,
+                  style: AppTextStyles.labelMedium.copyWith(
+                    color: selected ? AppColors.paper : AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              if (selected)
+                const Icon(Icons.arrow_forward_rounded,
+                    size: 16, color: AppColors.lime),
+            ],
+          ),
+        ),
       ),
     );
   }

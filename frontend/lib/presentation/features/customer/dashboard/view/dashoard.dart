@@ -1,22 +1,31 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:mca_project/data/models/shop_model/shop_model1.dart';
-import 'package:mca_project/presentation/common/screens/error_screen.dart';
+import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
+
+import '../../../../../constants/rest_api_const.dart';
 import '../../../../../data/models/product.dart';
+import '../../../../../data/models/shop_model/shop_model1.dart';
+import '../../../../../data/repositories/customer/customer_data_repository.dart';
+import '../../../../../theme/app_colors.dart';
+import '../../../../../theme/app_motion.dart';
+import '../../../../../theme/app_spacing.dart';
+import '../../../../../theme/app_text_styles.dart';
+import '../../../../common/animations/entrance.dart';
+import '../../../../common/animations/nearzy_page_route.dart';
+import '../../../../common/animations/pressable_scale.dart';
+import '../../../../common/screens/error_screen.dart';
 import '../../../../common/widgets/nearzy_product_card.dart';
 import '../../../../common/widgets/nearzy_search_bar.dart';
 import '../../../../common/widgets/section_header.dart';
 import '../../../../common/widgets/shimmer_loading.dart';
-import '/presentation/common/widgets/show_cupertino_alert_dialog.dart';
-import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
-import '/presentation/features/customer/product/view/product_details_screen.dart';
-import '../../../../../theme/app_colors.dart';
-import '../../../../../theme/app_spacing.dart';
-import '../../../../../theme/app_text_styles.dart';
-import '../../../../../constants/rest_api_const.dart';
-import '/data/repositories/customer/customer_data_repository.dart';
-import '/presentation/features/customer/dashboard/view_model/customer_data_bloc.dart';
+import '../../location/location_picker_screen.dart';
+import '../../product/view/product_details_screen.dart';
+import '../view_model/customer_data_bloc.dart';
 
+/// The customer's home feed: search, a location banner, and a paginated
+/// product grid scoped to wherever they're shopping.
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
 
@@ -26,10 +35,12 @@ class Dashboard extends StatefulWidget {
 
 class _DashboardState extends State<Dashboard>
     with AutomaticKeepAliveClientMixin {
-  TextEditingController locationController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
   late final PagingController<int, Product> _pagingController;
+  Timer? _searchDebounce;
 
-  LocationInfo? locationInfo;
+  /// Recent searches only appear while the field has focus.
+  bool _searchFocused = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -40,6 +51,7 @@ class _DashboardState extends State<Dashboard>
     final repository = context.read<CustomerDataRepository>();
     context.read<CustomerDataBloc>().add(LoadCustomerDataEvent());
     repository.products = [];
+
     _pagingController = PagingController<int, Product>(
       getNextPageKey: (state) {
         final pages = state.pages;
@@ -49,388 +61,564 @@ class _DashboardState extends State<Dashboard>
         if (pages.last.length < ApiConst.pageSize) return null;
         return (state.keys?.last ?? 0) + 1;
       },
-      fetchPage: (pageKey) => repository.fetchProducts(pageKey),
+      fetchPage: repository.fetchProducts,
     );
     repository.globalPagingController = _pagingController;
   }
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _pagingController.dispose();
-    locationController.dispose();
+    _searchController.dispose();
     super.dispose();
+  }
+
+  CustomerDataRepository get _repo => context.read<CustomerDataRepository>();
+
+  /// Debounced so a five-letter query is one request, not five.
+  void _onSearchChanged(String value) {
+    _searchDebounce?.cancel();
+    final term = value.trim();
+
+    if (term.isEmpty) {
+      context.read<CustomerDataBloc>().add(CustomerDataClearSearchEvent());
+      return;
+    }
+    _searchDebounce = Timer(const Duration(milliseconds: 400), () {
+      if (!mounted) return;
+      context
+          .read<CustomerDataBloc>()
+          .add(CustomerDataSearchProductEvent(keyword: term));
+    });
+  }
+
+  Future<void> _changeLocation() async {
+    final picked = await context.pushModal<LocationInfo>(
+      () => LocationPickerScreen(initial: _repo.currentSelectedLocation),
+    );
+    if (picked == null || !mounted) return;
+    context
+        .read<CustomerDataBloc>()
+        .add(SetCustomerLocationEvent(location: picked));
+  }
+
+  void _openProduct(Product product) {
+    context.pushScreen(() => ProductDetailsScreen(product: product));
+  }
+
+  Widget _card(Product product, int index) {
+    return NearzyProductCard(
+      name: product.name,
+      imageUrl: product.images.isNotEmpty ? product.images.first : '',
+      priceInPaise: product.price,
+      discountedPriceInPaise: product.disCountedPrice < product.price
+          ? product.disCountedPrice
+          : null,
+      rating: product.rating,
+      shopName: product.shop.displayName,
+      distanceLabel: product.shop.distanceLabel,
+      heroTag: 'product-${product.id ?? index}',
+      isFavourite: _repo.isFavourite(product.id),
+      onFavouriteToggle: () => context
+          .read<CustomerDataBloc>()
+          .add(CustomerDataToggleFavouriteEvent(product: product)),
+      onTap: () => _openProduct(product),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final deviceHeight = MediaQuery.of(context).size.height;
 
-    return Scaffold(
-      backgroundColor: AppColors.surface,
-      body: BlocConsumer<CustomerDataBloc, CustomerDataState>(
-        listener: (context, state) {},
-        builder: (context, state) {
-          if (state is CustomerDataErrorState) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.error_outline_rounded,
-                    size: 48,
-                    color: AppColors.error,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(state.error, style: AppTextStyles.bodyMedium),
-                  const SizedBox(height: 16),
-                  OutlinedButton(
-                    onPressed: () => context.read<CustomerDataBloc>().add(
-                      LoadCustomerDataEvent(),
-                    ),
-                    child: const Text('Try Again'),
-                  ),
-                ],
-              ),
-            );
-          }
+    return BlocBuilder<CustomerDataBloc, CustomerDataState>(
+      builder: (context, state) {
+        if (state is CustomerDataErrorState) {
+          return _FeedError(
+            message: state.error,
+            onRetry: () =>
+                context.read<CustomerDataBloc>().add(LoadCustomerDataEvent()),
+          );
+        }
 
-          if (state is CustomerDataLoadingState) {
-            return SingleChildScrollView(
-              child: Column(
-                children: [
-                  const SizedBox(height: 8),
-                  ShimmerLoading.line(width: double.infinity, height: 48),
-                  const SizedBox(height: 16),
-                  ShimmerLoading.productGrid(count: 6),
-                ],
-              ),
-            );
-          }
+        if (state is CustomerDataLocationErrorState) {
+          return ErrorScreen(
+            customException: state.error,
+            onTryAgainPressed: () =>
+                context.read<CustomerDataBloc>().add(LoadCustomerDataEvent()),
+          );
+        }
 
-          if (state is CustomerDataLocationErrorState) {
-            return ErrorScreen(
-              customException: state.error,
-              onTryAgainPressed: () {
-                context.read<CustomerDataBloc>().add(LoadCustomerDataEvent());
-              },
-            );
-          }
+        if (state is! CustomerDataLoadedState) {
+          return const _FeedSkeleton();
+        }
 
-          if (state is CustomerDataLoadedState) {
-            return PagingListener<int, Product>(
-              controller: _pagingController,
-              builder: (context, pagingState, fetchNextPage) => CustomScrollView(
+        return RefreshIndicator.adaptive(
+          color: AppColors.ink,
+          backgroundColor: AppColors.card,
+          onRefresh: () async => context
+              .read<CustomerDataBloc>()
+              .add(CustomerDataLoadProductsEvent()),
+          child: PagingListener<int, Product>(
+            controller: _pagingController,
+            builder: (context, pagingState, fetchNextPage) {
+              return CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
                 slivers: [
-                  // ── Search bar ────────────────────────────────────────
                   SliverToBoxAdapter(
                     child: NearzySearchBar(
-                      hintText: 'Search products, brands & more',
-                      onChanged: (value) {
-                        context.read<CustomerDataBloc>().add(
-                          CustomerDataSearchProductEvent(keyword: value),
-                        );
+                      controller: _searchController,
+                      hintText: 'Search products, brands & shops',
+                      onChanged: _onSearchChanged,
+                      onFocusChange: (focused) =>
+                          setState(() => _searchFocused = focused),
+                      onClear: () {
+                        _searchController.clear();
+                        _onSearchChanged('');
                       },
-                    ),
+                    ).animateEntrance(),
                   ),
 
-                  // ── Location change bar ───────────────────────────────
-                  if (state.isChangingLocation == null)
+                  // Recent searches, offered while the field is focused and
+                  // empty — the one moment they are useful rather than noise.
+                  if (_searchFocused &&
+                      _searchController.text.isEmpty &&
+                      _repo.recentSearches.isNotEmpty)
                     SliverToBoxAdapter(
-                      child: _LocationBar(
-                        controller: locationController,
-                        context: context,
+                      child: _RecentSearches(
+                        terms: _repo.recentSearches,
+                        onSelect: (term) {
+                          _searchController.text = term;
+                          _onSearchChanged(term);
+                        },
+                        onClear: () async {
+                          await _repo.clearRecentSearches();
+                          if (mounted) setState(() {});
+                        },
                       ),
                     ),
 
-                  if (state.isChangingLocation == true)
+                  // The location banner is hidden while searching — search
+                  // results are global, so showing a local banner over them
+                  // would be a lie.
+                  if (state.searchProducts == null)
                     SliverToBoxAdapter(
-                      child: ShimmerLoading.line(
-                        width: double.infinity,
-                        height: 52,
-                      ),
+                      child: _LocationBanner(
+                        location: _repo.currentSelectedLocation,
+                        busy: state.isChangingLocation == true,
+                        onTap: _changeLocation,
+                      ).animateEntrance(index: 1),
                     ),
 
-                  // ── Loading products indicator ────────────────────────
                   if (state.loadingProducts == true)
                     SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.only(top: deviceHeight * 0.1),
-                        child: ShimmerLoading.productGrid(count: 4),
-                      ),
-                    ),
-
-                  // ── Search results ────────────────────────────────────
-                  if (state.loadingProducts == null &&
-                      state.searchProducts != null) ...[
+                      child: ShimmerLoading.productGrid(count: 4),
+                    )
+                  else if (state.searchProducts != null) ...[
                     SliverToBoxAdapter(
                       child: SectionHeader(
-                        title: 'Search Results',
-                        subtitle:
-                            '${state.searchProducts!.length} products found',
+                        title: 'Search results',
+                        subtitle: state.searchProducts!.isEmpty
+                            ? 'Nothing matched that'
+                            : '${state.searchProducts!.length} found',
                       ),
                     ),
-                    SliverPadding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      sliver: SliverGrid(
-                        delegate: SliverChildBuilderDelegate((context, index) {
-                          final product = state.searchProducts![index];
-                          return NearzyProductCard(
-                            name: product.name,
-                            imageUrl: product.images.isNotEmpty
-                                ? product.images.first
-                                : '',
-                            priceInPaise: product.price,
-                            discountedPriceInPaise:
-                                product.disCountedPrice < product.price
-                                ? product.disCountedPrice
-                                : null,
-                            rating: product.rating,
-                            shopName: product.shop.user.username,
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    ProductDetailsScreen(product: product),
-                              ),
-                            ),
-                          );
-                        }, childCount: state.searchProducts!.length),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 12,
-                              childAspectRatio: 0.65,
-                            ),
+                    if (state.searchProducts!.isEmpty)
+                      SliverToBoxAdapter(
+                        child: _EmptyState(
+                          icon: Icons.search_off_rounded,
+                          title: 'No matches',
+                          message:
+                              'Try a different word, or browse the feed below.',
+                        ),
+                      )
+                    else
+                      _grid(
+                        itemCount: state.searchProducts!.length,
+                        builder: (context, index) =>
+                            _card(state.searchProducts![index], index),
                       ),
-                    ),
-                  ],
-
-                  // ── Main product grid ─────────────────────────────────
-                  if (state.loadingProducts == null &&
-                      state.searchProducts == null) ...[
+                  ] else ...[
                     SliverToBoxAdapter(
                       child: SectionHeader(
-                        title: 'Products For You',
-                        subtitle: 'Handpicked from local shops',
-                      ),
+                        title: 'Picked for you',
+                        subtitle: 'Fresh from shops around you',
+                      ).animateEntrance(index: 2),
                     ),
                     SliverPadding(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
+                        horizontal: AppSpacing.gutter,
                       ),
                       sliver: PagedSliverGrid<int, Product>(
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2,
-                          mainAxisExtent: deviceHeight * 0.3,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
+                          mainAxisExtent: 268,
+                          crossAxisSpacing: AppSpacing.gridGap,
+                          mainAxisSpacing: AppSpacing.gridGap,
                         ),
                         state: pagingState,
                         fetchNextPage: fetchNextPage,
                         builderDelegate: PagedChildBuilderDelegate<Product>(
                           firstPageProgressIndicatorBuilder: (_) =>
                               ShimmerLoading.productGrid(count: 4),
-                          newPageProgressIndicatorBuilder: (_) => Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Center(
-                              child: SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                            ),
+                          newPageProgressIndicatorBuilder: (_) =>
+                              const _PageSpinner(),
+                          noItemsFoundIndicatorBuilder: (_) => _EmptyState(
+                            icon: Icons.inventory_2_outlined,
+                            title: 'Nothing here yet',
+                            message:
+                                'No products from shops in this area. Try a different location.',
+                            actionLabel: 'Change location',
+                            onAction: _changeLocation,
                           ),
-                          noItemsFoundIndicatorBuilder: (_) => _EmptyState(),
-                          itemBuilder: (context, item, index) {
-                            return NearzyProductCard(
-                              name: item.name,
-                              imageUrl: item.images.isNotEmpty
-                                  ? item.images.first
-                                  : '',
-                              priceInPaise: item.price,
-                              discountedPriceInPaise:
-                                  item.disCountedPrice < item.price
-                                  ? item.disCountedPrice
-                                  : null,
-                              rating: item.rating,
-                              shopName: item.shop.user.username,
-                              onTap: () => Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      ProductDetailsScreen(product: item),
-                                ),
-                              ),
-                            );
-                          },
+                          itemBuilder: (context, item, index) =>
+                              _card(item, index).animateEntrance(index: index),
                         ),
                       ),
                     ),
                   ],
 
-                  // Bottom padding
-                  const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                  const SliverToBoxAdapter(
+                    child: SizedBox(height: AppSpacing.bottomNavInset),
+                  ),
                 ],
-              ),
-            );
-          }
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
 
-          return ShimmerLoading.productGrid(count: 4);
-        },
+  SliverPadding _grid({
+    required int itemCount,
+    required Widget Function(BuildContext, int) builder,
+  }) {
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
+      sliver: SliverGrid(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisExtent: 268,
+          crossAxisSpacing: AppSpacing.gridGap,
+          mainAxisSpacing: AppSpacing.gridGap,
+        ),
+        delegate: SliverChildBuilderDelegate(
+          childCount: itemCount,
+          (context, index) =>
+              builder(context, index).animateEntrance(index: index),
+        ),
       ),
     );
   }
 }
 
-class _LocationBar extends StatelessWidget {
-  final TextEditingController controller;
-  final BuildContext context;
+/// Ink banner naming the area the feed is scoped to.
+class _LocationBanner extends StatelessWidget {
+  const _LocationBanner({
+    required this.location,
+    required this.busy,
+    required this.onTap,
+  });
 
-  const _LocationBar({required this.controller, required this.context});
+  final LocationInfo? location;
+  final bool busy;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final location = context
-        .read<CustomerDataRepository>()
-        .currentSelectedLocation;
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.primarySurface, AppColors.card],
-        ),
-        borderRadius: AppSpacing.borderRadiusMd,
-        border: Border.all(color: AppColors.divider.withValues(alpha: 0.5)),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.gutter,
+        4,
+        AppSpacing.gutter,
+        4,
       ),
-      child: Row(
+      child: PressableScale(
+        onTap: onTap,
+        scale: 0.985,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+          decoration: BoxDecoration(
+            gradient: AppColors.inkGradient,
+            borderRadius: AppSpacing.borderRadiusXl,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: const BoxDecoration(
+                  color: AppColors.lime,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.place_rounded,
+                    size: 19, color: AppColors.ink),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'SHOPPING IN',
+                      style: AppTextStyles.overline
+                          .copyWith(color: AppColors.sage),
+                    ),
+                    const SizedBox(height: 3),
+                    AnimatedSwitcher(
+                      duration: Motion.duration(context, Motion.base),
+                      child: Text(
+                        busy
+                            ? 'Updating…'
+                            : (location?.shortAddress ?? 'Everywhere'),
+                        key: ValueKey(busy ? 'busy' : location?.shortAddress),
+                        style: AppTextStyles.heading4
+                            .copyWith(color: AppColors.paper),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                decoration: BoxDecoration(
+                  color: AppColors.inkMuted,
+                  borderRadius: AppSpacing.borderRadiusFull,
+                ),
+                child: Text(
+                  'Change',
+                  style:
+                      AppTextStyles.labelSmall.copyWith(color: AppColors.lime),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PageSpinner extends StatelessWidget {
+  const _PageSpinner();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.all(20),
+      child: Center(
+        child: SizedBox(
+          width: 22,
+          height: 22,
+          child: CircularProgressIndicator(strokeWidth: 2.4),
+        ),
+      ),
+    );
+  }
+}
+
+class _FeedSkeleton extends StatelessWidget {
+  const _FeedSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      physics: const NeverScrollableScrollPhysics(),
+      child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppColors.accentSurface,
-              borderRadius: AppSpacing.borderRadiusSm,
-            ),
-            child: const Icon(
-              Icons.location_on_rounded,
-              size: 20,
-              color: AppColors.accent,
-            ),
+          const SizedBox(height: 12),
+          Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
+            child: ShimmerLoading.line(height: 52),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  location == null ? 'Global' : location.shortAddress,
-                  style: AppTextStyles.labelLarge,
-                ),
-                Text(
-                  'Showing products from nearby shops',
-                  style: AppTextStyles.caption,
-                ),
-              ],
-            ),
+          const SizedBox(height: 14),
+          Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
+            child: ShimmerLoading.line(height: 72),
           ),
-          TextButton(
-            onPressed: () {
-              showCupertinoAlertDialog(
-                context: context,
-                controller: controller,
-                title: 'Change Location',
-                content: 'Enter a valid location name',
-              );
-            },
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              minimumSize: Size.zero,
-            ),
-            child: Text(
-              'Change',
-              style: AppTextStyles.link.copyWith(fontSize: 13),
-            ),
-          ),
+          const SizedBox(height: 20),
+          ShimmerLoading.productGrid(count: 4),
         ],
+      ),
+    );
+  }
+}
+
+class _FeedError extends StatelessWidget {
+  const _FeedError({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.gutter),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.line, width: 1.5),
+              ),
+              child: const Icon(Icons.cloud_off_rounded,
+                  size: 34, color: AppColors.sage),
+            ).animateEntrance(),
+            const SizedBox(height: 20),
+            Text('Could not load the feed', style: AppTextStyles.heading3)
+                .animateEntrance(index: 1),
+            const SizedBox(height: 6),
+            Text(
+              message,
+              style: AppTextStyles.bodySmall,
+              textAlign: TextAlign.center,
+            ).animateEntrance(index: 2),
+            const SizedBox(height: 22),
+            ElevatedButton(onPressed: onRetry, child: const Text('Try again'))
+                .animateEntrance(index: 3),
+          ],
+        ),
       ),
     );
   }
 }
 
 class _EmptyState extends StatelessWidget {
+  const _EmptyState({
+    required this.icon,
+    required this.title,
+    required this.message,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
   @override
   Widget build(BuildContext context) {
-    return Center(
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.gutter,
+        vertical: 40,
+      ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(20),
+            width: 88,
+            height: 88,
             decoration: BoxDecoration(
-              color: AppColors.primarySurface,
               shape: BoxShape.circle,
+              border: Border.all(color: AppColors.line, width: 1.5),
             ),
-            child: const Icon(
-              Icons.inventory_2_outlined,
-              size: 40,
-              color: AppColors.primaryLight,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text('No Products Found', style: AppTextStyles.heading4),
-          const SizedBox(height: 8),
+            child: Icon(icon, size: 34, color: AppColors.sage),
+          ).animateEntrance(),
+          const SizedBox(height: 18),
+          Text(title, style: AppTextStyles.heading3).animateEntrance(index: 1),
+          const SizedBox(height: 6),
           Text(
-            'Try changing your location or search terms',
+            message,
             style: AppTextStyles.bodySmall,
-          ),
+            textAlign: TextAlign.center,
+          ).animateEntrance(index: 2),
+          if (actionLabel != null && onAction != null) ...[
+            const SizedBox(height: 20),
+            OutlinedButton(onPressed: onAction, child: Text(actionLabel!))
+                .animateEntrance(index: 3),
+          ],
         ],
       ),
     );
   }
 }
 
-/// Product card used in search results — kept for backwards compat.
-class ProductCard extends StatelessWidget {
-  final Product product;
-  const ProductCard({super.key, required this.product});
+
+/// Chips for the customer's last few searches.
+class _RecentSearches extends StatelessWidget {
+  const _RecentSearches({
+    required this.terms,
+    required this.onSelect,
+    required this.onClear,
+  });
+
+  final List<String> terms;
+  final ValueChanged<String> onSelect;
+  final VoidCallback onClear;
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: ClipRRect(
-        borderRadius: AppSpacing.borderRadiusSm,
-        child: Image.network(
-          product.images.isNotEmpty ? product.images.first : '',
-          width: 56,
-          height: 56,
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => Container(
-            width: 56,
-            height: 56,
-            color: AppColors.inputFill,
-            child: const Icon(
-              Icons.image_outlined,
-              color: AppColors.textTertiary,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.gutter, 4, 0, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('RECENT', style: AppTextStyles.overline),
+              const Spacer(),
+              TextButton(
+                onPressed: onClear,
+                style: TextButton.styleFrom(
+                  minimumSize: Size.zero,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text('Clear',
+                    style: AppTextStyles.labelSmall
+                        .copyWith(color: AppColors.textTertiary)),
+              ),
+              const SizedBox(width: 8),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 36,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.only(right: AppSpacing.gutter),
+              itemCount: terms.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              itemBuilder: (context, index) => PressableScale(
+                onTap: () => onSelect(terms[index]),
+                scale: 0.94,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: AppColors.card,
+                    borderRadius: AppSpacing.borderRadiusFull,
+                    border: Border.all(color: AppColors.line),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.history_rounded,
+                          size: 13, color: AppColors.textTertiary),
+                      const SizedBox(width: 6),
+                      Text(terms[index], style: AppTextStyles.labelSmall),
+                    ],
+                  ),
+                ),
+              ).animateEntrance(index: index, offset: 8),
             ),
           ),
-        ),
-      ),
-      title: Text(product.name, style: AppTextStyles.labelLarge),
-      subtitle: Text(
-        '₹${product.disCountedPrice < product.price ? product.disCountedPrice : product.price}',
-        style: AppTextStyles.priceSmall.copyWith(color: AppColors.accent),
-      ),
-      trailing: const Icon(
-        Icons.arrow_forward_ios_rounded,
-        size: 14,
-        color: AppColors.textTertiary,
+        ],
       ),
     );
   }

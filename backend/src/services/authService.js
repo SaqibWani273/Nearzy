@@ -58,8 +58,8 @@ const authService = {
 
     await EmailConfirmation.create({
       token: randomToken,
-      user_id: user.id,
-      expires_at: expiresAt,
+      userId: user.id,
+      expiresAt,
       used: false,
     });
 

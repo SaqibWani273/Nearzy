@@ -31,6 +31,11 @@ dependencies:
   razorpay_flutter: ^1.4.0
   flutter_speed_dial: ^7.0.0
   infinite_scroll_pagination: ^5.1.1
+  flutter_map: ^8.3.2
+  latlong2: ^0.10.1
+  url_launcher: ^6.3.2
+  cached_network_image: ^4.0.0
+  flutter_animate: ^4.5.2
 
 dev_dependencies:
   flutter_test:
@@ -60,23 +65,27 @@ flutter:
     - assets/lottie/
 
 flutter_native_splash:
-  color: "#1A1B4B"
-  image: assets/images/logo1.png
+  color: "#0F1A15"
+  image: assets/images/splash_logo.png
   fullscreen: true
   android_12:
-    image: assets/images/logo1.png
-    color: "#1A1B4B"
+    image: assets/images/splash_logo_android12.png
+    icon_background_color: "#0F1A15"
+    color: "#0F1A15"
 
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
   image_path: "assets/images/icon.png"
+  remove_alpha_ios: true
+  adaptive_icon_background: "#0F1A15"
+  adaptive_icon_foreground: "assets/images/splash_logo_android12.png"
   min_sdk_android: 21 # android min sdk min:16, default 21
   web:
     generate: true
     image_path: "assets/images/icon.png"
-    background_color: "#1A1B4B"
-    theme_color: "#1A1B4B"
+    background_color: "#0F1A15"
+    theme_color: "#0F1A15"
   windows:
     generate: true
     image_path: "assets/images/icon.png"

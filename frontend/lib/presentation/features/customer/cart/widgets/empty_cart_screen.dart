@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+
 import '../../../../../theme/app_colors.dart';
+import '../../../../../theme/app_spacing.dart';
 import '../../../../../theme/app_text_styles.dart';
+import '../../../../common/animations/entrance.dart';
 
 class EmptyCartScreen extends StatelessWidget {
   const EmptyCartScreen({super.key});
@@ -9,31 +12,32 @@ class EmptyCartScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32.0),
+        padding: const EdgeInsets.all(AppSpacing.gutter),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.all(24),
+              width: 88,
+              height: 88,
               decoration: BoxDecoration(
-                color: AppColors.primarySurface,
                 shape: BoxShape.circle,
+                border: Border.all(color: AppColors.line, width: 1.5),
               ),
               child: const Icon(
                 Icons.shopping_bag_outlined,
-                size: 64,
-                color: AppColors.primary,
+                size: 34,
+                color: AppColors.sage,
               ),
-            ),
-            const SizedBox(height: 24),
-            Text('Your Cart is Empty', style: AppTextStyles.heading2),
+            ).animateEntrance(),
+            const SizedBox(height: 20),
+            Text('Your bag is empty', style: AppTextStyles.heading2)
+                .animateEntrance(index: 1),
             const SizedBox(height: 8),
             Text(
-              'Explore products from local shops near you and fill your cart with great finds!',
+              'Browse shops near you and add something worth the walk.',
               textAlign: TextAlign.center,
-              style: AppTextStyles.bodyMedium
-                  .copyWith(color: AppColors.textSecondary),
-            ),
+              style: AppTextStyles.bodySmall,
+            ).animateEntrance(index: 2),
           ],
         ),
       ),

@@ -1,91 +1,157 @@
 import 'package:flutter/material.dart';
+
 import '../../../theme/app_colors.dart';
+import '../../../theme/app_motion.dart';
 import '../../../theme/app_spacing.dart';
 import '../../../theme/app_text_styles.dart';
 
-/// A polished search bar with animated focus and icon transitions.
+/// Pill search field that lifts on focus.
+///
+/// The lift is the whole affordance: a flat field on a flat background reads
+/// as decoration, one that rises when you touch it reads as a control.
 class NearzySearchBar extends StatefulWidget {
-  final String hintText;
-  final ValueChanged<String>? onChanged;
-  final VoidCallback? onTap;
-  final bool readOnly;
-  final TextEditingController? controller;
-
   const NearzySearchBar({
     super.key,
     this.hintText = 'Search products, shops & more',
     this.onChanged,
+    this.onSubmitted,
     this.onTap,
+    this.onClear,
     this.readOnly = false,
     this.controller,
+    this.autofocus = false,
+    this.onFocusChange,
   });
+
+  final String hintText;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
+  final VoidCallback? onTap;
+
+  /// Shows a clear affordance once there's text. Without it the field has no
+  /// way back to the unfiltered feed on a touch keyboard.
+  final VoidCallback? onClear;
+
+  final bool readOnly;
+  final TextEditingController? controller;
+  final bool autofocus;
+
+  /// Lets a parent reveal suggestions only while the field has focus.
+  final ValueChanged<bool>? onFocusChange;
 
   @override
   State<NearzySearchBar> createState() => _NearzySearchBarState();
 }
 
 class _NearzySearchBarState extends State<NearzySearchBar> {
-  bool _isFocused = false;
-  late final FocusNode _focusNode;
+  final FocusNode _focusNode = FocusNode();
+  late final TextEditingController _controller =
+      widget.controller ?? TextEditingController();
+
+  bool _focused = false;
 
   @override
   void initState() {
     super.initState();
-    _focusNode = FocusNode();
     _focusNode.addListener(() {
-      setState(() => _isFocused = _focusNode.hasFocus);
+      setState(() => _focused = _focusNode.hasFocus);
+      widget.onFocusChange?.call(_focusNode.hasFocus);
     });
   }
 
   @override
   void dispose() {
     _focusNode.dispose();
+    // Only dispose a controller this widget created.
+    if (widget.controller == null) _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: widget.readOnly ? widget.onTap : null,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.gutter,
+        10,
+        AppSpacing.gutter,
+        8,
+      ),
       child: AnimatedContainer(
-        duration: AppSpacing.durationFast,
-        curve: Curves.easeOut,
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        duration: Motion.duration(context, Motion.quick),
+        curve: Motion.easeOut,
+        height: 52,
         decoration: BoxDecoration(
-          color: _isFocused ? AppColors.card : AppColors.inputFill,
+          color: AppColors.card,
           borderRadius: AppSpacing.borderRadiusFull,
           border: Border.all(
-            color: _isFocused ? AppColors.primary : Colors.transparent,
-            width: 1.5,
+            color: _focused ? AppColors.ink : AppColors.line,
+            width: _focused ? 1.6 : 1,
           ),
-          boxShadow: _isFocused ? AppSpacing.shadowMedium : [],
+          boxShadow: _focused ? AppSpacing.shadowSoft : AppSpacing.shadowSubtle,
         ),
-        child: TextField(
-          controller: widget.controller,
-          focusNode: _focusNode,
-          readOnly: widget.readOnly,
-          onChanged: widget.onChanged,
-          onTap: widget.readOnly ? widget.onTap : null,
-          style: AppTextStyles.inputText,
-          decoration: InputDecoration(
-            hintText: widget.hintText,
-            hintStyle: AppTextStyles.inputHint,
-            prefixIcon: AnimatedSwitcher(
-              duration: AppSpacing.durationFast,
+        child: Row(
+          children: [
+            const SizedBox(width: 18),
+            AnimatedScale(
+              scale: _focused ? 1.08 : 1,
+              duration: Motion.duration(context, Motion.quick),
+              curve: Motion.spring,
               child: Icon(
                 Icons.search_rounded,
-                key: ValueKey(_isFocused),
-                color: _isFocused ? AppColors.primary : AppColors.textTertiary,
-                size: 22,
+                size: 20,
+                color: _focused ? AppColors.ink : AppColors.textTertiary,
               ),
             ),
-            border: InputBorder.none,
-            enabledBorder: InputBorder.none,
-            focusedBorder: InputBorder.none,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 0, vertical: 14),
-            filled: false,
-          ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: TextField(
+                controller: _controller,
+                focusNode: _focusNode,
+                readOnly: widget.readOnly,
+                autofocus: widget.autofocus,
+                onChanged: widget.onChanged,
+                onSubmitted: widget.onSubmitted,
+                onTap: widget.readOnly ? widget.onTap : null,
+                textInputAction: TextInputAction.search,
+                style: AppTextStyles.inputText,
+                decoration: InputDecoration(
+                  isDense: true,
+                  hintText: widget.hintText,
+                  hintStyle: AppTextStyles.inputHint,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  filled: false,
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ),
+            if (widget.onClear != null)
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _controller,
+                builder: (context, value, _) => AnimatedSwitcher(
+                  duration: Motion.duration(context, Motion.quick),
+                  transitionBuilder: (child, animation) => ScaleTransition(
+                    scale: animation,
+                    child: child,
+                  ),
+                  child: value.text.isEmpty
+                      ? const SizedBox(key: ValueKey('empty'), width: 18)
+                      : IconButton(
+                          key: const ValueKey('clear'),
+                          tooltip: 'Clear search',
+                          onPressed: () {
+                            _focusNode.unfocus();
+                            widget.onClear!();
+                          },
+                          icon: const Icon(Icons.close_rounded,
+                              size: 18, color: AppColors.textTertiary),
+                        ),
+                ),
+              )
+            else
+              const SizedBox(width: 18),
+          ],
         ),
       ),
     );

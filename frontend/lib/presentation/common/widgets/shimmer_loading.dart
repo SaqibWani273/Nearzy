@@ -1,322 +1,232 @@
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
+
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_spacing.dart';
 
-/// Consistent shimmer / skeleton loading widgets using standard box layouts
-/// (No shrinkwrapping viewports, avoiding any intrinsic measurement issues in Slivers).
+/// Skeleton placeholders.
+///
+/// Each one mirrors the silhouette of the widget it stands in for — a
+/// skeleton whose shape differs from the loaded content produces a visible
+/// jump when the data lands, which is worse than no skeleton at all.
 class ShimmerLoading extends StatelessWidget {
-  final Widget child;
-
   const ShimmerLoading({super.key, required this.child});
 
+  final Widget child;
+
   @override
-  Widget build(BuildContext context) {
-    return Shimmer.fromColors(
-      baseColor: AppColors.shimmerBase,
-      highlightColor: AppColors.shimmerHighlight,
-      child: child,
-    );
-  }
+  Widget build(BuildContext context) => _wrap(child);
 
-  // ── Product grid skeleton (No shrinkWrap Viewport & Overflow-safe) ───
-  static Widget productGrid({int count = 4}) {
-    final rows = (count / 2).ceil();
-    return SingleChildScrollView(
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: List.generate(rows, (rowIndex) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              children: [
-                const Expanded(
-                  child: SizedBox(
-                    height: 220,
-                    child: _ProductCardSkeleton(),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: rowIndex * 2 + 1 < count
-                      ? const SizedBox(
-                          height: 220,
-                          child: _ProductCardSkeleton(),
-                        )
-                      : const SizedBox.shrink(),
-                ),
-              ],
-            ),
-          );
-        }),
-      ),
-    );
-  }
+  static Widget _wrap(Widget child) => Shimmer.fromColors(
+        baseColor: AppColors.shimmerBase,
+        highlightColor: AppColors.shimmerHighlight,
+        period: const Duration(milliseconds: 1400),
+        child: child,
+      );
 
-  // ── Horizontal product skeleton ─────────────────────────────────────
+  /// Mirrors the 2-column product grid at `mainAxisExtent: 268`.
+  static Widget productGrid({int count = 4}) => _wrap(
+        _StaticGrid(
+          count: count,
+          columns: 2,
+          itemHeight: 268,
+          builder: (_) => const _CardSkeleton(imageFlex: 6, lines: 3),
+        ),
+      );
+
+  /// Horizontal carousel of product cards.
   static Widget productRow({int count = 4}) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: List.generate(count, (index) {
-          return const Padding(
-            padding: EdgeInsets.only(right: 12),
-            child: SizedBox(
-              width: 150,
-              height: 220,
-              child: _ProductCardSkeleton(),
-            ),
-          );
-        }),
+    return _wrap(
+      SizedBox(
+        height: 268,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
+          itemCount: count,
+          separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.gridGap),
+          itemBuilder: (_, _) => const SizedBox(
+            width: 168,
+            child: _CardSkeleton(imageFlex: 6, lines: 3),
+          ),
+        ),
       ),
     );
   }
 
-  // ── Shop grid skeleton (Overflow-safe) ──────────────────────────────
-  static Widget shopGrid({int count = 4}) {
-    final rows = (count / 2).ceil();
-    return SingleChildScrollView(
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: List.generate(rows, (rowIndex) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              children: [
-                const Expanded(
-                  child: SizedBox(
-                    height: 180,
-                    child: _ShopCardSkeleton(),
+  /// Mirrors the 2-column shop grid at `mainAxisExtent: 244`.
+  static Widget shopGrid({int count = 4}) => _wrap(
+        _StaticGrid(
+          count: count,
+          columns: 2,
+          itemHeight: 244,
+          builder: (_) => const _CardSkeleton(imageFlex: 5, lines: 2),
+        ),
+      );
+
+  static Widget categoryGrid({int count = 6}) => _wrap(
+        _StaticGrid(
+          count: count,
+          columns: 3,
+          itemHeight: 116,
+          builder: (_) => Column(
+            children: [
+              Container(
+                width: 62,
+                height: 62,
+                decoration: const BoxDecoration(
+                  color: AppColors.shimmerBase,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(height: 10),
+              _bar(width: 52, height: 9),
+            ],
+          ),
+        ),
+      );
+
+  /// Full-width list of compact rows — cart, orders, search history.
+  static Widget listRows({int count = 4, double height = 92}) => _wrap(
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
+          child: Column(
+            children: [
+              for (var i = 0; i < count; i++) ...[
+                if (i > 0) const SizedBox(height: 12),
+                Container(
+                  height: height,
+                  decoration: BoxDecoration(
+                    color: AppColors.shimmerBase,
+                    borderRadius: AppSpacing.borderRadiusLg,
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: rowIndex * 2 + 1 < count
-                      ? const SizedBox(
-                          height: 180,
-                          child: _ShopCardSkeleton(),
-                        )
-                      : const SizedBox.shrink(),
-                ),
               ],
-            ),
-          );
-        }),
-      ),
-    );
-  }
+            ],
+          ),
+        ),
+      );
 
-  // ── Category grid skeleton (Overflow-safe) ──────────────────────────
-  static Widget categoryGrid({int count = 6}) {
-    final rows = (count / 2).ceil();
-    return SingleChildScrollView(
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: List.generate(rows, (rowIndex) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              children: [
-                const Expanded(
-                  child: SizedBox(
-                    height: 140,
-                    child: _CategorySkeleton(),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: rowIndex * 2 + 1 < count
-                      ? const SizedBox(
-                          height: 140,
-                          child: _CategorySkeleton(),
-                        )
-                      : const SizedBox.shrink(),
-                ),
-              ],
-            ),
-          );
-        }),
-      ),
-    );
-  }
+  static Widget line({double width = double.infinity, double height = 14}) =>
+      _wrap(_bar(width: width, height: height));
 
-  // ── Single line skeleton ────────────────────────────────────────────
-  static Widget line({double width = double.infinity, double height = 14}) {
-    return ShimmerLoading(
-      child: Container(
+  static Widget circle({double size = 48}) => _wrap(
+        Container(
+          width: size,
+          height: size,
+          decoration: const BoxDecoration(
+            color: AppColors.shimmerBase,
+            shape: BoxShape.circle,
+          ),
+        ),
+      );
+
+  static Widget _bar({required double width, required double height}) =>
+      Container(
         width: width,
         height: height,
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         decoration: BoxDecoration(
           color: AppColors.shimmerBase,
-          borderRadius: AppSpacing.borderRadiusSm,
+          borderRadius: BorderRadius.circular(height / 2),
         ),
-      ),
-    );
-  }
+      );
+}
 
-  // ── Circle skeleton ─────────────────────────────────────────────────
-  static Widget circle({double size = 48}) {
-    return ShimmerLoading(
-      child: Container(
-        width: size,
-        height: size,
-        decoration: const BoxDecoration(
-          color: AppColors.shimmerBase,
-          shape: BoxShape.circle,
-        ),
+/// Image block over text bars — the shape shared by both card types.
+class _CardSkeleton extends StatelessWidget {
+  const _CardSkeleton({required this.imageFlex, required this.lines});
+
+  final int imageFlex;
+  final int lines;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: AppSpacing.borderRadiusXl,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: imageFlex,
+            child: Container(
+              width: double.infinity,
+              color: AppColors.shimmerBase,
+            ),
+          ),
+          Expanded(
+            flex: 5,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ShimmerLoading._bar(width: double.infinity, height: 11),
+                  const SizedBox(height: 7),
+                  ShimmerLoading._bar(width: 88, height: 9),
+                  if (lines > 2) ...[
+                    const Spacer(),
+                    ShimmerLoading._bar(width: 62, height: 13),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _ProductCardSkeleton extends StatelessWidget {
-  const _ProductCardSkeleton();
+/// A fixed grid built from Rows rather than a shrink-wrapped [GridView].
+///
+/// `infinite_scroll_pagination` puts its first-page indicator inside a
+/// `SliverFillRemaining`, which asks its child for intrinsic height — and a
+/// shrink-wrapping viewport throws rather than answering. Laying the skeleton
+/// out with plain Rows keeps it measurable anywhere.
+class _StaticGrid extends StatelessWidget {
+  const _StaticGrid({
+    required this.count,
+    required this.columns,
+    required this.itemHeight,
+    required this.builder,
+  });
+
+  final int count;
+  final int columns;
+  final double itemHeight;
+  final Widget Function(int index) builder;
 
   @override
   Widget build(BuildContext context) {
-    return ShimmerLoading(
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: AppSpacing.borderRadiusMd,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 3,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppColors.shimmerBase,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(12),
-                  ),
-                ),
-              ),
-            ),
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    Container(
-                      height: 12,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: AppColors.shimmerBase,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                    Container(
-                      height: 12,
-                      width: 80,
-                      decoration: BoxDecoration(
-                        color: AppColors.shimmerBase,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                    Container(
-                      height: 14,
-                      width: 60,
-                      decoration: BoxDecoration(
-                        color: AppColors.shimmerBase,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
+    final rows = (count / columns).ceil();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var row = 0; row < rows; row++) ...[
+            if (row > 0) const SizedBox(height: AppSpacing.gridGap),
+            SizedBox(
+              height: itemHeight,
+              child: Row(
+                children: [
+                  for (var col = 0; col < columns; col++) ...[
+                    if (col > 0) const SizedBox(width: AppSpacing.gridGap),
+                    Expanded(
+                      child: row * columns + col < count
+                          ? builder(row * columns + col)
+                          : const SizedBox.shrink(),
                     ),
                   ],
-                ),
+                ],
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ShopCardSkeleton extends StatelessWidget {
-  const _ShopCardSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    return ShimmerLoading(
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: AppSpacing.borderRadiusMd,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 3,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppColors.shimmerBase,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(12),
-                  ),
-                ),
-              ),
-            ),
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    Container(
-                      height: 12,
-                      width: 100,
-                      decoration: BoxDecoration(
-                        color: AppColors.shimmerBase,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                    Container(
-                      height: 10,
-                      width: 60,
-                      decoration: BoxDecoration(
-                        color: AppColors.shimmerBase,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CategorySkeleton extends StatelessWidget {
-  const _CategorySkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    return ShimmerLoading(
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.shimmerBase,
-          borderRadius: AppSpacing.borderRadiusMd,
-        ),
+        ],
       ),
     );
   }

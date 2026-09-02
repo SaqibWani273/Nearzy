@@ -1,20 +1,25 @@
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../data/models/cart.dart';
 import '../../../../data/models/customer.dart';
+import '../../../../data/repositories/customer/customer_data_repository.dart';
 import '../../../../theme/app_colors.dart';
+import '../../../../theme/app_motion.dart';
 import '../../../../theme/app_spacing.dart';
 import '../../../../theme/app_text_styles.dart';
-import '../checkout/checkout_screen.dart';
+import '../../../common/animations/entrance.dart';
+import '../../../common/animations/nearzy_page_route.dart';
+import '../../../common/animations/pressable_scale.dart';
+import '../../../common/screens/error_screen.dart';
+import '../../../common/widgets/nearzy_network_image.dart';
+import '../../../common/widgets/shimmer_loading.dart';
 import '../authentication/view/customer_login.dart';
+import '../checkout/checkout_screen.dart';
+import '../dashboard/view_model/customer_data_bloc.dart';
 import '../product/view/product_details_screen.dart';
-import '/data/repositories/customer/customer_data_repository.dart';
-import '/presentation/common/screens/error_screen.dart';
-import '/presentation/common/widgets/shimmer_loading.dart';
-import '/presentation/features/customer/cart/widgets/empty_cart_screen.dart';
-import '/presentation/features/customer/dashboard/view_model/customer_data_bloc.dart';
+import 'widgets/empty_cart_screen.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -30,226 +35,165 @@ class _CartScreenState extends State<CartScreen> {
 
   @override
   void initState() {
-    customer = context.read<CustomerDataRepository>().customer;
-    cartItemDetailsList = context.read<CustomerDataRepository>().cartItemDetails;
+    super.initState();
+    final repository = context.read<CustomerDataRepository>();
+    customer = repository.customer;
+    cartItemDetailsList = repository.cartItemDetails;
+
     if (customer != null) {
-      isCartEmpty = checkIsCartEmpty(customer);
+      isCartEmpty = _checkIsCartEmpty(customer);
       if (!isCartEmpty && cartItemDetailsList.isEmpty) {
         context.read<CustomerDataBloc>().add(
-            CustomerDataFetchCartItemDetailsEvent(
-                cartItems: customer!.cartItems!));
+              CustomerDataFetchCartItemDetailsEvent(
+                cartItems: customer!.cartItems!,
+              ),
+            );
       }
     }
-    super.initState();
   }
 
-  bool checkIsCartEmpty(Customer? customer) =>
+  bool _checkIsCartEmpty(Customer? customer) =>
       customer == null ||
       customer.cartItems == null ||
       customer.cartItems!.isEmpty;
 
-  Widget notLoggedInWidget() {
-    return Center(
-      child: Container(
-        margin: const EdgeInsets.all(24),
-        padding: const EdgeInsets.all(32),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: AppSpacing.borderRadiusLg,
-          boxShadow: AppSpacing.shadowMedium,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.primarySurface,
-                shape: BoxShape.circle,
+  Future<void> _login() async {
+    await context.pushScreen(() => const CustomerLogin());
+    if (!mounted) return;
+
+    customer = context.read<CustomerDataRepository>().customer;
+    if (customer != null) {
+      isCartEmpty = _checkIsCartEmpty(customer);
+      if (!isCartEmpty) {
+        context.read<CustomerDataBloc>().add(
+              CustomerDataFetchCartItemDetailsEvent(
+                cartItems: customer!.cartItems!,
               ),
-              child: const Icon(
-                Icons.shopping_bag_outlined,
-                size: 48,
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text('Your Cart is Waiting', style: AppTextStyles.heading2),
-            const SizedBox(height: 8),
-            Text(
-              'Log in to view items previously added to your cart and checkout effortlessly.',
-              textAlign: TextAlign.center,
-              style: AppTextStyles.bodyMedium
-                  .copyWith(color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () async {
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const CustomerLogin()),
-                  );
-                  if (!mounted) return;
-                  customer = context.read<CustomerDataRepository>().customer;
-                  if (customer != null) {
-                    isCartEmpty = checkIsCartEmpty(customer);
-                    if (!isCartEmpty) {
-                      context.read<CustomerDataBloc>().add(
-                          CustomerDataFetchCartItemDetailsEvent(
-                              cartItems: customer!.cartItems!));
-                    }
-                  }
-                  setState(() {});
-                },
-                icon: const Icon(Icons.login_rounded),
-                label: const Text('Login to Continue'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+            );
+      }
+    }
+    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: AppColors.paper,
       body: BlocBuilder<CustomerDataBloc, CustomerDataState>(
         builder: (context, state) {
-          customer = context.read<CustomerDataRepository>().customer;
+          final repository = context.read<CustomerDataRepository>();
+          customer = repository.customer;
+
           if (customer == null) {
-            return notLoggedInWidget();
+            return _NotLoggedIn(onLogin: _login);
           }
+
           if (state is CustomerDataFetchingCartItemDetailsState) {
-            return ShimmerLoading.productGrid(count: 2);
-          }
-          if (state is CustomerDataCartErrorState) {
-            return ErrorScreen(
-              customException: state.error,
-              onTryAgainPressed: () {
-                context.read<CustomerDataBloc>().add(
-                    CustomerDataFetchCartItemDetailsEvent(
-                        cartItems: customer!.cartItems!));
-              },
+            return const Padding(
+              padding: EdgeInsets.only(top: 80),
+              child: _CartSkeleton(),
             );
           }
 
-          cartItemDetailsList =
-              context.read<CustomerDataRepository>().cartItemDetails;
-          isCartEmpty = checkIsCartEmpty(customer);
+          if (state is CustomerDataCartErrorState) {
+            return ErrorScreen(
+              customException: state.error,
+              onTryAgainPressed: () => context.read<CustomerDataBloc>().add(
+                    CustomerDataFetchCartItemDetailsEvent(
+                      cartItems: customer!.cartItems!,
+                    ),
+                  ),
+            );
+          }
+
+          cartItemDetailsList = repository.cartItemDetails;
+          isCartEmpty = _checkIsCartEmpty(customer);
+
           if (cartItemDetailsList.isEmpty || isCartEmpty) {
             return const EmptyCartScreen();
           }
 
-          return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
-            itemCount: cartItemDetailsList.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final cartItem = cartItemDetailsList[index];
-              return Container(
-                decoration: BoxDecoration(
-                  color: AppColors.card,
-                  borderRadius: AppSpacing.borderRadiusMd,
-                  boxShadow: AppSpacing.shadowSubtle,
-                ),
-                padding: const EdgeInsets.all(12),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    InkWell(
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              ProductDetailsScreen(product: cartItem.product),
-                        ),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: AppSpacing.borderRadiusSm,
-                        child: Image.network(
-                          cartItem.product.images.isNotEmpty
-                              ? cartItem.product.images.first
-                              : '',
-                          width: 72,
-                          height: 72,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => Container(
-                            width: 72,
-                            height: 72,
-                            color: AppColors.inputFill,
-                            child: const Icon(Icons.image_outlined,
-                                color: AppColors.textTertiary),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+          final shopName = cartItemDetailsList.first.product.shop.displayName;
+
+          return CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.gutter,
+                    16,
+                    AppSpacing.gutter,
+                    0,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Your bag', style: AppTextStyles.heading1)
+                          .animateEntrance(),
+                      const SizedBox(height: 6),
+                      // Nearzy orders are single-shop, so naming the shop up
+                      // front explains the constraint before checkout does.
+                      Row(
                         children: [
-                          Text(
-                            cartItem.product.name,
-                            style: AppTextStyles.labelLarge,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '₹${cartItem.product.price ~/ 100}',
-                            style: AppTextStyles.priceSmall
-                                .copyWith(color: AppColors.accent),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              _QtyButton(
-                                icon: Icons.remove,
-                                onTap: () {
-                                  if (cartItem.quantity > 1) {
-                                    context.read<CustomerDataBloc>().add(
-                                        CustomerDataDecreaseQuantityByOneEvent(
-                                            product: cartItem.product));
-                                  }
-                                },
-                              ),
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 12),
-                                child: Text(
-                                  '${cartItem.quantity}',
-                                  style: AppTextStyles.labelLarge,
-                                ),
-                              ),
-                              _QtyButton(
-                                icon: Icons.add,
-                                onTap: () => context.read<CustomerDataBloc>().add(
-                                    CustomerDataIncreaseQuantityByOneEvent(
-                                        product: cartItem.product)),
-                              ),
-                            ],
+                          const Icon(Icons.storefront_rounded,
+                              size: 14, color: AppColors.sageDeep),
+                          const SizedBox(width: 5),
+                          Expanded(
+                            child: Text(
+                              '${cartItemDetailsList.length} item'
+                              '${cartItemDetailsList.length == 1 ? '' : 's'} from $shopName',
+                              style: AppTextStyles.bodySmall,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline_rounded,
-                          color: AppColors.error),
-                      onPressed: () {
-                        context.read<CustomerDataBloc>().add(
-                            CustomerDataRemoveProductFromCartEvent(
-                                product: cartItem.product));
-                      },
-                    ),
-                  ],
+                      ).animateEntrance(index: 1),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
                 ),
-              );
-            },
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.gutter,
+                  0,
+                  AppSpacing.gutter,
+                  180,
+                ),
+                sliver: SliverList.separated(
+                  itemCount: cartItemDetailsList.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final item = cartItemDetailsList[index];
+                    return _CartRow(
+                      item: item,
+                      onOpen: () => context.pushScreen(
+                        () => ProductDetailsScreen(product: item.product),
+                      ),
+                      onIncrease: () => context.read<CustomerDataBloc>().add(
+                            CustomerDataIncreaseQuantityByOneEvent(
+                              product: item.product,
+                            ),
+                          ),
+                      onDecrease: item.quantity > 1
+                          ? () => context.read<CustomerDataBloc>().add(
+                                CustomerDataDecreaseQuantityByOneEvent(
+                                  product: item.product,
+                                ),
+                              )
+                          : null,
+                      onRemove: () => context.read<CustomerDataBloc>().add(
+                            CustomerDataRemoveProductFromCartEvent(
+                              product: item.product,
+                            ),
+                          ),
+                    ).animateEntrance(index: index);
+                  },
+                ),
+              ),
+            ],
           );
         },
       ),
@@ -260,91 +204,306 @@ class _CartScreenState extends State<CartScreen> {
   }
 }
 
-class _QtyButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
+/// One line item: image, name, unit price, stepper, remove.
+class _CartRow extends StatelessWidget {
+  const _CartRow({
+    required this.item,
+    required this.onOpen,
+    required this.onIncrease,
+    required this.onDecrease,
+    required this.onRemove,
+  });
 
-  const _QtyButton({required this.icon, required this.onTap});
+  final CartItemDetails item;
+  final VoidCallback onOpen;
+  final VoidCallback onIncrease;
+  final VoidCallback? onDecrease;
+  final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      child: Container(
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: AppColors.inputFill,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Icon(icon, size: 16, color: AppColors.textPrimary),
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: AppSpacing.borderRadiusXl,
+        boxShadow: AppSpacing.shadowSubtle,
+      ),
+      child: Row(
+        children: [
+          PressableScale(
+            onTap: onOpen,
+            scale: 0.94,
+            child: ClipRRect(
+              borderRadius: AppSpacing.borderRadiusMd,
+              child: NearzyNetworkImage(
+                url: item.product.images.isNotEmpty
+                    ? item.product.images.first
+                    : null,
+                width: 76,
+                height: 76,
+                fallbackIcon: Icons.shopping_bag_outlined,
+                semanticLabel: item.product.name,
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.product.name,
+                  style: AppTextStyles.labelMedium,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '₹${item.product.price ~/ 100} each',
+                  style: AppTextStyles.caption,
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    _Stepper(
+                      quantity: item.quantity,
+                      onIncrease: onIncrease,
+                      onDecrease: onDecrease,
+                    ),
+                    const Spacer(),
+                    Text(
+                      '₹${(item.product.price ~/ 100) * item.quantity}',
+                      style: AppTextStyles.priceSmall,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          IconButton(
+            tooltip: 'Remove from bag',
+            onPressed: () {
+              HapticFeedback.mediumImpact();
+              onRemove();
+            },
+            icon: const Icon(Icons.close_rounded,
+                size: 18, color: AppColors.textTertiary),
+          ),
+        ],
       ),
     );
   }
 }
 
-class CartBottomBar extends StatelessWidget {
-  final List<CartItemDetails> cartItemDetailsList;
+/// Quantity stepper. The number cross-fades on change rather than snapping,
+/// which makes rapid taps legible.
+class _Stepper extends StatelessWidget {
+  const _Stepper({
+    required this.quantity,
+    required this.onIncrease,
+    required this.onDecrease,
+  });
 
-  const CartBottomBar({super.key, required this.cartItemDetailsList});
+  final int quantity;
+  final VoidCallback onIncrease;
+  final VoidCallback? onDecrease;
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      height: 34,
       decoration: BoxDecoration(
-        color: AppColors.card,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 16,
-            offset: const Offset(0, -4),
+        color: AppColors.paper,
+        borderRadius: AppSpacing.borderRadiusFull,
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _StepButton(
+            icon: Icons.remove_rounded,
+            onTap: onDecrease,
+            tooltip: 'Decrease quantity',
+          ),
+          SizedBox(
+            width: 30,
+            child: AnimatedSwitcher(
+              duration: Motion.duration(context, Motion.quick),
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: ScaleTransition(scale: animation, child: child),
+              ),
+              child: Text(
+                '$quantity',
+                key: ValueKey(quantity),
+                textAlign: TextAlign.center,
+                style: AppTextStyles.labelMedium,
+              ),
+            ),
+          ),
+          _StepButton(
+            icon: Icons.add_rounded,
+            onTap: onIncrease,
+            tooltip: 'Increase quantity',
           ),
         ],
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    );
+  }
+}
+
+class _StepButton extends StatelessWidget {
+  const _StepButton({
+    required this.icon,
+    required this.onTap,
+    required this.tooltip,
+  });
+
+  final IconData icon;
+  final VoidCallback? onTap;
+  final String tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: tooltip,
+      child: PressableScale(
+        // Steppers get held down; a haptic per repeat is noise.
+        haptics: false,
+        onTap: onTap,
+        scale: 0.86,
+        child: SizedBox(
+          width: 34,
+          height: 34,
+          child: Icon(
+            icon,
+            size: 16,
+            color: onTap == null ? AppColors.textTertiary : AppColors.ink,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NotLoggedIn extends StatelessWidget {
+  const _NotLoggedIn({required this.onLogin});
+
+  final VoidCallback onLogin;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.gutter),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Total Amount', style: AppTextStyles.caption),
-                Text(
-                  '₹${calculateTotalPrice(cartItemDetailsList).toInt()}',
-                  style: AppTextStyles.heading2
-                      .copyWith(color: AppColors.primary),
-                ),
-              ],
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).push(MaterialPageRoute(builder: (context) {
-                  return CheckoutScreen(cartItemDetailst: cartItemDetailsList);
-                }));
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accent,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+            Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.line, width: 1.5),
               ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('Checkout',
-                      style: TextStyle(
-                          color: Colors.white, fontWeight: FontWeight.bold)),
-                  SizedBox(width: 6),
-                  Icon(Icons.arrow_forward_rounded,
-                      size: 18, color: Colors.white),
-                ],
+              child: const Icon(Icons.lock_outline_rounded,
+                  size: 34, color: AppColors.sage),
+            ).animateEntrance(),
+            const SizedBox(height: 20),
+            Text('Sign in to see your bag', style: AppTextStyles.heading2)
+                .animateEntrance(index: 1),
+            const SizedBox(height: 8),
+            Text(
+              'Your saved items are waiting. Sign in to pick up where you left off.',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodySmall,
+            ).animateEntrance(index: 2),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: 220,
+              child: ElevatedButton(
+                onPressed: onLogin,
+                child: const Text('Sign in'),
               ),
-            ),
+            ).animateEntrance(index: 3),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _CartSkeleton extends StatelessWidget {
+  const _CartSkeleton();
+
+  @override
+  Widget build(BuildContext context) =>
+      ShimmerLoading.listRows(count: 3, height: 100);
+}
+
+class CartBottomBar extends StatelessWidget {
+  const CartBottomBar({super.key, required this.cartItemDetailsList});
+
+  final List<CartItemDetails> cartItemDetailsList;
+
+  @override
+  Widget build(BuildContext context) {
+    final total = calculateTotalPrice(cartItemDetailsList);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        border: const Border(top: BorderSide(color: AppColors.line)),
+        boxShadow: AppSpacing.shadowElevated,
+      ),
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.gutter,
+        16,
+        AppSpacing.gutter,
+        16 + MediaQuery.of(context).padding.bottom,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Text('Subtotal', style: AppTextStyles.bodySmall),
+              const Spacer(),
+              // The running total tweens rather than jumping, so a quantity
+              // change is visibly connected to the number that reflects it.
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: total, end: total),
+                duration: Motion.duration(context, Motion.base),
+                curve: Motion.easeOut,
+                builder: (context, value, _) => Text(
+                  '₹${value.round()}',
+                  style: AppTextStyles.priceMedium,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Text('Delivery', style: AppTextStyles.bodySmall),
+              const Spacer(),
+              Text('Calculated at checkout', style: AppTextStyles.caption),
+            ],
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => context.pushScreen(
+                () => CheckoutScreen(cartItemDetailst: cartItemDetailsList),
+              ),
+              child: const Text('Proceed to checkout'),
+            ),
+          ),
+        ],
       ),
     );
   }

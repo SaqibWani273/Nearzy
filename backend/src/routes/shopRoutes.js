@@ -131,4 +131,42 @@ router.post('/add-product', authorize('SHOP'), async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /shop/my-products:
+ *   get:
+ *     tags: [Shop]
+ *     summary: The signed-in shop's own inventory (including unavailable items)
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         schema: { type: string }
+ *         description: Filter by product name or SKU
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 50 }
+ *     responses:
+ *       200: { description: Paginated inventory }
+ *       404: { description: No shop profile for this account }
+ */
+router.get('/my-products', authorize('SHOP'), async (req, res, next) => {
+  try {
+    const result = await shopService.getMyProducts(req.user.id, {
+      page: req.query.page,
+      limit: req.query.limit,
+      q: req.query.q,
+    });
+    if (result.error) {
+      return res.status(result.status || 400).json({ message: result.error });
+    }
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

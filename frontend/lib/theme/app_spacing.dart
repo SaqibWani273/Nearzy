@@ -29,11 +29,11 @@ class AppSpacing {
       EdgeInsets.symmetric(horizontal: md, vertical: xs);
 
   // ── Border radius ─────────────────────────────────────────────────────
-  static const double radiusSm = 8;
-  static const double radiusMd = 12;
-  static const double radiusLg = 16;
-  static const double radiusXl = 24;
-  static const double radiusFull = 100;
+  static const double radiusSm = 10;
+  static const double radiusMd = 16;
+  static const double radiusLg = 20;
+  static const double radiusXl = 28;
+  static const double radiusFull = 999;
 
   static final BorderRadius borderRadiusSm = BorderRadius.circular(radiusSm);
   static final BorderRadius borderRadiusMd = BorderRadius.circular(radiusMd);
@@ -42,36 +42,66 @@ class AppSpacing {
   static final BorderRadius borderRadiusFull =
       BorderRadius.circular(radiusFull);
 
+  // ── Layout ────────────────────────────────────────────────────────────
+  /// Horizontal screen gutter. Every screen hugs this.
+  static const double gutter = 20;
+
+  /// Gap between cards in a grid.
+  static const double gridGap = 14;
+
+  /// Vertical rhythm between top-level sections.
+  static const double sectionGap = 28;
+
+  /// Trailing padding scrollable content needs so its tail clears the
+  /// floating bottom nav.
+  static const double bottomNavInset = 104;
+
+  static const EdgeInsets screenPadding =
+      EdgeInsets.symmetric(horizontal: gutter);
+
   // ── Shadows ───────────────────────────────────────────────────────────
+  // Tinted toward ink rather than pure black — a neutral-black shadow over a
+  // warm paper background reads as grey dirt.
+  static const Color _shadowTint = Color(0xFF0F1A15);
+
   static List<BoxShadow> shadowSubtle = [
     BoxShadow(
-      color: Colors.black.withValues(alpha: 0.04),
-      blurRadius: 4,
-      offset: const Offset(0, 1),
+      color: _shadowTint.withValues(alpha: 0.04),
+      blurRadius: 8,
+      offset: const Offset(0, 2),
     ),
   ];
 
-  static List<BoxShadow> shadowMedium = [
+  /// The default card shadow.
+  static List<BoxShadow> shadowSoft = [
     BoxShadow(
-      color: Colors.black.withValues(alpha: 0.06),
-      blurRadius: 12,
-      offset: const Offset(0, 4),
+      color: _shadowTint.withValues(alpha: 0.06),
+      blurRadius: 20,
+      offset: const Offset(0, 6),
+      spreadRadius: -4,
     ),
   ];
+
+  static List<BoxShadow> shadowMedium = shadowSoft;
 
   static List<BoxShadow> shadowElevated = [
     BoxShadow(
-      color: Colors.black.withValues(alpha: 0.1),
-      blurRadius: 24,
-      offset: const Offset(0, 8),
+      color: _shadowTint.withValues(alpha: 0.1),
+      blurRadius: 36,
+      offset: const Offset(0, 14),
+      spreadRadius: -8,
     ),
   ];
 
-  static List<BoxShadow> shadowCard = [
+  static List<BoxShadow> shadowCard = shadowSoft;
+
+  /// For the floating bottom nav and other ink-coloured floating surfaces.
+  static List<BoxShadow> shadowFloating = [
     BoxShadow(
-      color: Colors.black.withValues(alpha: 0.05),
-      blurRadius: 8,
-      offset: const Offset(0, 2),
+      color: _shadowTint.withValues(alpha: 0.22),
+      blurRadius: 28,
+      offset: const Offset(0, 10),
+      spreadRadius: -6,
     ),
   ];
 

@@ -15,6 +15,12 @@ class CustomerDataLoadedState extends CustomerDataState {
   List<Product>? searchProducts;
   List<ShopModel1>? shops;
   bool? loadedCategories;
+
+  /// Bumped on every favourite toggle so BlocBuilders rebuild — the
+  /// favourite set itself lives in the repository, and a state object that
+  /// never changes identity would not trigger a rebuild on its own.
+  final int favouritesRevision;
+
   CustomerDataLoadedState({
     this.canAddToCart,
     this.isChangingLocation,
@@ -22,6 +28,7 @@ class CustomerDataLoadedState extends CustomerDataState {
     this.searchProducts,
     this.shops,
     this.loadedCategories,
+    this.favouritesRevision = 0,
   });
 }
 

@@ -4,6 +4,7 @@ import 'dart:developer';
 import 'package:mca_project/data/models/order.dart';
 import 'package:mca_project/data/models/category/product_category/product_category.dart';
 
+import '/data/models/shop_model/shop_api_parser.dart';
 import '/data/models/shop_model/shop_model1.dart';
 import '/constants/rest_api_const.dart';
 import '/utils/exceptions/custom_exception.dart';
@@ -225,10 +226,25 @@ class ApiService {
     }
   }
 
-  static Future<List<Product>> fetchMyUploadedProducts(int shopId) async {
-    List<Product> products = [];
-    return products;
-  }
+  /// The signed-in shop's inventory. The server resolves the shop from the
+  /// bearer token, so [shopId] is only kept for call-site compatibility.
+  static Future<List<Product>> fetchMyUploadedProducts(
+    int shopId, {
+    String? query,
+    int page = 1,
+    int limit = 100,
+  }) =>
+      _fetchProductPage(
+        Uri.parse(ApiConst.shopMyProductsUrl).replace(
+          queryParameters: {
+            if (query != null && query.trim().length >= 2) 'q': query.trim(),
+            'page': '$page',
+            'limit': '$limit',
+          },
+        ),
+        label: 'fetchMyUploadedProducts',
+        authorized: true,
+      );
 
   static Future<List<Order>> fetchMyOrders(int id, Roles role) async {
     List<Order> orders = [];
@@ -240,22 +256,70 @@ class ApiService {
     // Graceful handling
   }
 
+  /// Builds the location query the discovery endpoints expect.
+  ///
+  /// The parameter names matter: the server reads `latitude`/`longitude`, and
+  /// the abbreviations this used to send were silently ignored, so every
+  /// "nearby" request was really an unfiltered one.
+  static Map<String, String> _locationQuery(
+    LocationInfo? location, {
+    double? radiusKm,
+  }) {
+    if (location == null || !location.hasCoordinates) return {};
+    return {
+      'latitude': '${location.latitude}',
+      'longitude': '${location.longtitude}',
+      if (radiusKm != null) 'radiusKm': '$radiusKm',
+    };
+  }
+
+  /// Discovery endpoints answer with a `{total, page, shops|products}`
+  /// envelope, not a bare array. Unwrap defensively so a shape change
+  /// degrades to an empty list rather than a crash.
+  static List<dynamic> _unwrap(dynamic decoded, String key) {
+    if (decoded is List) return decoded;
+    if (decoded is Map<String, dynamic>) {
+      final inner = decoded[key];
+      if (inner is List) return inner;
+    }
+    return const [];
+  }
+
   static Future<List<ShopModel1>> fetchNearbyShops(
-      LocationInfo? location) async {
+    LocationInfo? location, {
+    double radiusKm = 15,
+    int page = 1,
+    int limit = 50,
+  }) async {
     try {
-      List<ShopModel1> shops = [];
-      String query = location != null
-          ? "?lat=${location.latitude}&lng=${location.longtitude}"
-          : "";
+      final query = {
+        ..._locationQuery(location, radiusKm: radiusKm),
+        'page': '$page',
+        'limit': '$limit',
+      };
       final response = await http.get(
-        Uri.parse("${ApiConst.shopsNearLocationUrl}$query"),
+        Uri.parse(ApiConst.shopsNearLocationUrl)
+            .replace(queryParameters: query),
         headers: _h({"Content-Type": "application/json"}),
       );
-      if (response.statusCode == 200) {
-        for (var element in jsonDecode(response.body)) {
-          shops.add(ShopModel1.fromJson(element));
-        }
+
+      if (response.statusCode != 200) {
+        log("fetchNearbyShops -> ${response.statusCode} ${response.body}");
+        return [];
       }
+
+      // Parsed leniently: deployed servers may still return raw ORM rows,
+      // whose field names differ from the DTO the generated parser expects.
+      final shops = ShopApiParser.parseList(
+        _unwrap(jsonDecode(response.body), 'shops'),
+        originLat: location?.latitude,
+        originLng: location?.longtitude,
+      );
+      // Nearest first, so the list agrees with the map even when the server
+      // ordered alphabetically.
+      shops.sort((a, b) =>
+          (a.distanceKm ?? double.infinity)
+              .compareTo(b.distanceKm ?? double.infinity));
       return shops;
     } catch (e) {
       log("fetchNearbyShops error: $e");
@@ -266,20 +330,19 @@ class ApiService {
   static Future<List<Product>> fetchLocationSpecialities(
       LocationInfo? location) async {
     try {
-      List<Product> products = [];
-      String query = location != null
-          ? "?lat=${location.latitude}&lng=${location.longtitude}"
-          : "";
       final response = await http.get(
-        Uri.parse("${ApiConst.locationSpecialitiesUrl}$query"),
+        Uri.parse(ApiConst.locationSpecialitiesUrl)
+            .replace(queryParameters: _locationQuery(location)),
         headers: _h({"Content-Type": "application/json"}),
       );
-      if (response.statusCode == 200) {
-        for (var element in jsonDecode(response.body)) {
-          products.add(Product.fromJson(element));
-        }
+      if (response.statusCode != 200) {
+        log("fetchLocationSpecialities -> ${response.statusCode}");
+        return [];
       }
-      return products;
+      return _unwrap(jsonDecode(response.body), 'products')
+          .whereType<Map<String, dynamic>>()
+          .map(Product.fromJson)
+          .toList();
     } catch (e) {
       log("fetchLocationSpecialities error: $e");
       return [];
@@ -289,36 +352,123 @@ class ApiService {
   static Future<List<Product>> fetchAffordableProducts(
       LocationInfo? location) async {
     try {
-      List<Product> products = [];
-      String query = location != null
-          ? "?lat=${location.latitude}&lng=${location.longtitude}"
-          : "";
       final response = await http.get(
-        Uri.parse("${ApiConst.affordableProductsUrl}$query"),
+        Uri.parse(ApiConst.affordableProductsUrl)
+            .replace(queryParameters: _locationQuery(location)),
         headers: _h({"Content-Type": "application/json"}),
       );
-      if (response.statusCode == 200) {
-        for (var element in jsonDecode(response.body)) {
-          products.add(Product.fromJson(element));
-        }
+      if (response.statusCode != 200) {
+        log("fetchAffordableProducts -> ${response.statusCode}");
+        return [];
       }
-      return products;
+      return _unwrap(jsonDecode(response.body), 'products')
+          .whereType<Map<String, dynamic>>()
+          .map(Product.fromJson)
+          .toList();
     } catch (e) {
       log("fetchAffordableProducts error: $e");
       return [];
     }
   }
 
-  static Future<List<Product>> fetchProductsByShopId(int id) async {
-    return [];
+  /// Shared fetch for the paginated product endpoints, all of which answer
+  /// with a `{total, page, products}` envelope.
+  static Future<List<Product>> _fetchProductPage(
+    Uri uri, {
+    required String label,
+    bool authorized = false,
+  }) async {
+    try {
+      final headers = _h({"Content-Type": "application/json"});
+      if (authorized) {
+        final token = await SecureStorage.getToken();
+        if (token != null) headers["Authorization"] = "Bearer $token";
+      }
+
+      final response = await http.get(uri, headers: headers);
+      if (response.statusCode != 200) {
+        log("$label -> ${response.statusCode} ${response.body}");
+        return [];
+      }
+
+      return _unwrap(jsonDecode(response.body), 'products')
+          .whereType<Map<String, dynamic>>()
+          .map(Product.fromJson)
+          .toList();
+    } catch (e) {
+      log("$label error: $e");
+      return [];
+    }
   }
 
-  static Future<List<Product>> fetchProductsByCategoryId(int id) async {
-    return [];
-  }
+  /// Products on discount nearby, deepest cut first.
+  static Future<List<Product>> fetchDiscountedProducts(
+    LocationInfo? location, {
+    double radiusKm = 15,
+    int page = 1,
+    int limit = 40,
+  }) =>
+      _fetchProductPage(
+        Uri.parse(ApiConst.discountedProductsUrl).replace(
+          queryParameters: {
+            ..._locationQuery(location, radiusKm: radiusKm),
+            'page': '$page',
+            'limit': '$limit',
+          },
+        ),
+        label: 'fetchDiscountedProducts',
+      );
 
-  static Future<List<Product>> searchProducts(String searchText) async {
-    return [];
+  static Future<List<Product>> fetchProductsByShopId(
+    int id, {
+    int page = 1,
+    int limit = 40,
+  }) =>
+      _fetchProductPage(
+        Uri.parse(ApiConst.shopProductsUrl(id))
+            .replace(queryParameters: {'page': '$page', 'limit': '$limit'}),
+        label: 'fetchProductsByShopId',
+      );
+
+  static Future<List<Product>> fetchProductsByCategoryId(
+    int id, {
+    LocationInfo? location,
+    double radiusKm = 15,
+    int page = 1,
+    int limit = 40,
+  }) =>
+      _fetchProductPage(
+        Uri.parse(ApiConst.categoryProductsUrl(id)).replace(
+          queryParameters: {
+            ..._locationQuery(location, radiusKm: radiusKm),
+            'page': '$page',
+            'limit': '$limit',
+          },
+        ),
+        label: 'fetchProductsByCategoryId',
+      );
+
+  static Future<List<Product>> searchProducts(
+    String searchText, {
+    LocationInfo? location,
+    double radiusKm = 15,
+    int page = 1,
+    int limit = 40,
+  }) {
+    final term = searchText.trim();
+    if (term.length < 2) return Future.value(const []);
+
+    return _fetchProductPage(
+      Uri.parse(ApiConst.searchProductsUrl).replace(
+        queryParameters: {
+          'q': term,
+          ..._locationQuery(location, radiusKm: radiusKm),
+          'page': '$page',
+          'limit': '$limit',
+        },
+      ),
+      label: 'searchProducts',
+    );
   }
 
   // ── Admin APIs ────────────────────────────────────────────────────────

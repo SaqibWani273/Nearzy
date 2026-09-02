@@ -1,36 +1,53 @@
 import 'package:flutter/material.dart';
-import '/constants/drawer_data.dart';
 
+import '../constants/drawer_data.dart';
+import '../presentation/common/animations/nearzy_page_route.dart';
+import '../presentation/features/customer/customer_home_page.dart';
+import '../presentation/features/customer/offers/offers_screen.dart';
+import '../presentation/features/customer/saved/saved_items_screen.dart';
+import '../presentation/features/customer/support/help_screen.dart';
 import '../presentation/features/shop/shop_authentication/view/shop_auth_screen.dart';
 
+/// Routes a drawer selection.
+///
+/// Two rules keep this honest:
+///
+///   * The drawer already closes itself before calling this, so nothing here
+///     may pop again — a second pop tears the home page off the stack and
+///     leaves a blank screen behind it.
+///   * Destinations that are also bottom-nav tabs switch the tab instead of
+///     pushing a duplicate screen over it, so the nav bar keeps matching what
+///     is on screen.
 void handleDrawerItemTap({
   required DrawerItemsEnum enumValue,
   required BuildContext context,
   required BuildContext homepageContext,
 }) {
-  Navigator.of(context).pop();
+  // Tab moves are driven through the home shell's scope. Resolved from the
+  // home page's context because the drawer's own context is gone by now.
+  void goToTab(int index) => HomeTabScope.maybeOf(homepageContext)?.goToTab(index);
+
   switch (enumValue) {
     case DrawerItemsEnum.home:
-      break;
-    case DrawerItemsEnum.favourites:
-      break;
-    case DrawerItemsEnum.specialOffers:
-      break;
+      goToTab(HomeTabScope.home);
     case DrawerItemsEnum.categories:
-      break;
-    case DrawerItemsEnum.shop:
-      break;
-    case DrawerItemsEnum.yourOrders:
-      break;
+      goToTab(HomeTabScope.categories);
     case DrawerItemsEnum.cart:
-      break;
-    case DrawerItemsEnum.helpAndSupport:
-      break;
-    case DrawerItemsEnum.registerShop:
-      Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => const ShopAuthScreen()));
-      break;
+      goToTab(HomeTabScope.cart);
+    case DrawerItemsEnum.shop:
+      goToTab(HomeTabScope.explore);
     case DrawerItemsEnum.profile:
-      break;
+    case DrawerItemsEnum.yourOrders:
+      // Orders live on the profile tab.
+      goToTab(HomeTabScope.profile);
+
+    case DrawerItemsEnum.favourites:
+      homepageContext.pushScreen(() => const SavedItemsScreen());
+    case DrawerItemsEnum.specialOffers:
+      homepageContext.pushScreen(() => const OffersScreen());
+    case DrawerItemsEnum.helpAndSupport:
+      homepageContext.pushScreen(() => const HelpScreen());
+    case DrawerItemsEnum.registerShop:
+      homepageContext.pushScreen(() => const ShopAuthScreen());
   }
 }

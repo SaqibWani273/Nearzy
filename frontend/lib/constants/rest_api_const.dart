@@ -37,6 +37,17 @@ class ApiConst {
   static final String affordableProductsUrl =
       '$baseCustomerUrl/affordable-products';
 
+  // ── Customer Catalogue ──────────────────────────────────────────────
+  static final String searchProductsUrl = '$baseCustomerUrl/search-products';
+  static final String discountedProductsUrl =
+      '$baseCustomerUrl/discounted-products';
+
+  static String shopProductsUrl(int shopId) =>
+      '$baseCustomerUrl/shops/$shopId/products';
+
+  static String categoryProductsUrl(int categoryId) =>
+      '$baseCustomerUrl/products-by-category/$categoryId';
+
   // ── Shop Auth ───────────────────────────────────────────────────────
   static final String shopRegistrationUrl = '$baseShopUrl/register';
   static final String shopLoginUrl = '$baseShopUrl/login';
@@ -45,6 +56,7 @@ class ApiConst {
   // ── Shop Profile & Products ─────────────────────────────────────────
   static final String shopProfileUrl = '$baseShopUrl/me';
   static final String uploadProductUrl = '$baseShopUrl/add-product';
+  static final String shopMyProductsUrl = '$baseShopUrl/my-products';
 
   // ── Admin Auth ──────────────────────────────────────────────────────
   static final String adminRegisterUrl = '$baseAdminUrl/register';

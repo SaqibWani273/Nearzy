@@ -1,6 +1,8 @@
 const { NearzyUser, Shop, ShopVerification, Product, ProductImage, ProductColor, LocationInfo, ProductCategory } = require('../models');
 const authService = require('./authService');
+const { toProductDto } = require('../dto/productDto');
 const jwtService = require('./jwtService');
+const { Op } = require('sequelize');
 
 const shopService = {
   async registerShop(shopData) {
@@ -28,7 +30,7 @@ const shopService = {
     const slug = shopData.slug || (shopData.name ? shopData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : `shop-${user.id}`);
 
     const shop = await Shop.create({
-      user_id: user.id,
+      userId: user.id,
       name: shopData.name || 'Unnamed Shop',
       slug,
       shopPicUrl: shopData.shopPicUrl,
@@ -36,19 +38,19 @@ const shopService = {
       address: shopData.address,
       description: shopData.description,
       isActive: shopData.isActive !== undefined ? shopData.isActive : true,
-      location_id: locationId,
+      locationId,
     });
 
     // Create initial ShopVerification record
     await ShopVerification.create({
-      shop_id: shop.id,
-      owner_name: shopData.ownerName || shopData.name || 'Shop Owner',
-      owner_pic_url: shopData.ownerPicUrl || null,
-      pancard_pic_url: shopData.pancardPicUrl || null,
-      owner_id_pic_url: shopData.ownerIdPicUrl || null,
-      business_license: shopData.businessLicense || null,
+      shopId: shop.id,
+      ownerName: shopData.ownerName || shopData.name || 'Shop Owner',
+      ownerPicUrl: shopData.ownerPicUrl || null,
+      pancardPicUrl: shopData.pancardPicUrl || null,
+      ownerIdPicUrl: shopData.ownerIdPicUrl || null,
+      businessLicense: shopData.businessLicense || null,
       status: 'PENDING',
-      submitted_at: new Date(),
+      submittedAt: new Date(),
     });
 
     // Associate categories if provided
@@ -108,6 +110,62 @@ const shopService = {
     return shop;
   },
 
+  /**
+   * GET /shop/my-products
+   *
+   * The shop's own inventory, including items it has marked unavailable —
+   * the owner needs to see and edit those, unlike a customer.
+   *
+   * `userId` comes from the caller's JWT, never the request body, so one shop
+   * cannot enumerate another's stock.
+   */
+  async getMyProducts(userId, { page = 1, limit = 50, q } = {}) {
+    const shop = await Shop.findOne({ where: { user_id: userId }, attributes: ['id'] });
+    if (!shop) return { error: 'No shop profile for this account', status: 404 };
+
+    const parsedLimit = Math.min(Math.max(Number.parseInt(limit, 10) || 50, 1), 200);
+    const parsedPage = Math.max(Number.parseInt(page, 10) || 1, 1);
+
+    const where = { shop_id: shop.id };
+    const term = (q || '').trim();
+    if (term.length >= 2) {
+      where[Op.or] = [
+        { name: { [Op.iLike]: `%${term}%` } },
+        { sku: { [Op.iLike]: `%${term}%` } },
+      ];
+    }
+
+    const { count, rows } = await Product.findAndCountAll({
+      where,
+      include: [
+        {
+          association: 'shop',
+          include: [
+            { association: 'user', attributes: { exclude: ['passwordHash'] } },
+            { association: 'locationInfo' },
+            { association: 'verification' },
+            { association: 'categories' },
+          ],
+        },
+        { association: 'category' },
+        { association: 'images' },
+        { association: 'colors' },
+      ],
+      order: [['id', 'DESC']],
+      limit: parsedLimit,
+      offset: (parsedPage - 1) * parsedLimit,
+      distinct: true,
+    });
+
+    return {
+      total: count,
+      page: parsedPage,
+      limit: parsedLimit,
+      totalPages: Math.ceil(count / parsedLimit),
+      products: rows.map(toProductDto),
+    };
+  },
+
   async addProduct(productData) {
     console.log('adding product', productData);
 
@@ -128,10 +186,10 @@ const shopService = {
         const url = typeof img === 'string' ? img : img.url;
         if (url) {
           await ProductImage.create({
-            product_id: product.id,
+            productId: product.id,
             url,
-            display_order: typeof img === 'object' && img.displayOrder !== undefined ? img.displayOrder : i,
-            is_primary: typeof img === 'object' && img.isPrimary !== undefined ? img.isPrimary : i === 0,
+            displayOrder: typeof img === 'object' && img.displayOrder !== undefined ? img.displayOrder : i,
+            isPrimary: typeof img === 'object' && img.isPrimary !== undefined ? img.isPrimary : i === 0,
           });
         }
       }
@@ -144,9 +202,9 @@ const shopService = {
         const hexCode = typeof col === 'object' ? col.hexCode || col.hex_code : null;
         if (colorName) {
           await ProductColor.create({
-            product_id: product.id,
-            color_name: colorName,
-            hex_code: hexCode,
+            productId: product.id,
+            colorName,
+            hexCode,
           });
         }
       }

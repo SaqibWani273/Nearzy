@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:mca_project/presentation/features/customer/dashboard/view_model/customer_data_bloc.dart';
+
 import '../../../../../data/repositories/customer/customer_data_repository.dart';
-import '../../../../common/widgets/shimmer_loading.dart';
 import '../../../../../theme/app_colors.dart';
 import '../../../../../theme/app_spacing.dart';
 import '../../../../../theme/app_text_styles.dart';
+import '../../../../common/animations/entrance.dart';
+import '../../../../common/animations/nearzy_page_route.dart';
+import '../../../../common/animations/pressable_scale.dart';
+import '../../../../common/widgets/nearzy_network_image.dart';
+import '../../../../common/widgets/shimmer_loading.dart';
+import '../../dashboard/view_model/customer_data_bloc.dart';
 import 'category_screen.dart';
 
 class CategoriesScreen extends StatefulWidget {
@@ -15,143 +20,142 @@ class CategoriesScreen extends StatefulWidget {
   State<CategoriesScreen> createState() => _CategoriesScreenState();
 }
 
-class _CategoriesScreenState extends State<CategoriesScreen> {
+class _CategoriesScreenState extends State<CategoriesScreen>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
   @override
   void initState() {
-    context.read<CustomerDataBloc>().add(CustomerDataFetchCategoriesEvent());
     super.initState();
+    context.read<CustomerDataBloc>().add(CustomerDataFetchCategoriesEvent());
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
+
     return BlocBuilder<CustomerDataBloc, CustomerDataState>(
       builder: (context, state) {
         final categories = context.read<CustomerDataRepository>().categories;
-        if (state is CustomerDataLoadedState &&
-            state.loadedCategories == true) {
-          if (categories == null || categories.isEmpty) {
-            return _EmptyCategoriesState();
-          }
-          return CustomScrollView(
-            slivers: [
-              // ── Header ───────────────────────────────────────────
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Browse Categories',
-                          style: AppTextStyles.heading2),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${categories.length} categories available',
-                        style: AppTextStyles.bodySmall,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              // ── Grid ─────────────────────────────────────────────
-              SliverPadding(
-                padding: const EdgeInsets.all(16),
-                sliver: SliverGrid(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final e = categories[index];
-                      return _CategoryCard(
-                        name: e.name,
-                        imageUrl: e.image,
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => CategoryScreen(category: e),
-                          ),
-                        ),
-                      );
-                    },
-                    childCount: categories.length,
-                  ),
-                  gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 1.0,
-                  ),
-                ),
-              ),
-            ],
+        final loaded =
+            state is CustomerDataLoadedState && state.loadedCategories == true;
+
+        if (!loaded) {
+          return const Padding(
+            padding: EdgeInsets.only(top: 90),
+            child: _CategoriesSkeleton(),
           );
         }
-        return ShimmerLoading.categoryGrid(count: 6);
+
+        if (categories == null || categories.isEmpty) {
+          return const _EmptyCategoriesState();
+        }
+
+        return CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.gutter,
+                  16,
+                  AppSpacing.gutter,
+                  20,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Browse', style: AppTextStyles.heading1)
+                        .animateEntrance(),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${categories.length} categories from local shops',
+                      style: AppTextStyles.bodySmall,
+                    ).animateEntrance(index: 1),
+                  ],
+                ),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.gutter,
+              ),
+              sliver: SliverGrid(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisExtent: 150,
+                  mainAxisSpacing: AppSpacing.gridGap,
+                  crossAxisSpacing: AppSpacing.gridGap,
+                ),
+                delegate: SliverChildBuilderDelegate(
+                  childCount: categories.length,
+                  (context, index) {
+                    final category = categories[index];
+                    return _CategoryCard(
+                      name: category.name,
+                      imageUrl: category.image,
+                      onTap: () => context.pushScreen(
+                        () => CategoryScreen(category: category),
+                      ),
+                    ).animateEntrance(index: index);
+                  },
+                ),
+              ),
+            ),
+            const SliverToBoxAdapter(
+              child: SizedBox(height: AppSpacing.bottomNavInset),
+            ),
+          ],
+        );
       },
     );
   }
 }
 
 class _CategoryCard extends StatelessWidget {
-  final String name;
-  final String imageUrl;
-  final VoidCallback? onTap;
-
   const _CategoryCard({
     required this.name,
     required this.imageUrl,
     this.onTap,
   });
 
+  final String name;
+  final String imageUrl;
+  final VoidCallback? onTap;
+
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return PressableScale(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.card,
-          borderRadius: AppSpacing.borderRadiusMd,
-          boxShadow: AppSpacing.shadowCard,
+          borderRadius: AppSpacing.borderRadiusXl,
+          boxShadow: AppSpacing.shadowSoft,
         ),
         clipBehavior: Clip.antiAlias,
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Image
-            Image.network(
-              imageUrl,
+            NearzyNetworkImage(
+              url: imageUrl,
               fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => Container(
-                color: AppColors.primarySurface,
-                child: const Icon(
-                  Icons.category_outlined,
-                  size: 40,
-                  color: AppColors.primaryLight,
-                ),
-              ),
+              fallbackIcon: Icons.category_outlined,
+              semanticLabel: name,
             ),
-            // Gradient overlay
+            const DecoratedBox(
+              decoration: BoxDecoration(gradient: AppColors.imageScrim),
+            ),
             Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withValues(alpha: 0.7),
-                    ],
-                  ),
-                ),
-                child: Text(
-                  name,
-                  style: AppTextStyles.labelLarge
-                      .copyWith(color: Colors.white, fontSize: 15),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
+              left: 14,
+              right: 14,
+              bottom: 14,
+              child: Text(
+                name,
+                style: AppTextStyles.heading4.copyWith(color: AppColors.paper),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -161,33 +165,48 @@ class _CategoryCard extends StatelessWidget {
   }
 }
 
+class _CategoriesSkeleton extends StatelessWidget {
+  const _CategoriesSkeleton();
+
+  @override
+  Widget build(BuildContext context) => ShimmerLoading.listRows(
+        count: 4,
+        height: 150,
+      );
+}
+
 class _EmptyCategoriesState extends StatelessWidget {
+  const _EmptyCategoriesState();
+
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppColors.primarySurface,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.category_outlined,
-              size: 40,
-              color: AppColors.primaryLight,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text('No Categories Yet', style: AppTextStyles.heading4),
-          const SizedBox(height: 8),
-          Text(
-            'Categories will appear here once added',
-            style: AppTextStyles.bodySmall,
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.gutter),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.line, width: 1.5),
+              ),
+              child: const Icon(Icons.category_outlined,
+                  size: 34, color: AppColors.sage),
+            ).animateEntrance(),
+            const SizedBox(height: 20),
+            Text('No categories yet', style: AppTextStyles.heading3)
+                .animateEntrance(index: 1),
+            const SizedBox(height: 6),
+            Text(
+              'Categories appear once local shops start listing.',
+              style: AppTextStyles.bodySmall,
+              textAlign: TextAlign.center,
+            ).animateEntrance(index: 2),
+          ],
+        ),
       ),
     );
   }

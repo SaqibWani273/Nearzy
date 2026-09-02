@@ -14,7 +14,7 @@ class SectionHeader extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.onSeeAll,
-    this.padding = const EdgeInsets.fromLTRB(16, 24, 16, 12),
+    this.padding = const EdgeInsets.fromLTRB(20, 28, 20, 12),
   });
 
   @override
@@ -47,14 +47,14 @@ class SectionHeader extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'See All',
+                    'See all',
                     style: AppTextStyles.link.copyWith(fontSize: 13),
                   ),
-                  const SizedBox(width: 2),
+                  const SizedBox(width: 3),
                   const Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    size: 12,
-                    color: AppColors.accent,
+                    Icons.arrow_forward_rounded,
+                    size: 14,
+                    color: AppColors.sageDeep,
                   ),
                 ],
               ),
