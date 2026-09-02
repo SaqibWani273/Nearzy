@@ -7,7 +7,8 @@ import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 import '/constants/rest_api_const.dart';
 import '/data/models/cart.dart';
-import '/utils/secure_storage.dart';
+import 'api_client.dart';
+import 'session_manager.dart';
 
 /// One line of an order. Carries no price on purpose — the backend prices the
 /// order from its own product table so the client cannot dictate what it pays.
@@ -35,16 +36,20 @@ class OrderItem {
 class PaymentData {
   final String buyerName;
   final String email;
-  final String shippingAddress;
-  final String billingAddress;
+
+  /// Id of one of the customer's saved addresses. The backend verifies it
+  /// belongs to the caller and stores it on the order — checkout used to send
+  /// a free-text string that only ever reached Razorpay's notes, leaving
+  /// nothing to deliver against.
+  final int addressId;
+
   final String phoneNumber;
   final List<OrderItem> orderItems;
 
   PaymentData({
     required this.buyerName,
     required this.email,
-    required this.shippingAddress,
-    required this.billingAddress,
+    required this.addressId,
     required this.phoneNumber,
     required this.orderItems,
   });
@@ -85,15 +90,14 @@ class RazorpayService {
   /// collect the payment, then have the backend verify the signature. An order
   /// only counts as paid once that last step succeeds.
   static Future<PaymentResult> makePayment(PaymentData paymentData) async {
-    final String? token = await SecureStorage.getToken();
-    if (token == null || token.isEmpty) {
+    if (!await SessionManager.instance.hasSession()) {
       return const PaymentResult(
           PaymentStatus.failed, 'Please sign in again to place this order.');
     }
 
     final _CheckoutOrder order;
     try {
-      order = await _createOrder(token, paymentData);
+      order = await _createOrder(paymentData);
     } on _CheckoutException catch (e) {
       return PaymentResult(PaymentStatus.failed, e.message);
     }
@@ -107,7 +111,7 @@ class RazorpayService {
 
     razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS,
         (PaymentSuccessResponse response) async {
-      complete(await _verifyPayment(token, order, response));
+      complete(await _verifyPayment(order, response));
     });
 
     razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, (PaymentFailureResponse response) {
@@ -144,24 +148,17 @@ class RazorpayService {
     return completer.future.whenComplete(razorpay.clear);
   }
 
-  static Future<_CheckoutOrder> _createOrder(
-    String token,
-    PaymentData paymentData,
-  ) async {
+  static Future<_CheckoutOrder> _createOrder(PaymentData paymentData) async {
     late final http.Response response;
     try {
-      response = await http.post(
+      response = await NearzyHttp.postJson(
         Uri.parse(ApiConst.createPaymentOrderUrl),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
+        auth: true,
+        json: {
           'orderItems': paymentData.orderItems.map((e) => e.toMap()).toList(),
-          'shippingAddress': paymentData.shippingAddress,
-          'billingAddress': paymentData.billingAddress,
+          'addressId': paymentData.addressId,
           'phoneNumber': paymentData.phoneNumber,
-        }),
+        },
       );
     } catch (e) {
       log('Could not reach the order endpoint: $e');
@@ -182,23 +179,25 @@ class RazorpayService {
     }
   }
 
+  /// Confirms the payment with the backend.
+  ///
+  /// The token is resolved here rather than captured at the start of checkout:
+  /// a shopper can sit on the Razorpay sheet for several minutes, which is
+  /// long enough for an access token to lapse — and this is the call that
+  /// actually marks the order paid, so it is the worst possible one to lose.
   static Future<PaymentResult> _verifyPayment(
-    String token,
     _CheckoutOrder order,
     PaymentSuccessResponse response,
   ) async {
     try {
-      final verification = await http.post(
+      final verification = await NearzyHttp.postJson(
         Uri.parse(ApiConst.verifyPaymentUrl),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
+        auth: true,
+        json: {
           'razorpayOrderId': response.orderId,
           'razorpayPaymentId': response.paymentId,
           'razorpaySignature': response.signature,
-        }),
+        },
       );
 
       if (verification.statusCode == 200) {

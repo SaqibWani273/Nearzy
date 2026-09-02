@@ -2,9 +2,11 @@ const express = require('express');
 const router = express.Router();
 const commonService = require('../services/commonService');
 const jwtService = require('../services/jwtService');
+const refreshTokenService = require('../services/refreshTokenService');
 const { NearzyUser, Customer, Shop } = require('../models');
 const authorize = require('../middleware/authorize');
-const { toCustomerDto } = require('../dto/productDto');
+const { toCustomerDto, toShopDto } = require('../dto/productDto');
+const { callerIdentity } = require('../utils/identity');
 
 /**
  * @swagger
@@ -38,10 +40,14 @@ router.get('/test', (req, res) => {
  */
 router.post('/me', authorize('CUSTOMER', 'SHOP', 'SHOP_OWNER'), async (req, res, next) => {
   try {
-    const token = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
-    const email = jwtService.extractEmail(token);
-    const claims = jwtService.extractClaims(token);
-    const role = claims.role;
+    // Identity comes from the verified Authorization header. It used to be
+    // parsed out of a token posted in the body, which meant a client that had
+    // just refreshed its access token got a 500 on `claims.role` unless it
+    // remembered to update the body too.
+    const { email, role } = callerIdentity(req);
+    if (!email) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
 
     const user = await NearzyUser.findOne({ where: { email } });
     if (!user) {
@@ -73,10 +79,113 @@ router.post('/me', authorize('CUSTOMER', 'SHOP', 'SHOP_OWNER'), async (req, res,
           { association: 'categories' },
         ],
       });
-      responseBody.model = shop;
+      if (!shop) {
+        return res.status(400).json('No shop profile for this account');
+      }
+      // The client parses this with ShopModel1, whose generated casts are
+      // non-nullable and keyed to the DTO shape. A raw Sequelize row carries
+      // `user.passwordHash` (never `password`), category objects instead of
+      // names, `longitude` instead of the client's misspelled `longtitude`,
+      // and leaves the verification fields nested — so the very first cast
+      // threw and every shop sign-in failed. It also leaked the hash.
+      responseBody.model = toShopDto(shop);
     }
 
     res.json(responseBody);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * @swagger
+ * /user/refresh:
+ *   post:
+ *     tags: [Common]
+ *     summary: Exchange a refresh token for a new access token
+ *     description: >
+ *       Refresh tokens are single-use. Each call rotates the token, so the
+ *       response's refreshToken must replace the one that was sent. Replaying
+ *       a spent token revokes the entire chain and answers 401
+ *       REFRESH_TOKEN_REUSED.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               refreshToken: { type: string }
+ *     responses:
+ *       200: { description: New access and refresh token issued }
+ *       401: { description: Refresh token invalid, expired, or already used }
+ */
+router.post('/refresh', async (req, res, next) => {
+  try {
+    // Accepts a JSON body, a bare string body, or the header — the app posts
+    // JSON, but express.text() is mounted and curl users reach for both.
+    const presented =
+      (req.body && typeof req.body === 'object' ? req.body.refreshToken : null) ||
+      (typeof req.body === 'string' ? req.body.trim() : null) ||
+      req.headers['x-refresh-token'];
+
+    const result = await refreshTokenService.rotate(presented, {
+      deviceLabel: req.headers['user-agent'],
+    });
+
+    if (result.error) {
+      return res.status(result.status || 401).json({
+        message: result.error,
+        code: result.code,
+      });
+    }
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * @swagger
+ * /user/logout:
+ *   post:
+ *     tags: [Common]
+ *     summary: Revoke a refresh token
+ *     description: >
+ *       Ends the session the refresh token belongs to. Pass allDevices to end
+ *       every session for the signed-in account instead.
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               refreshToken: { type: string }
+ *               allDevices: { type: boolean }
+ *     responses:
+ *       200: { description: Session revoked }
+ */
+router.post('/logout', async (req, res, next) => {
+  try {
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const presented =
+      body.refreshToken ||
+      (typeof req.body === 'string' ? req.body.trim() : null) ||
+      req.headers['x-refresh-token'];
+
+    // Signing out everywhere needs a *valid* access token to say whose
+    // sessions to end; a single-device sign-out only needs the token itself,
+    // which is what lets an app with an expired access token still sign out.
+    if (body.allDevices === true) {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+      const revoked = await refreshTokenService.revokeAllForUser(req.user.id);
+      return res.json({ message: 'Signed out on all devices', revoked });
+    }
+
+    const revoked = await refreshTokenService.revoke(presented);
+    res.json({ message: 'Signed out', revoked });
   } catch (err) {
     next(err);
   }

@@ -24,6 +24,21 @@ class ApiConst {
   // ── Customer Cart ───────────────────────────────────────────────────
   static final String updateCartUrl = '$baseCustomerUrl/update-cart-items';
 
+  // ── Customer Orders ─────────────────────────────────────────────────
+  static final String customerOrdersUrl = '$baseCustomerUrl/orders';
+
+  static String customerOrderUrl(int orderId) =>
+      '$baseCustomerUrl/orders/$orderId';
+
+  // ── Customer Addresses ──────────────────────────────────────────────
+  static final String customerAddressesUrl = '$baseCustomerUrl/addresses';
+
+  static String customerAddressUrl(int addressId) =>
+      '$baseCustomerUrl/addresses/$addressId';
+
+  static String customerAddressDefaultUrl(int addressId) =>
+      '$baseCustomerUrl/addresses/$addressId/default';
+
   // ── Customer Payments (Razorpay) ────────────────────────────────────
   static final String paymentConfigUrl = '$baseCustomerUrl/payment/config';
   static final String createPaymentOrderUrl =
@@ -54,6 +69,12 @@ class ApiConst {
   static final String shopLoginUrl = '$baseShopUrl/login';
   static final String shopVerifyEmailUrl = '$baseShopUrl/verify-email';
 
+  // ── Shop Orders ─────────────────────────────────────────────────────
+  static final String shopOrdersUrl = '$baseShopUrl/orders';
+
+  static String shopOrderStatusUrl(int orderId) =>
+      '$baseShopUrl/orders/$orderId/status';
+
   // ── Shop Profile & Products ─────────────────────────────────────────
   static final String shopProfileUrl = '$baseShopUrl/me';
   static final String uploadProductUrl = '$baseShopUrl/add-product';
@@ -67,6 +88,12 @@ class ApiConst {
 
   // ── Admin Actions ───────────────────────────────────────────────────
   static final String adminAddCategoryUrl = '$baseAdminUrl/add-category';
+
+  // ── Session ─────────────────────────────────────────────────────────
+  /// Exchanges a refresh token for a new access token. The refresh token is
+  /// single-use: the response carries its replacement.
+  static final String refreshTokenUrl = '$baseUserUrl/refresh';
+  static final String logoutUrl = '$baseUserUrl/logout';
 
   // ── Common ──────────────────────────────────────────────────────────
   static final String loadAllCategoriesUrl = '$baseUserUrl/get-all-categories';

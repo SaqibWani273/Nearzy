@@ -20,7 +20,7 @@ app.use(cors({
     // Allow all origins (matching the Java allowedOriginPatterns("*") + allowCredentials)
     callback(null, true);
   },
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   allowedHeaders: ['*'],
   credentials: true,
 }));

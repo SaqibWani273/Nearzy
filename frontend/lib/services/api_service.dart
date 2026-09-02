@@ -11,48 +11,62 @@ import '/utils/exceptions/custom_exception.dart';
 
 import '../constants/bottom_navbar_items.dart';
 import '../data/models/category/category_data.dart';
+import '../data/models/address.dart';
 import '../data/models/customer.dart';
 import '../data/models/product.dart';
-import '../utils/secure_storage.dart';
 import 'package:http/http.dart' as http;
 
-class ApiService {
-  /// Base headers included on every request.
-  /// The ngrok header bypasses the free-tier browser warning interstitial.
-  static Map<String, String> _h([Map<String, String>? extra]) {
-    final headers = <String, String>{
-      'ngrok-skip-browser-warning': 'true',
-    };
-    if (extra != null) headers.addAll(extra);
-    return headers;
-  }
+import '../data/models/auth_session.dart';
+import 'api_client.dart';
+import 'session_manager.dart';
 
+class ApiService {
+  /// JSON headers for calls that need no identity. Authenticated calls pass
+  /// `auth: true` to [NearzyHttp] instead of building an Authorization header
+  /// here — that is what keeps a refreshed token from being missed.
+  static const Map<String, String> _json = {'Content-Type': 'application/json'};
+
+  /// The profile of whichever account is currently active.
+  ///
+  /// Re-read after every account switch, which is what repoints the app shell
+  /// at the right home screen.
   static Future<UserModel?> getUserModel() async {
     try {
-      final token = await SecureStorage.getToken();
-      if (token == null || token.isEmpty) {
+      if (!await SessionManager.instance.hasSession()) {
         return null;
       }
 
-      final response = await http.post(
+      final response = await NearzyHttp.postJson(
         Uri.parse(ApiConst.userProfileUrl),
-        headers: _h({"Authorization": "Bearer $token"}),
-        body: token,
+        auth: true,
+        json: const {},
       );
 
       if (response.statusCode == 200) {
         if (response.body.isNotEmpty) {
           final decodedResponse = jsonDecode(response.body);
-          if (decodedResponse['role'] == Roles.ROLE_CUSTOMER.name) {
-            return Customer.fromMap(decodedResponse['model']);
-          } else if (decodedResponse['role'] == Roles.ROLE_SHOP.name) {
-            return ShopModel1.fromJson(decodedResponse['model']);
+          final model = decodedResponse['model'];
+          if (model is! Map<String, dynamic>) {
+            log("Profile response carried no model --> ${response.body}");
+            return null;
+          }
+          final role = rolesFromWire(decodedResponse['role'] as String?);
+          if (role == Roles.ROLE_CUSTOMER) {
+            return Customer.fromMap(model);
+          } else if (role == Roles.ROLE_SHOP) {
+            // Tolerant parser, not ShopModel1.fromJson: its generated casts
+            // are non-nullable, so a server still answering with a raw ORM
+            // row (no `user.password`, category objects, `longitude`) threw
+            // on the first cast and dropped the shop straight back to login.
+            return ShopApiParser.parse(model);
           }
         }
         log("Server did not return any data--> ${response.body}");
         return null;
       } else if (response.statusCode == 401) {
-        await SecureStorage.deleteToken();
+        // The retry inside NearzyHttp already tried a refresh, so a 401 here
+        // means the session is genuinely over.
+        await SessionManager.instance.signOutActive();
         return null;
       } else {
         log("${response.statusCode} -> ${response.body}");
@@ -66,9 +80,9 @@ class ApiService {
 
   static Future<void> registerShop(ShopModel1 shopModel) async {
     try {
-      final response = await http.post(Uri.parse(ApiConst.shopRegistrationUrl),
-          headers: _h({"Content-Type": "application/json"}),
-          body: jsonEncode(shopModel.toJson()));
+      final response = await NearzyHttp.postJson(
+          Uri.parse(ApiConst.shopRegistrationUrl),
+          json: shopModel.toJson());
       if (response.statusCode == 200) {
         log(response.body);
       } else {
@@ -86,13 +100,19 @@ class ApiService {
 
   static Future<void> loginShop(String email, String password) async {
     try {
-      final response = await http.post(
+      final response = await NearzyHttp.postJson(
         Uri.parse(ApiConst.shopLoginUrl),
-        headers: _h({"Content-Type": "application/json"}),
-        body: jsonEncode({'email': email, 'password': password}),
+        json: {'email': email, 'password': password},
       );
       if (response.statusCode == 200) {
-        await SecureStorage.storeToken(response.body);
+        // Recorded as an account rather than a lone token, so signing in as a
+        // shop from the customer app adds a second identity instead of
+        // replacing the first.
+        await SessionManager.instance.signIn(
+          responseBody: response.body,
+          fallbackRole: Roles.ROLE_SHOP,
+          email: email,
+        );
       } else if (response.statusCode == 400) {
         throw CustomException(
             errorType: ErrorType.unknown, message: response.body);
@@ -108,7 +128,7 @@ class ApiService {
 
   static Future<void> logoutShop() async {
     try {
-      await SecureStorage.deleteToken();
+      await SessionManager.instance.signOutActive();
     } catch (e) {
       rethrow;
     }
@@ -116,9 +136,9 @@ class ApiService {
 
   static Future<List<dynamic>?> loadAllCategories(Roles role) async {
     try {
-      final response = await http.get(
+      final response = await NearzyHttp.get(
         Uri.parse(ApiConst.loadAllCategoriesUrl),
-        headers: _h({"Content-Type": "application/json"}),
+        headers: _json,
       );
       if (response.statusCode == 200) {
         if (role == Roles.ROLE_CUSTOMER) {
@@ -145,13 +165,10 @@ class ApiService {
 
   static Future<void> uploadProduct(Product product) async {
     try {
-      final String? token = await SecureStorage.getToken();
-      final response = await http.post(Uri.parse(ApiConst.uploadProductUrl),
-          headers: _h({
-            "Content-Type": "application/json",
-            "Authorization": "Bearer $token"
-          }),
-          body: jsonEncode(product.toJson()));
+      final response = await NearzyHttp.postJson(
+          Uri.parse(ApiConst.uploadProductUrl),
+          auth: true,
+          json: product.toJson());
       if (response.statusCode != 200) {
         final String errorMessage =
             jsonDecode(response.body)["message"].toString();
@@ -168,10 +185,10 @@ class ApiService {
   static Future<List<Product>> fetchProducts(
       LocationInfo? locationInfo, int currentPageKey) async {
     try {
-      final response = await http.get(
+      final response = await NearzyHttp.get(
         Uri.parse(
             "${ApiConst.fetchAllProductsUrl}?page=$currentPageKey&pageSize=${ApiConst.pageSize}"),
-        headers: _h({"Content-Type": "application/json"}),
+        headers: _json,
       );
       if (response.statusCode == 200) {
         final products = <Product>[];
@@ -200,9 +217,8 @@ class ApiService {
 
   static Future<bool?> emailExists(String email) async {
     try {
-      final response = await http.post(Uri.parse(ApiConst.emailExistsUrl),
-          headers: _h({"Content-Type": "application/json"}),
-          body: jsonEncode({'email': email}));
+      final response = await NearzyHttp.postJson(
+          Uri.parse(ApiConst.emailExistsUrl), json: {'email': email});
       if (response.statusCode == 200) {
         return bool.fromEnvironment(response.body);
       }
@@ -214,9 +230,8 @@ class ApiService {
 
   static Future<bool?> usernameExists(String username) async {
     try {
-      final response = await http.post(Uri.parse(ApiConst.usernameExistsUrl),
-          headers: _h({"Content-Type": "application/json"}),
-          body: jsonEncode({'username': username}));
+      final response = await NearzyHttp.postJson(
+          Uri.parse(ApiConst.usernameExistsUrl), json: {'username': username});
       if (response.statusCode == 200) {
         return bool.fromEnvironment(response.body);
       }
@@ -246,14 +261,211 @@ class ApiService {
         authorized: true,
       );
 
-  static Future<List<Order>> fetchMyOrders(int id, Roles role) async {
-    List<Order> orders = [];
-    return orders;
+  // ── Orders ────────────────────────────────────────────────────────────
+
+  /// Fails fast when nobody is signed in.
+  ///
+  /// Order and address endpoints are all authenticated, and a silent empty
+  /// list would be indistinguishable from "you have no orders" — which is
+  /// exactly how the old stub hid the fact that no endpoint existed. The
+  /// token itself is attached by [NearzyHttp], which also renews it.
+  static Future<void> _requireSession() async {
+    if (!await SessionManager.instance.hasSession()) {
+      throw CustomException(
+        errorType: ErrorType.unknown,
+        message: 'Please sign in again.',
+      );
+    }
   }
 
-  static Future<void> updateOrderStatus(
-      {required String orderId, required String status}) async {
-    // Graceful handling
+  /// Surfaces the backend's own `message` when it sends one.
+  static Never _throwFor(http.Response response, String fallback) {
+    String message = fallback;
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map && decoded['message'] is String) {
+        message = decoded['message'] as String;
+      }
+    } catch (_) {
+      // Body was not JSON — keep the fallback.
+    }
+    throw CustomException(
+      errorType: response.statusCode >= 500
+          ? ErrorType.internetConnection
+          : ErrorType.unknown,
+      message: message,
+    );
+  }
+
+  /// The signed-in customer's order history, newest first.
+  static Future<List<Order>> fetchCustomerOrders({
+    int page = 1,
+    int limit = 20,
+    String? status,
+  }) async {
+    final uri = Uri.parse(ApiConst.customerOrdersUrl).replace(
+      queryParameters: {
+        'page': '$page',
+        'limit': '$limit',
+        if (status != null && status.isNotEmpty) 'status': status,
+      },
+    );
+    await _requireSession();
+    final response = await NearzyHttp.get(uri, auth: true, headers: _json);
+    if (response.statusCode != 200) {
+      _throwFor(response, 'Could not load your orders.');
+    }
+    return _unwrap(jsonDecode(response.body), 'orders')
+        .whereType<Map<String, dynamic>>()
+        .map(Order.fromJson)
+        .toList();
+  }
+
+  /// One order in full. Used by the detail screen so it always shows current
+  /// status rather than whatever the list was holding.
+  static Future<Order> fetchCustomerOrder(int orderId) async {
+    await _requireSession();
+    final response = await NearzyHttp.get(
+      Uri.parse(ApiConst.customerOrderUrl(orderId)),
+      auth: true,
+      headers: _json,
+    );
+    if (response.statusCode != 200) {
+      _throwFor(response, 'Could not load that order.');
+    }
+    return Order.fromJson(
+        Map<String, dynamic>.from(jsonDecode(response.body) as Map));
+  }
+
+  /// Orders containing this shop's items. The server resolves the shop from
+  /// the bearer token and narrows each order to that shop's own lines.
+  static Future<List<Order>> fetchShopOrders({
+    int page = 1,
+    int limit = 20,
+    String? status,
+  }) async {
+    final uri = Uri.parse(ApiConst.shopOrdersUrl).replace(
+      queryParameters: {
+        'page': '$page',
+        'limit': '$limit',
+        if (status != null && status.isNotEmpty) 'status': status,
+      },
+    );
+    await _requireSession();
+    final response = await NearzyHttp.get(uri, auth: true, headers: _json);
+    if (response.statusCode != 200) {
+      _throwFor(response, 'Could not load your orders.');
+    }
+    return _unwrap(jsonDecode(response.body), 'orders')
+        .whereType<Map<String, dynamic>>()
+        .map(Order.fromJson)
+        .toList();
+  }
+
+  /// Advances one order. The backend accepts only the immediate next step
+  /// (or a cancellation) and answers 400 otherwise, so its message is worth
+  /// surfacing rather than swallowing.
+  static Future<Order> updateOrderStatus({
+    required int orderId,
+    required OrderStatus status,
+  }) async {
+    await _requireSession();
+    final response = await NearzyHttp.patch(
+      Uri.parse(ApiConst.shopOrderStatusUrl(orderId)),
+      auth: true,
+      headers: _json,
+      body: jsonEncode({'status': status.wire}),
+    );
+    if (response.statusCode != 200) {
+      _throwFor(response, 'Could not update that order.');
+    }
+    return Order.fromJson(
+        Map<String, dynamic>.from(jsonDecode(response.body) as Map));
+  }
+
+  // ── Delivery addresses ────────────────────────────────────────────────
+
+  static Future<List<Address>> fetchAddresses() async {
+    await _requireSession();
+    final response = await NearzyHttp.get(
+      Uri.parse(ApiConst.customerAddressesUrl),
+      auth: true,
+      headers: _json,
+    );
+    if (response.statusCode != 200) {
+      _throwFor(response, 'Could not load your addresses.');
+    }
+    return _unwrap(jsonDecode(response.body), 'addresses')
+        .whereType<Map<String, dynamic>>()
+        .map(Address.fromJson)
+        .toList();
+  }
+
+  static Future<Address> createAddress(Address address,
+      {bool? asDefault}) async {
+    await _requireSession();
+    final response = await NearzyHttp.post(
+      Uri.parse(ApiConst.customerAddressesUrl),
+      auth: true,
+      headers: _json,
+      body: jsonEncode(address.toRequestBody(asDefault: asDefault)),
+    );
+    if (response.statusCode != 200) {
+      _throwFor(response, 'Could not save that address.');
+    }
+    return Address.fromJson(
+        Map<String, dynamic>.from(jsonDecode(response.body) as Map));
+  }
+
+  static Future<Address> updateAddress(Address address,
+      {bool? asDefault}) async {
+    final id = address.id;
+    if (id == null) {
+      throw CustomException(
+        errorType: ErrorType.unknown,
+        message: 'That address has not been saved yet.',
+      );
+    }
+    await _requireSession();
+    final response = await NearzyHttp.put(
+      Uri.parse(ApiConst.customerAddressUrl(id)),
+      auth: true,
+      headers: _json,
+      body: jsonEncode(address.toRequestBody(asDefault: asDefault)),
+    );
+    if (response.statusCode != 200) {
+      _throwFor(response, 'Could not update that address.');
+    }
+    return Address.fromJson(
+        Map<String, dynamic>.from(jsonDecode(response.body) as Map));
+  }
+
+  static Future<Address> setDefaultAddress(int addressId) async {
+    await _requireSession();
+    final response = await NearzyHttp.patch(
+      Uri.parse(ApiConst.customerAddressDefaultUrl(addressId)),
+      auth: true,
+      headers: _json,
+    );
+    if (response.statusCode != 200) {
+      _throwFor(response, 'Could not change your default address.');
+    }
+    return Address.fromJson(
+        Map<String, dynamic>.from(jsonDecode(response.body) as Map));
+  }
+
+  /// The backend answers 409 for an address referenced by a past order, so
+  /// order history never ends up pointing at a deleted row.
+  static Future<void> deleteAddress(int addressId) async {
+    await _requireSession();
+    final response = await NearzyHttp.delete(
+      Uri.parse(ApiConst.customerAddressUrl(addressId)),
+      auth: true,
+      headers: _json,
+    );
+    if (response.statusCode != 200) {
+      _throwFor(response, 'Could not remove that address.');
+    }
   }
 
   /// Builds the location query the discovery endpoints expect.
@@ -297,10 +509,10 @@ class ApiService {
         'page': '$page',
         'limit': '$limit',
       };
-      final response = await http.get(
+      final response = await NearzyHttp.get(
         Uri.parse(ApiConst.shopsNearLocationUrl)
             .replace(queryParameters: query),
-        headers: _h({"Content-Type": "application/json"}),
+        headers: _json,
       );
 
       if (response.statusCode != 200) {
@@ -330,10 +542,10 @@ class ApiService {
   static Future<List<Product>> fetchLocationSpecialities(
       LocationInfo? location) async {
     try {
-      final response = await http.get(
+      final response = await NearzyHttp.get(
         Uri.parse(ApiConst.locationSpecialitiesUrl)
             .replace(queryParameters: _locationQuery(location)),
-        headers: _h({"Content-Type": "application/json"}),
+        headers: _json,
       );
       if (response.statusCode != 200) {
         log("fetchLocationSpecialities -> ${response.statusCode}");
@@ -352,10 +564,10 @@ class ApiService {
   static Future<List<Product>> fetchAffordableProducts(
       LocationInfo? location) async {
     try {
-      final response = await http.get(
+      final response = await NearzyHttp.get(
         Uri.parse(ApiConst.affordableProductsUrl)
             .replace(queryParameters: _locationQuery(location)),
-        headers: _h({"Content-Type": "application/json"}),
+        headers: _json,
       );
       if (response.statusCode != 200) {
         log("fetchAffordableProducts -> ${response.statusCode}");
@@ -379,13 +591,8 @@ class ApiService {
     bool authorized = false,
   }) async {
     try {
-      final headers = _h({"Content-Type": "application/json"});
-      if (authorized) {
-        final token = await SecureStorage.getToken();
-        if (token != null) headers["Authorization"] = "Bearer $token";
-      }
-
-      final response = await http.get(uri, headers: headers);
+      final response =
+          await NearzyHttp.get(uri, auth: authorized, headers: _json);
       if (response.statusCode != 200) {
         log("$label -> ${response.statusCode} ${response.body}");
         return [];
@@ -473,13 +680,16 @@ class ApiService {
 
   // ── Admin APIs ────────────────────────────────────────────────────────
   static Future<void> adminLogin(String email, String password) async {
-    final response = await http.post(
+    final response = await NearzyHttp.postJson(
       Uri.parse(ApiConst.adminLoginUrl),
-      headers: _h({"Content-Type": "application/json"}),
-      body: jsonEncode({'email': email, 'password': password}),
+      json: {'email': email, 'password': password},
     );
     if (response.statusCode == 200) {
-      await SecureStorage.storeToken(response.body);
+      await SessionManager.instance.signIn(
+        responseBody: response.body,
+        fallbackRole: Roles.ROLE_ADMIN,
+        email: email,
+      );
     } else {
       throw CustomException(
           errorType: ErrorType.unknown, message: 'Invalid admin credentials');
@@ -492,19 +702,15 @@ class ApiService {
     required String image,
     required bool isTopProductCategory,
   }) async {
-    final token = await SecureStorage.getToken();
-    final response = await http.post(
+    final response = await NearzyHttp.postJson(
       Uri.parse(ApiConst.adminAddCategoryUrl),
-      headers: _h({
-        "Content-Type": "application/json",
-        "Authorization": "Bearer $token",
-      }),
-      body: jsonEncode({
+      auth: true,
+      json: {
         'name': name,
         'description': description,
         'image': image,
         'isTopProductCategory': isTopProductCategory,
-      }),
+      },
     );
     if (response.statusCode != 200) {
       throw CustomException(

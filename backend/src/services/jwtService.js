@@ -20,6 +20,22 @@ const jwtService = {
   },
 
   /**
+   * Access-token lifetime in seconds.
+   *
+   * JWT_EXPIRATION_MINUTES wins when set, so the refresh path can be exercised
+   * end to end (set it to 1 and every call after a minute takes the refresh
+   * branch) without dropping the hour-granularity setting deployments use.
+   * @returns {number}
+   */
+  getAccessTokenTtlSeconds() {
+    const minutes = parseInt(process.env.JWT_EXPIRATION_MINUTES || '0', 10);
+    if (Number.isFinite(minutes) && minutes > 0) {
+      return minutes * 60;
+    }
+    return this._getExpirationHours() * 60 * 60;
+  },
+
+  /**
    * Generate a JWT token for the given user.
    * @param {{ email: string, role?: string, roles?: string }} user
    * @returns {string} Signed JWT token.
@@ -32,8 +48,24 @@ const jwtService = {
       sub: user.email,
     };
     return jwt.sign(payload, this._getSecretKey(), {
-      expiresIn: `${this._getExpirationHours()}h`,
+      expiresIn: this.getAccessTokenTtlSeconds(),
     });
+  },
+
+  /**
+   * Verify a token, distinguishing "expired" from "malformed".
+   *
+   * The client refreshes on expiry but must sign out on a forged token, and
+   * `verifyToken` collapses both into null — so the middleware uses this.
+   * @param {string} token
+   * @returns {{ claims: object|null, expired: boolean }}
+   */
+  inspectToken(token) {
+    try {
+      return { claims: jwt.verify(token, this._getSecretKey()), expired: false };
+    } catch (err) {
+      return { claims: null, expired: err.name === 'TokenExpiredError' };
+    }
   },
 
   /**

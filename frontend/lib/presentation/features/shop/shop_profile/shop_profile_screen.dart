@@ -4,7 +4,7 @@ import 'package:mca_project/data/models/shop_model/shop_model1.dart';
 import 'package:mca_project/presentation/features/shop/shop_authentication/view_model/shop_auth_bloc.dart';
 
 import '../../../../data/repositories/shop/shop_data_repository.dart';
-import '../shop_authentication/view/shop_auth_screen.dart';
+import '../../../common/widgets/account_switcher_sheet.dart';
 
 import 'package:flutter/material.dart';
 
@@ -13,41 +13,38 @@ class ShopProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    ShopModel1 shop;
+    ShopModel1? shop;
     return Scaffold(
+      // Sign-out and switching both change which account the whole app is
+      // showing, so the shell handles the transition — this screen only opens
+      // the switcher.
       body: SafeArea(
-        child: BlocConsumer<ShopAuthBloc, ShopAuthState>(
-          listener: (context, state) {
-            if (state is ShopAuthLoggedOutState) {
-              Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (_) => const ShopAuthScreen()),
-                  (route) => false);
-            }
-          },
+        child: BlocBuilder<ShopAuthBloc, ShopAuthState>(
           builder: (context, state) {
-            shop = context.read<ShopDataRepository>().shopModel!;
+            shop = context.read<ShopDataRepository>().shopModel;
+            if (shop == null) return const SizedBox.shrink();
             return SingleChildScrollView(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: <Widget>[
                     ShopHeader(
-                      shopPicUrl: shop.shopPicUrl,
-                      ownerPicUrl: shop.ownerPicUrl,
-                      ownerName: shop.ownerName,
-                      shopName: shop.user.username,
+                      shopPicUrl: shop!.shopPicUrl,
+                      ownerPicUrl: shop!.ownerPicUrl,
+                      ownerName: shop!.ownerName,
+                      shopName: shop!.user.username,
                     ),
                     SizedBox(height: 16.0),
-                    ShopDescription(description: shop.description),
+                    ShopDescription(description: shop!.description),
                     SizedBox(height: 16.0),
                     ShopDetails(
-                      categories: shop.categories,
-                      address: shop.address,
-                      phoneNumber: shop.phoneNumber,
-                      email: shop.user.email,
-                      businessLicense: shop.businessLicense,
-                      pancardPicUrl: shop.pancardPicUrl,
-                      ownerIdPicUrl: shop.ownerIdPicUrl,
+                      categories: shop!.categories,
+                      address: shop!.address,
+                      phoneNumber: shop!.phoneNumber,
+                      email: shop!.user.email,
+                      businessLicense: shop!.businessLicense,
+                      pancardPicUrl: shop!.pancardPicUrl,
+                      ownerIdPicUrl: shop!.ownerIdPicUrl,
                     ),
                   ],
                 ),
@@ -115,12 +112,11 @@ class ShopHeader extends StatelessWidget {
                   ),
                   Expanded(
                     child: InkWell(
-                      onTap: () => context
-                          .read<ShopAuthBloc>()
-                          .add(ShopAuthLogoutEvent()),
+                      // Opens the account switcher rather than signing out
+                      // outright: hopping to a shopper account or another shop
+                      // is the common case, and signing out lives in there too.
+                      onTap: () => AccountSwitcherSheet.show(context),
                       child: Container(
-                        // height: 50,
-                        // width: 50,
                         decoration: BoxDecoration(
                             color: Colors.grey.shade200,
                             borderRadius: BorderRadius.circular(15.0),
@@ -128,11 +124,11 @@ class ShopHeader extends StatelessWidget {
                                 color: Colors.grey.shade300, width: 2)),
                         child: Column(
                           children: [
-                            Text("Logout"),
+                            Text("Switch account"),
                             SizedBox(
                               height: 20,
                             ),
-                            Icon(Icons.logout)
+                            Icon(Icons.swap_horiz_rounded)
                           ],
                         ),
                       ),

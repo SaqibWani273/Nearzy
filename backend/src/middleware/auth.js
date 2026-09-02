@@ -2,34 +2,45 @@ const jwtService = require('../services/jwtService');
 const { NearzyUser } = require('../models');
 
 /**
- * JWT Authentication middleware.
- * Extracts Bearer token, verifies it, and attaches user info to req.user.
- * If no token or invalid token, request proceeds without authentication
- * (authorization is handled at route level).
+ * JWT authentication.
+ *
+ * Never rejects on its own — plenty of routes here are public and are happy to
+ * serve an unauthenticated caller — but it records *why* authentication failed
+ * in `req.authError` so `authorize` can answer 401 with a code the client can
+ * act on. Without that, an expired token and a missing one looked identical
+ * and the app had no way to know a refresh would fix it.
  */
 const authenticate = async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    // Allow request to proceed — authorization checked at route level
     return next();
   }
 
-  const token = authHeader.substring(7);
+  const token = authHeader.substring(7).trim();
+  if (!token) {
+    req.authError = 'TOKEN_INVALID';
+    return next();
+  }
 
   try {
-    const claims = jwtService.extractClaims(token);
+    const { claims, expired } = jwtService.inspectToken(token);
     if (!claims) {
+      req.authError = expired ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID';
       return next();
     }
 
     const email = claims.sub;
     if (!email) {
+      req.authError = 'TOKEN_INVALID';
       return next();
     }
 
     const user = await NearzyUser.findOne({ where: { email } });
     if (!user) {
+      // The token verifies but the account behind it is gone. Refreshing
+      // cannot help, so this is a sign-out, not a retry.
+      req.authError = 'ACCOUNT_NOT_FOUND';
       return next();
     }
 
@@ -41,7 +52,7 @@ const authenticate = async (req, res, next) => {
       rawRole: user.role,
     };
   } catch (err) {
-    // Token invalid — proceed unauthenticated
+    req.authError = 'TOKEN_INVALID';
   }
 
   next();

@@ -6,7 +6,6 @@ import '../../../../../data/models/basic_user_model/basic_user_model.dart';
 import '../../../../common/screens/error_screen.dart';
 import '/presentation/common/widgets/email_sent_widget.dart';
 import '/presentation/common/widgets/form_widget.dart';
-import '/presentation/features/shop/shop_home_page.dart';
 
 import '../view_model/shop_auth_bloc.dart';
 
@@ -28,16 +27,11 @@ class _ShopAuthScreenState extends State<ShopAuthScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(),
+      // No navigation on success: signing in publishes a session event and
+      // the app shell rebuilds onto the shop home itself. Pushing here as well
+      // raced that rebuild and could strand a dead route on top of it.
       body:
           BlocConsumer<ShopAuthBloc, ShopAuthState>(listener: (context, state) {
-        if (state is ShopAuthLoggedInState) {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(
-              builder: (context) => const ShopHomePage(),
-            ),
-            (route) => false,
-          );
-        }
       }, builder: (context, state) {
         if (state is ShopAuthLoadingState) {
           return const Center(

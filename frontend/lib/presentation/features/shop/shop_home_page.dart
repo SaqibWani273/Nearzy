@@ -5,7 +5,6 @@ import '../../common/widgets/animated_bottom_nav.dart';
 import '../../common/widgets/shimmer_loading.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_spacing.dart';
-import '/presentation/features/shop/shop_authentication/view/shop_auth_screen.dart';
 import 'product_upload/view_model/shop_bloc.dart';
 import 'shop_authentication/view_model/shop_auth_bloc.dart';
 
@@ -46,15 +45,9 @@ class _ShopHomePageState extends State<ShopHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surface,
-      body: BlocConsumer<ShopAuthBloc, ShopAuthState>(
-        listener: (context, state) {
-          if (state is ShopAuthLoggedOutState) {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (_) => const ShopAuthScreen()),
-              (route) => false,
-            );
-          }
-        },
+      // Signing out swaps the whole shell — to the next saved account, or to
+      // guest browsing — so there is nothing to navigate to from here.
+      body: BlocBuilder<ShopAuthBloc, ShopAuthState>(
         builder: (context, state) {
           if (state is ShopAuthLoadingState) {
             return ShimmerLoading.productGrid();

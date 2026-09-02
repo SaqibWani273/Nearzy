@@ -5,7 +5,16 @@
 const authorize = (...roles) => {
   return (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({ message: 'Authentication required' });
+      // `code` is what tells the client whether to refresh and retry
+      // (TOKEN_EXPIRED) or drop the session and ask for a password
+      // (everything else).
+      return res.status(401).json({
+        message:
+          req.authError === 'TOKEN_EXPIRED'
+            ? 'Access token expired'
+            : 'Authentication required',
+        code: req.authError || 'TOKEN_MISSING',
+      });
     }
 
     // Support both ROLE_SHOP and ROLE_SHOP_OWNER interchangeably
@@ -23,7 +32,10 @@ const authorize = (...roles) => {
     });
 
     if (!hasRole) {
-      return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
+      return res.status(403).json({
+        message: 'Access denied. Insufficient permissions.',
+        code: 'ROLE_MISMATCH',
+      });
     }
 
     next();

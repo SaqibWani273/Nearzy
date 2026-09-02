@@ -36,7 +36,7 @@ class ShopSearchProductEvent extends ShopEvent {
 }
 
 class ShopUpdateOrderStatus extends ShopEvent {
-  final String orderId;
-  final String status;
+  final int orderId;
+  final OrderStatus status;
   ShopUpdateOrderStatus({required this.orderId, required this.status});
 }

@@ -1,8 +1,12 @@
-const { sequelize, NearzyUser, Customer, Product, Cart, CartItem, Address, Shop, LocationInfo, ProductCategory, ProductImage, ProductColor } = require('../models');
+const { sequelize, NearzyUser, Customer, Product, Cart, CartItem, Address, Shop, LocationInfo, ProductCategory, ProductImage, ProductColor, OrderRecord } = require('../models');
 const authService = require('./authService');
 const jwtService = require('./jwtService');
 const { Op, literal } = require('sequelize');
 const { toProductDto, toShopDto } = require('../dto/productDto');
+const { toAddressDto } = require('../dto/orderDto');
+// Aliased: several methods here declare a local `const paging = this._paging(...)`,
+// which would otherwise shadow this import.
+const { paging: normalisePaging } = require('../utils/paging');
 
 /** Single-quote escaping for values interpolated into a raw SQL literal. */
 const sequelizeEscape = (value) => `'${String(value).replace(/'/g, "''")}'`;
@@ -29,7 +33,7 @@ const customerService = {
     return emailResult;
   },
 
-  async loginCustomer(email, password) {
+  async loginCustomer(email, password, meta = {}) {
     const user = await NearzyUser.findOne({ where: { email } });
     if (!user) {
       return { error: 'Email Not Registered', status: 400 };
@@ -37,7 +41,7 @@ const customerService = {
     if (!user.isEmailVerified) {
       return { error: 'Email not verified', status: 400 };
     }
-    return authService.authenticateAndGenerateToken(email, password);
+    return authService.authenticateAndGenerateToken(email, password, meta);
   },
 
   async verifyEmail(token) {
@@ -47,7 +51,11 @@ const customerService = {
   async getCustomer(token) {
     const email = jwtService.extractEmail(token);
     if (!email) return null;
+    return this.getCustomerByEmail(email);
+  },
 
+  /** The customer profile behind an already-authenticated email. */
+  async getCustomerByEmail(email) {
     const user = await NearzyUser.findOne({ where: { email } });
     if (!user) return null;
 
@@ -116,14 +124,13 @@ const customerService = {
     ];
   },
 
-  /** Normalises page/limit and returns Sequelize's limit/offset pair. */
-  _paging({ page = 1, limit = 20, zeroBased = false } = {}) {
-    const parsedLimit = Number.parseInt(limit, 10);
-    const parsedPage = Number.parseInt(page, 10);
-    const safeLimit = Math.min(Math.max(Number.isNaN(parsedLimit) ? 20 : parsedLimit, 1), 100);
-    const rawPage = Math.max(Number.isNaN(parsedPage) ? (zeroBased ? 0 : 1) : parsedPage, zeroBased ? 0 : 1);
-    const pageIndex = zeroBased ? rawPage : rawPage - 1;
-    return { limit: safeLimit, offset: pageIndex * safeLimit, page: rawPage };
+  /**
+   * Normalises page/limit and returns Sequelize's limit/offset pair.
+   * Delegates to the shared helper so the order endpoints agree with these
+   * on what a page is; kept as a method because callers here already use it.
+   */
+  _paging(options) {
+    return normalisePaging(options);
   },
 
   /**
@@ -305,6 +312,164 @@ const customerService = {
     return shops.map((s) => s.id);
   },
 
+  // ---------------------------------------------------------------------------
+  // Addresses
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Delivery addresses are reusable rows, not free text typed at checkout.
+   * The old checkout collected a string that went into Razorpay's notes and
+   * nowhere else, so every real order had a null shipping_address_id and no
+   * coordinates to deliver against.
+   */
+  async listAddresses(customerId) {
+    const addresses = await Address.findAll({
+      where: { customer_id: customerId },
+      order: [['is_default', 'DESC'], ['id', 'DESC']],
+    });
+    return addresses.map(toAddressDto);
+  },
+
+  /** Required fields mirror the Address model's allowNull: false columns. */
+  _validateAddress(data) {
+    const missing = ['line1', 'city', 'state', 'postalCode', 'country'].filter(
+      (field) => !String(data?.[field] ?? '').trim()
+    );
+    return missing.length ? `Missing required address fields: ${missing.join(', ')}` : null;
+  },
+
+  async createAddress(customerId, data) {
+    const invalid = this._validateAddress(data);
+    if (invalid) return { error: invalid, status: 400 };
+
+    const existing = await Address.count({ where: { customer_id: customerId } });
+    // The first address a customer saves becomes their default, so checkout
+    // always has something preselected.
+    const isDefault = existing === 0 ? true : Boolean(data.isDefault);
+
+    const address = await sequelize.transaction(async (transaction) => {
+      if (isDefault) {
+        await Address.update(
+          { isDefault: false },
+          { where: { customer_id: customerId }, transaction }
+        );
+      }
+      return Address.create(
+        {
+          customerId,
+          label: data.label ?? null,
+          line1: data.line1,
+          line2: data.line2 ?? null,
+          city: data.city,
+          state: data.state,
+          postalCode: data.postalCode,
+          country: data.country,
+          latitude: data.latitude ?? null,
+          longitude: data.longitude ?? null,
+          isDefault,
+        },
+        { transaction }
+      );
+    });
+
+    return toAddressDto(address);
+  },
+
+  /** Loads an address only if it belongs to the calling customer. */
+  async _ownedAddress(customerId, addressId) {
+    const id = Number.parseInt(addressId, 10);
+    if (Number.isNaN(id)) return { error: 'Invalid address id', status: 400 };
+
+    const address = await Address.findByPk(id);
+    if (!address) return { error: 'Address not found', status: 404 };
+    if (String(address.customerId) !== String(customerId)) {
+      return { error: 'Address does not belong to this customer', status: 403 };
+    }
+    return { address };
+  },
+
+  async updateAddress(customerId, addressId, data) {
+    const owned = await this._ownedAddress(customerId, addressId);
+    if (owned.error) return owned;
+
+    const merged = { ...owned.address.get(), ...data };
+    const invalid = this._validateAddress(merged);
+    if (invalid) return { error: invalid, status: 400 };
+
+    const fields = ['label', 'line1', 'line2', 'city', 'state', 'postalCode', 'country', 'latitude', 'longitude'];
+    for (const field of fields) {
+      if (data[field] !== undefined) owned.address[field] = data[field];
+    }
+
+    await sequelize.transaction(async (transaction) => {
+      if (data.isDefault === true) {
+        await Address.update(
+          { isDefault: false },
+          { where: { customer_id: customerId }, transaction }
+        );
+        owned.address.isDefault = true;
+      }
+      await owned.address.save({ transaction });
+    });
+
+    return toAddressDto(owned.address);
+  },
+
+  async setDefaultAddress(customerId, addressId) {
+    const owned = await this._ownedAddress(customerId, addressId);
+    if (owned.error) return owned;
+
+    await sequelize.transaction(async (transaction) => {
+      await Address.update(
+        { isDefault: false },
+        { where: { customer_id: customerId }, transaction }
+      );
+      owned.address.isDefault = true;
+      await owned.address.save({ transaction });
+    });
+
+    return toAddressDto(owned.address);
+  },
+
+  /**
+   * Addresses are referenced by past orders, so a delete must not cascade
+   * into order history. OrderRecord.shippingAddressId is nullable and its
+   * association has no CASCADE, so the order keeps pointing at nothing —
+   * which is why an address still referenced by an order is kept and simply
+   * unflagged as default instead.
+   */
+  async deleteAddress(customerId, addressId) {
+    const owned = await this._ownedAddress(customerId, addressId);
+    if (owned.error) return owned;
+
+    const referencingOrders = await OrderRecord.count({
+      where: { shipping_address_id: owned.address.id },
+    });
+    if (referencingOrders > 0) {
+      return {
+        error: 'This address is used by past orders and cannot be removed',
+        status: 409,
+      };
+    }
+
+    const wasDefault = owned.address.isDefault;
+    await owned.address.destroy();
+
+    // Promote another address so the customer is never left without a default.
+    if (wasDefault) {
+      const next = await Address.findOne({
+        where: { customer_id: customerId },
+        order: [['id', 'ASC']],
+      });
+      if (next) {
+        next.isDefault = true;
+        await next.save();
+      }
+    }
+
+    return { message: 'Address removed' };
+  },
+
   async updateCustomer(customerData) {
     if (!customerData.id) {
       return { error: 'Customer ID required', status: 400 };
@@ -377,17 +542,18 @@ const customerService = {
     return { message: 'Cart Items Updated' };
   },
 
+  /**
+   * The cart's product lookup. Goes through the same include tree and DTO as
+   * every other product endpoint: raw entities send `images` and `colors` as
+   * association rows, and the client's model casts each element to a String,
+   * so returning them unmapped threw on the first cart fetch.
+   */
   async fetchProductsByIds(ids) {
     const products = await Product.findAll({
       where: { id: ids },
-      include: [
-        { association: 'shop' },
-        { association: 'category' },
-        { association: 'images' },
-        { association: 'colors' },
-      ],
+      include: this._productIncludes(),
     });
-    return products;
+    return products.map(toProductDto);
   },
 
   // ---------------------------------------------------------------------------

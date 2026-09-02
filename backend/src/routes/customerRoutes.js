@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const customerService = require('../services/customerService');
 const paymentService = require('../services/paymentService');
+const orderService = require('../services/orderService');
 const authorize = require('../middleware/authorize');
 const { toCustomerDto } = require('../dto/productDto');
+const { callerIdentity } = require('../utils/identity');
 
 /**
  * @swagger
@@ -14,6 +16,8 @@ const { toCustomerDto } = require('../dto/productDto');
  *     description: Customer profile, cart management, and product browsing
  *   - name: Customer Payments
  *     description: Razorpay order creation and payment verification
+ *   - name: Customer Orders
+ *     description: Order history and delivery addresses
  */
 
 /**
@@ -98,11 +102,11 @@ async function handleVerifyEmail(req, res, next) {
 router.post('/login', async (req, res, next) => {
   try {
     const { email, password } = req.body;
-    const result = await customerService.loginCustomer(email, password);
+    const result = await customerService.loginCustomer(email, password, { deviceLabel: req.headers['user-agent'] });
     if (result.error) {
       return res.status(result.status || 400).json(result.error);
     }
-    res.json(result.token);
+    res.json(result.session);
   } catch (err) {
     next(err);
   }
@@ -146,8 +150,8 @@ router.get('/get-all-products', async (req, res, next) => {
  */
 router.post('/me', authorize('CUSTOMER'), async (req, res, next) => {
   try {
-    const token = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
-    const customer = await customerService.getCustomer(token);
+    const { email } = callerIdentity(req);
+    const customer = email ? await customerService.getCustomerByEmail(email) : null;
     if (!customer) {
       return res.status(400).json('invalid token');
     }
@@ -697,8 +701,9 @@ router.get('/payment/config', authorize('CUSTOMER'), async (req, res, next) => {
  *                   properties:
  *                     productId: { type: integer }
  *                     quantity: { type: integer }
- *               shippingAddress: { type: string }
- *               billingAddress: { type: string }
+ *               addressId:
+ *                 type: integer
+ *                 description: Id of one of the customer's saved addresses
  *               phoneNumber: { type: string }
  *     responses:
  *       200: { description: Razorpay order created }
@@ -711,10 +716,9 @@ router.post('/payment/create-order', authorize('CUSTOMER'), async (req, res, nex
     const customerId = await requireCustomerId(req, res);
     if (!customerId) return;
 
-    const { orderItems, shippingAddress, billingAddress, phoneNumber } = req.body;
+    const { orderItems, addressId, phoneNumber } = req.body;
     const result = await paymentService.createOrder(customerId, orderItems, {
-      shippingAddress,
-      billingAddress,
+      addressId,
       phoneNumber,
     });
     if (result.error) {
@@ -755,6 +759,229 @@ router.post('/payment/verify', authorize('CUSTOMER'), async (req, res, next) => 
     if (!customerId) return;
 
     const result = await paymentService.verifyPayment(customerId, req.body);
+    if (result.error) {
+      return res.status(result.status || 400).json({ message: result.error });
+    }
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Orders
+// ---------------------------------------------------------------------------
+
+/**
+ * @swagger
+ * /customer/orders:
+ *   get:
+ *     tags: [Customer Orders]
+ *     summary: The signed-in customer's order history, newest first
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 20 }
+ *       - in: query
+ *         name: status
+ *         schema: { type: string }
+ *         description: Optional status filter, comma-separated (e.g. SHIPPED,DELIVERED)
+ *     responses:
+ *       200: { description: Paginated orders }
+ */
+router.get('/orders', authorize('CUSTOMER'), async (req, res, next) => {
+  try {
+    const customerId = await requireCustomerId(req, res);
+    if (!customerId) return;
+
+    const { page, limit, status } = req.query;
+    res.json(await orderService.listCustomerOrders(customerId, { page, limit, status }));
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * @swagger
+ * /customer/orders/{id}:
+ *   get:
+ *     tags: [Customer Orders]
+ *     summary: One order in full
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200: { description: The order }
+ *       403: { description: Order belongs to another customer }
+ *       404: { description: Order not found }
+ */
+router.get('/orders/:id', authorize('CUSTOMER'), async (req, res, next) => {
+  try {
+    const customerId = await requireCustomerId(req, res);
+    if (!customerId) return;
+
+    const result = await orderService.getCustomerOrder(customerId, req.params.id);
+    if (result.error) {
+      return res.status(result.status || 400).json({ message: result.error });
+    }
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Delivery addresses
+// ---------------------------------------------------------------------------
+
+/**
+ * @swagger
+ * /customer/addresses:
+ *   get:
+ *     tags: [Customer Orders]
+ *     summary: The customer's saved delivery addresses, default first
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Addresses }
+ *   post:
+ *     tags: [Customer Orders]
+ *     summary: Save a new delivery address
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [line1, city, state, postalCode, country]
+ *             properties:
+ *               label: { type: string }
+ *               line1: { type: string }
+ *               line2: { type: string }
+ *               city: { type: string }
+ *               state: { type: string }
+ *               postalCode: { type: string }
+ *               country: { type: string }
+ *               latitude: { type: number }
+ *               longitude: { type: number }
+ *               isDefault: { type: boolean }
+ *     responses:
+ *       200: { description: Address created }
+ *       400: { description: Missing required fields }
+ */
+router.get('/addresses', authorize('CUSTOMER'), async (req, res, next) => {
+  try {
+    const customerId = await requireCustomerId(req, res);
+    if (!customerId) return;
+
+    res.json({ addresses: await customerService.listAddresses(customerId) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/addresses', authorize('CUSTOMER'), async (req, res, next) => {
+  try {
+    const customerId = await requireCustomerId(req, res);
+    if (!customerId) return;
+
+    const result = await customerService.createAddress(customerId, req.body);
+    if (result.error) {
+      return res.status(result.status || 400).json({ message: result.error });
+    }
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * @swagger
+ * /customer/addresses/{id}:
+ *   put:
+ *     tags: [Customer Orders]
+ *     summary: Update a saved address
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200: { description: Address updated }
+ *       403: { description: Address belongs to another customer }
+ *       404: { description: Address not found }
+ *   delete:
+ *     tags: [Customer Orders]
+ *     summary: Remove a saved address
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200: { description: Address removed }
+ *       409: { description: Address is referenced by past orders }
+ */
+router.put('/addresses/:id', authorize('CUSTOMER'), async (req, res, next) => {
+  try {
+    const customerId = await requireCustomerId(req, res);
+    if (!customerId) return;
+
+    const result = await customerService.updateAddress(customerId, req.params.id, req.body);
+    if (result.error) {
+      return res.status(result.status || 400).json({ message: result.error });
+    }
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/addresses/:id', authorize('CUSTOMER'), async (req, res, next) => {
+  try {
+    const customerId = await requireCustomerId(req, res);
+    if (!customerId) return;
+
+    const result = await customerService.deleteAddress(customerId, req.params.id);
+    if (result.error) {
+      return res.status(result.status || 400).json({ message: result.error });
+    }
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * @swagger
+ * /customer/addresses/{id}/default:
+ *   patch:
+ *     tags: [Customer Orders]
+ *     summary: Make this the default delivery address
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200: { description: Default updated }
+ */
+router.patch('/addresses/:id/default', authorize('CUSTOMER'), async (req, res, next) => {
+  try {
+    const customerId = await requireCustomerId(req, res);
+    if (!customerId) return;
+
+    const result = await customerService.setDefaultAddress(customerId, req.params.id);
     if (result.error) {
       return res.status(result.status || 400).json({ message: result.error });
     }

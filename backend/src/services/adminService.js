@@ -23,12 +23,12 @@ const adminService = {
     return emailResult;
   },
 
-  async login(email, password) {
+  async login(email, password, meta = {}) {
     const user = await NearzyUser.findOne({ where: { email } });
     if (!user || !user.role || !user.role.includes('ADMIN')) {
       return { error: 'Invalid Admin credentials', status: 400 };
     }
-    return authService.authenticateAndGenerateToken(email, password);
+    return authService.authenticateAndGenerateToken(email, password, meta);
   },
 
   async verifyEmail(token) {

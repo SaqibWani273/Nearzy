@@ -1,13 +1,14 @@
 import 'dart:developer';
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
+import '/constants/bottom_navbar_items.dart';
 import '/constants/rest_api_const.dart';
 import '/utils/exceptions/custom_exception.dart';
 import '../data/models/cart.dart';
 import '../data/models/product.dart';
 import '/utils/exceptions/customer_exception.dart';
-import '/utils/secure_storage.dart';
+import 'api_client.dart';
+import 'session_manager.dart';
 
 import '../data/models/customer.dart';
 
@@ -17,10 +18,9 @@ class CustomerProfileService {
   Future<void> registerCustomer(
       String name, String email, String password) async {
     try {
-      final response = await http.post(Uri.parse(ApiConst.customerRegisterUrl),
-          headers: {"Content-Type": "application/json"},
-          body: jsonEncode(
-              {'username': name, 'email': email, 'password': password}));
+      final response = await NearzyHttp.postJson(
+          Uri.parse(ApiConst.customerRegisterUrl),
+          json: {'username': name, 'email': email, 'password': password});
       if (response.statusCode == 400) {
         log(response.body);
         throw CustomerException("Status Code 400: ${response.body}");
@@ -38,9 +38,9 @@ class CustomerProfileService {
 
   Future<void> loginCustomer(String email, String password) async {
     try {
-      final response = await http.post(Uri.parse(ApiConst.customerLoginUrl),
-          headers: {"Content-Type": "application/json"},
-          body: jsonEncode({'email': email, 'password': password}));
+      final response = await NearzyHttp.postJson(
+          Uri.parse(ApiConst.customerLoginUrl),
+          json: {'email': email, 'password': password});
       if (response.statusCode == 400) {
         log(response.body);
         throw CustomerException(response.body);
@@ -50,8 +50,13 @@ class CustomerProfileService {
         throw CustomerException(
             'Something went wrong! Please check your internet connection.');
       }
-      log("token-> ${response.body}");
-      await SecureStorage.storeToken(response.body);
+      // Added alongside any account already signed in on this device, so the
+      // switcher can move between them without a password.
+      await SessionManager.instance.signIn(
+        responseBody: response.body,
+        fallbackRole: Roles.ROLE_CUSTOMER,
+        email: email,
+      );
     } catch (e) {
       log(e.toString());
       rethrow;
@@ -60,21 +65,21 @@ class CustomerProfileService {
 
   Future<Customer?> isCustomerLoggedIn() async {
     try {
-      final token = await SecureStorage.getToken();
-      if (token == null || token.isEmpty) {
+      if (!await SessionManager.instance.hasSession()) {
         return null;
       }
 
-      final response = await http.post(
+      final response = await NearzyHttp.postJson(
         Uri.parse(ApiConst.customerProfileUrl),
-        headers: {"Authorization": "Bearer $token"},
-        body: token,
+        auth: true,
+        json: const {},
       );
       if (response.statusCode == 200) {
         return Customer.fromJson(response.body);
       } else if (response.statusCode == 401) {
-        //token expired or of different role
-        await SecureStorage.deleteToken();
+        // NearzyHttp already refreshed and retried, so the session is over
+        // rather than merely stale.
+        await SessionManager.instance.signOutActive();
         throw CustomerException('Not Valid Credentials');
       } else {
         log("${response.statusCode} -> ${response.body}");
@@ -87,21 +92,19 @@ class CustomerProfileService {
   }
 
   Future<void> logoutCustomer() async {
-    await SecureStorage.deleteToken();
+    await SessionManager.instance.signOutActive();
   }
 
   static Future<void> updateCartItems(
       {required int customerId, required List<CartItem> cartItems}) async {
     try {
-      final response = await http.post(Uri.parse(ApiConst.updateCartUrl),
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer ${await SecureStorage.getToken()}"
-          },
-          body: jsonEncode({
+      final response = await NearzyHttp.postJson(
+          Uri.parse(ApiConst.updateCartUrl),
+          auth: true,
+          json: {
             'customerId': customerId,
             'cartItems': cartItems.map((e) => e.toMap()).toList()
-          }));
+          });
       if (response.statusCode == 200) {
         log(response.body);
       } else {
@@ -116,26 +119,28 @@ class CustomerProfileService {
       List<CartItem> cartItems) async {
     try {
       List<CartItemDetails> cartItemDetails = [];
-      final response = await http.post(
+      final response = await NearzyHttp.postJson(
           Uri.parse(ApiConst.fetchProductsByIdsUrl),
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer ${await SecureStorage.getToken()}"
-          },
-          body: jsonEncode(
-              {'productIds': cartItems.map((e) => e.productId).toList()}));
+          auth: true,
+          json: {'productIds': cartItems.map((e) => e.productId).toList()});
 
       if (response.statusCode == 200) {
-        List<Product> products = [];
         final List<dynamic> dynamicList = jsonDecode(response.body);
-        for (var i = 0; i < dynamicList.length; i++) {
-          products
-              .add(Product.fromJson(dynamicList[i] as Map<String, dynamic>));
+        final Map<int, Product> productsById = {};
+        for (final entry in dynamicList) {
+          final product = Product.fromJson(entry as Map<String, dynamic>);
+          if (product.id != null) productsById[product.id!] = product;
         }
-        for (int i = 0; i < products.length; i++) {
+
+        // Paired by id rather than by position: the server returns the rows in
+        // its own order and silently omits ids it no longer has, so walking the
+        // two lists in step would attach a line's quantity to another product.
+        for (final item in cartItems) {
+          final product = productsById[item.productId];
+          if (product == null) continue;
           cartItemDetails.add(CartItemDetails(
-            quantity: cartItems[i].quantity,
-            product: products[i],
+            quantity: item.quantity,
+            product: product,
           ));
         }
 

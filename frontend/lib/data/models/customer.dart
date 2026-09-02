@@ -41,7 +41,10 @@ class Customer extends UserModel {
       'id': id,
       'myUser': user.toJson(),
       'cartItems': cartItems?.map((cartItem) => cartItem.toMap()).toList(),
-      'orders': orders!.map((order) => order.toMap()).toList(),
+      // Orders are intentionally absent: they are loaded from their own
+      // endpoint and never sent back. The old code dereferenced a nullable
+      // list here, which would have thrown for any customer whose orders
+      // had not loaded yet.
     };
   }
 
@@ -49,10 +52,11 @@ class Customer extends UserModel {
     return Customer(
         id: map['id'] != null ? map['id'] as int : null,
         user: BasicUserModel.fromJson(map['myUser'] as Map<String, dynamic>),
-        orders: map["order"] == null
-            ? null
-            : List<Order>.from((map["order"] as List<dynamic>)
-                .map((x) => Order.fromMap(x as Map<String, dynamic>))),
+        // toCustomerDto deliberately omits orders: the client loads them
+        // from /customer/orders and treats null as "not loaded yet". The
+        // previous code read map["order"] (singular), a key nothing ever
+        // sent, while toMap wrote "orders" — so this was dead either way.
+        orders: null,
         cartItems: map['cartItems'] == null
             ? null
             : List<CartItem>.from(

@@ -133,22 +133,25 @@ class ShopDataRepository {
     return searchedProducts;
   }
 
+  /// The server resolves the shop from the bearer token and narrows each
+  /// order to this shop's own line items.
   Future<void> fetchMyOrders() async {
     try {
-      myOrders =
-          await ApiService.fetchMyOrders(shopModel!.id!, Roles.ROLE_SHOP);
+      myOrders = await ApiService.fetchShopOrders();
     } catch (e) {
       rethrow;
     }
   }
 
-  Future<void> updateOrderStatus(String orderId, String status) async {
+  /// Replaces the local row with the order the server echoes back, rather
+  /// than guessing the new state — the backend rejects illegal transitions,
+  /// so its version is the only one worth trusting.
+  Future<void> updateOrderStatus(int orderId, OrderStatus status) async {
     try {
-      await ApiService.updateOrderStatus(orderId: orderId, status: status);
-      Order order = myOrders.firstWhere((x) => x.id == orderId);
-      int index = myOrders.indexOf(order);
-      order = order.copyWith(status: status);
-      myOrders[index] = order;
+      final updated =
+          await ApiService.updateOrderStatus(orderId: orderId, status: status);
+      final index = myOrders.indexWhere((o) => o.id == orderId);
+      if (index != -1) myOrders[index] = updated;
     } catch (e) {
       rethrow;
     }

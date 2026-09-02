@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const nodemailer = require('nodemailer');
-const jwtService = require('./jwtService');
+const refreshTokenService = require('./refreshTokenService');
 const { NearzyUser, EmailConfirmation } = require('../models');
 
 // MAIL_USER doubles as the From address, so it stays set even for local
@@ -129,9 +129,17 @@ const authService = {
   },
 
   /**
-   * Authenticate user and return JWT token.
+   * Authenticate a user and open a session.
+   *
+   * Returns the whole session — access token, refresh token and the access
+   * token's lifetime — rather than a bare JWT, so the client knows when to
+   * refresh instead of waiting to be told by a 401.
+   *
+   * @param {string} email
+   * @param {string} password
+   * @param {{ deviceLabel?: string }} [meta]
    */
-  async authenticateAndGenerateToken(email, password) {
+  async authenticateAndGenerateToken(email, password, meta = {}) {
     const user = await NearzyUser.findOne({ where: { email } });
     if (!user) {
       return { error: 'Invalid credentials', status: 400 };
@@ -142,8 +150,10 @@ const authService = {
       return { error: 'Invalid credentials', status: 400 };
     }
 
-    const token = jwtService.generateToken(user);
-    return { token };
+    const session = await refreshTokenService.issueSession(user, meta);
+    // `token` is part of the session object, so callers that only ever wanted
+    // the JWT keep working unchanged.
+    return { ...session, session };
   },
 };
 

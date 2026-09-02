@@ -8,8 +8,10 @@ import '../../../theme/app_motion.dart';
 import '../../../theme/app_spacing.dart';
 import '../../../theme/app_text_styles.dart';
 import '../../../utils/handle_drawer_item_tap.dart';
+import '../../../services/session_manager.dart';
 import '../animations/entrance.dart';
 import '../animations/pressable_scale.dart';
+import 'account_switcher_sheet.dart';
 import 'nearzy_logo.dart';
 
 class DrawerWidget extends StatelessWidget {
@@ -38,53 +40,70 @@ class DrawerWidget extends StatelessWidget {
       child: Column(
         children: [
           // ── Header ──────────────────────────────────────────────
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.fromLTRB(
-              24,
-              MediaQuery.of(context).padding.top + 28,
-              24,
-              28,
-            ),
-            decoration: const BoxDecoration(
-              gradient: AppColors.inkGradient,
-              borderRadius: BorderRadius.only(
-                bottomRight: Radius.circular(AppSpacing.radiusXl),
+          // Tapping it opens the account switcher. The drawer is reachable
+          // from every customer screen, so this is the shortest path between
+          // two accounts anywhere in the app.
+          PressableScale(
+            onTap: () {
+              Navigator.pop(context);
+              AccountSwitcherSheet.show(homePageContext);
+            },
+            scale: 0.99,
+            child: Container(
+              width: double.infinity,
+              padding: EdgeInsets.fromLTRB(
+                24,
+                MediaQuery.of(context).padding.top + 28,
+                24,
+                28,
               ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const NearzyLogo(size: 30, onInk: true),
-                const SizedBox(height: 18),
-                Text(
-                  customer == null
-                      ? 'Shops a few streets away'
-                      : 'Hi, ${customer.user.username}',
-                  style:
-                      AppTextStyles.heading3.copyWith(color: AppColors.paper),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              decoration: const BoxDecoration(
+                gradient: AppColors.inkGradient,
+                borderRadius: BorderRadius.only(
+                  bottomRight: Radius.circular(AppSpacing.radiusXl),
                 ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Icon(Icons.place_rounded,
-                        size: 13, color: AppColors.lime),
-                    const SizedBox(width: 5),
-                    Expanded(
-                      child: Text(
-                        repository.currentSelectedLocation?.shortAddress ??
-                            'Everywhere',
-                        style: AppTextStyles.caption
-                            .copyWith(color: AppColors.sage),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const NearzyLogo(size: 30, onInk: true),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          customer == null
+                              ? 'Shops a few streets away'
+                              : 'Hi, ${customer.user.username}',
+                          style: AppTextStyles.heading3
+                              .copyWith(color: AppColors.paper),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      const _SwitchAffordance(),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Icon(Icons.place_rounded,
+                          size: 13, color: AppColors.lime),
+                      const SizedBox(width: 5),
+                      Expanded(
+                        child: Text(
+                          repository.currentSelectedLocation?.shortAddress ??
+                              'Everywhere',
+                          style: AppTextStyles.caption
+                              .copyWith(color: AppColors.sage),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
 
@@ -179,6 +198,35 @@ class _DrawerRow extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Badge on the drawer header. Counts the other accounts held on this device,
+/// so a second identity is visible rather than hidden behind a tap.
+class _SwitchAffordance extends StatelessWidget {
+  const _SwitchAffordance();
+
+  @override
+  Widget build(BuildContext context) {
+    final others = SessionManager.instance.otherAccounts.length;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.inkSoft,
+        borderRadius: AppSpacing.borderRadiusFull,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.swap_horiz_rounded, size: 14, color: AppColors.lime),
+          const SizedBox(width: 4),
+          Text(
+            others == 0 ? 'Accounts' : '$others more',
+            style: AppTextStyles.micro.copyWith(color: AppColors.lime),
+          ),
+        ],
       ),
     );
   }

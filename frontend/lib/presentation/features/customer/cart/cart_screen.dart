@@ -9,6 +9,7 @@ import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_motion.dart';
 import '../../../../theme/app_spacing.dart';
 import '../../../../theme/app_text_styles.dart';
+import '../../../../utils/money.dart';
 import '../../../common/animations/entrance.dart';
 import '../../../common/animations/nearzy_page_route.dart';
 import '../../../common/animations/pressable_scale.dart';
@@ -451,7 +452,7 @@ class CartBottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final total = calculateTotalPrice(cartItemDetailsList);
+    final total = cartSubtotalPaise(cartItemDetailsList).toDouble();
 
     return Container(
       decoration: BoxDecoration(
@@ -479,7 +480,7 @@ class CartBottomBar extends StatelessWidget {
                 duration: Motion.duration(context, Motion.base),
                 curve: Motion.easeOut,
                 builder: (context, value, _) => Text(
-                  '₹${value.round()}',
+                  Money.exact(value.round()),
                   style: AppTextStyles.priceMedium,
                 ),
               ),
@@ -498,7 +499,7 @@ class CartBottomBar extends StatelessWidget {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () => context.pushScreen(
-                () => CheckoutScreen(cartItemDetailst: cartItemDetailsList),
+                () => CheckoutScreen(cartItemDetails: cartItemDetailsList),
               ),
               child: const Text('Proceed to checkout'),
             ),
@@ -509,10 +510,16 @@ class CartBottomBar extends StatelessWidget {
   }
 }
 
-double calculateTotalPrice(List<CartItemDetails> cartItemDetails) {
-  double totalPrice = 0.0;
-  for (var item in cartItemDetails) {
-    totalPrice += (item.product.price ~/ 100) * item.quantity;
+/// Cart subtotal in paise, at the prices the backend will actually charge.
+///
+/// Uses `disCountedPrice`, which mirrors paymentService's `unitPricePaise`.
+/// The previous version summed the *undiscounted* price in whole rupees, so
+/// a cart holding anything on offer showed a subtotal the customer was never
+/// going to be billed.
+int cartSubtotalPaise(List<CartItemDetails> cartItemDetails) {
+  var total = 0;
+  for (final item in cartItemDetails) {
+    total += item.product.disCountedPrice * item.quantity;
   }
-  return totalPrice;
+  return total;
 }

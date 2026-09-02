@@ -64,7 +64,7 @@ List<MenuItem> menuItems = [
     enumValue: DrawerItemsEnum.profile,
   ),
   const MenuItem(
-    title: 'Register Shop',
+    title: 'Shop Login / Register',
     selectedIcon: Icons.business_rounded,
     unSelectedIcon: Icons.business_outlined,
     enumValue: DrawerItemsEnum.registerShop,

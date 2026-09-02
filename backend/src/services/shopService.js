@@ -63,7 +63,7 @@ const shopService = {
     return emailResult;
   },
 
-  async loginShop(email, password) {
+  async loginShop(email, password, meta = {}) {
     const user = await NearzyUser.findOne({ where: { email } });
     if (!user) {
       return { error: 'Email Not Registered', status: 400 };
@@ -74,7 +74,7 @@ const shopService = {
     if (user.role !== 'SHOP_OWNER' && user.role !== 'SHOP') {
       return { error: 'Not a shop user', status: 400 };
     }
-    return authService.authenticateAndGenerateToken(email, password);
+    return authService.authenticateAndGenerateToken(email, password, meta);
   },
 
   async verifyEmail(token) {
@@ -86,6 +86,11 @@ const shopService = {
     if (!email) {
       return { error: 'Invalid token', status: 400 };
     }
+    return this.getShopByEmail(email);
+  },
+
+  /** The shop profile behind an already-authenticated email. */
+  async getShopByEmail(email) {
     const user = await NearzyUser.findOne({ where: { email } });
     if (!user) {
       return { error: 'User not found', status: 400 };

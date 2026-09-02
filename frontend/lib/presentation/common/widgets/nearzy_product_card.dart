@@ -5,6 +5,7 @@ import '../../../theme/app_colors.dart';
 import '../../../theme/app_motion.dart';
 import '../../../theme/app_spacing.dart';
 import '../../../theme/app_text_styles.dart';
+import '../../../utils/money.dart';
 import '../animations/pressable_scale.dart';
 import 'nearzy_network_image.dart';
 
@@ -55,21 +56,7 @@ class _NearzyProductCardState extends State<NearzyProductCard> {
   /// Whole rupees with thousands separators — "₹12,749", not "₹12749.00".
   /// Paise never change a buying decision at grid density, and the extra
   /// glyphs are what push a discounted pair out of the card.
-  static String _formatPrice(int paise) {
-    final rupees = (paise / 100).round();
-    final digits = rupees.abs().toString();
-
-    // Indian grouping: last three digits, then pairs (12,34,567).
-    final buffer = StringBuffer();
-    for (var i = 0; i < digits.length; i++) {
-      final fromEnd = digits.length - i;
-      buffer.write(digits[i]);
-      final needsComma =
-          fromEnd > 3 ? (fromEnd - 3).isOdd : false;
-      if (needsComma && fromEnd > 1) buffer.write(',');
-    }
-    return '₹${rupees < 0 ? '-' : ''}$buffer';
-  }
+  static String _formatPrice(int paise) => Money.rupees(paise);
 
   int? get _discountPercent {
     final discounted = widget.discountedPriceInPaise;

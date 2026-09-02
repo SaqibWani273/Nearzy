@@ -111,11 +111,11 @@ async function handleVerifyEmail(req, res, next) {
 router.post('/login', async (req, res, next) => {
   try {
     const { email, password } = req.body;
-    const result = await adminService.login(email, password);
+    const result = await adminService.login(email, password, { deviceLabel: req.headers['user-agent'] });
     if (result.error) {
       return res.status(result.status || 400).json(result.error);
     }
-    res.json(result.token);
+    res.json(result.session);
   } catch (err) {
     next(err);
   }

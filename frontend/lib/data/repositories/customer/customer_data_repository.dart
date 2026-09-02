@@ -5,7 +5,6 @@ import 'dart:developer';
 import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
 
 import '../../../constants/bottom_navbar_items.dart';
-import '../../models/order.dart';
 import '/data/models/cart.dart';
 import '/data/models/shop_model/shop_model1.dart';
 import '/services/api_service.dart';
@@ -331,10 +330,12 @@ class CustomerDataRepository {
     }
   }
 
+  /// Loads order history into [customer]. A non-null (even empty) list is
+  /// what tells the profile screen it no longer needs to fetch.
   Future<void> fetchMyOrders() async {
+    if (customer == null) return;
     try {
-      List<Order> orders =
-          await ApiService.fetchMyOrders(customer!.id!, Roles.ROLE_CUSTOMER);
+      final orders = await ApiService.fetchCustomerOrders();
       customer = customer!.copyWith(orders: orders);
     } catch (e) {
       rethrow;

@@ -1,22 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../constants/bottom_navbar_items.dart';
 import '../../../../constants/image_constants.dart';
 import '../../../../data/models/customer.dart';
 import '../../../../data/repositories/customer/customer_data_repository.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
+import '../../../../services/session_manager.dart';
 import '../../../../theme/app_text_styles.dart';
 import '../../../common/animations/entrance.dart';
 import '../../../common/animations/nearzy_page_route.dart';
 import '../../../common/animations/pressable_scale.dart';
+import '../../../common/widgets/account_switcher_sheet.dart';
 import '../../../common/widgets/shimmer_loading.dart';
-import '../../shop/orders/orders_screen.dart';
+import '../address/address_picker_sheet.dart';
 import '../authentication/view/customer_login.dart';
 import '../authentication/view_model/customer_auth_bloc.dart';
 import '../location/location_picker_screen.dart';
+import '../orders/view/customer_orders_screen.dart';
+import '../orders/view/order_detail_screen.dart';
+import '../orders/widgets/order_summary_card.dart';
 import '../saved/saved_items_screen.dart';
+
+/// How many orders the profile previews before deferring to the full list.
+const int _recentOrderCount = 3;
 
 class CustomerProfile extends StatelessWidget {
   const CustomerProfile({super.key});
@@ -58,7 +65,10 @@ class CustomerProfile extends StatelessWidget {
                   AppSpacing.gutter,
                   0,
                 ),
-                child: _IdentityCard(customer: customer).animateEntrance(),
+                child: _IdentityCard(
+                  customer: customer,
+                  onTap: () => AccountSwitcherSheet.show(context),
+                ).animateEntrance(),
               ),
             ),
 
@@ -88,6 +98,25 @@ class CustomerProfile extends StatelessWidget {
                 child: Column(
                   children: [
                     _ActionTile(
+                      icon: Icons.receipt_long_outlined,
+                      title: 'Orders',
+                      subtitle: orders.isEmpty
+                          ? 'No orders yet'
+                          : '${orders.length} order${orders.length == 1 ? '' : 's'}',
+                      onTap: () => _openOrders(context),
+                    ).animateEntrance(index: 2),
+                    const SizedBox(height: 10),
+                    _ActionTile(
+                      icon: Icons.place_outlined,
+                      title: 'Delivery addresses',
+                      subtitle: 'Where your orders arrive',
+                      onTap: () => AddressPickerSheet.show(
+                        context,
+                        mode: AddressSheetMode.manage,
+                      ),
+                    ).animateEntrance(index: 3),
+                    const SizedBox(height: 10),
+                    _ActionTile(
                       icon: Icons.favorite_border_rounded,
                       title: 'Saved items',
                       subtitle: repository.favouriteProductIds.isEmpty
@@ -95,24 +124,23 @@ class CustomerProfile extends StatelessWidget {
                           : '${repository.favouriteProductIds.length} saved',
                       onTap: () =>
                           context.pushScreen(() => const SavedItemsScreen()),
-                    ).animateEntrance(index: 2),
+                    ).animateEntrance(index: 4),
                     const SizedBox(height: 10),
                     _ActionTile(
-                      icon: Icons.place_outlined,
+                      icon: Icons.explore_outlined,
                       title: 'Shopping area',
                       subtitle: repository
                               .currentSelectedLocation?.shortAddress ??
                           'Everywhere',
                       onTap: () => _changeLocation(context),
-                    ).animateEntrance(index: 3),
+                    ).animateEntrance(index: 5),
                     const SizedBox(height: 10),
                     _ActionTile(
-                      icon: Icons.logout_rounded,
-                      title: 'Sign out',
-                      subtitle: 'You can sign back in anytime',
-                      destructive: true,
-                      onTap: () => _confirmSignOut(context),
-                    ).animateEntrance(index: 4),
+                      icon: Icons.swap_horiz_rounded,
+                      title: 'Accounts',
+                      subtitle: _accountsSubtitle(),
+                      onTap: () => AccountSwitcherSheet.show(context),
+                    ).animateEntrance(index: 6),
                   ],
                 ),
               ),
@@ -126,7 +154,19 @@ class CustomerProfile extends StatelessWidget {
                   AppSpacing.gutter,
                   12,
                 ),
-                child: Text('Your orders', style: AppTextStyles.sectionTitle),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text('Recent orders',
+                          style: AppTextStyles.sectionTitle),
+                    ),
+                    if (orders.length > _recentOrderCount)
+                      TextButton(
+                        onPressed: () => _openOrders(context),
+                        child: Text('See all', style: AppTextStyles.link),
+                      ),
+                  ],
+                ),
               ),
             ),
 
@@ -137,11 +177,18 @@ class CustomerProfile extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.gutter,
                 ),
-                sliver: SliverList.builder(
-                  itemCount: orders.length,
-                  itemBuilder: (context, index) => OrderCard(
+                // Only the most recent few — the full history lives behind
+                // the Orders tile, so this stays a glance rather than a list
+                // that grows without bound on the profile.
+                sliver: SliverList.separated(
+                  itemCount: orders.length < _recentOrderCount
+                      ? orders.length
+                      : _recentOrderCount,
+                  separatorBuilder: (_, _) =>
+                      const SizedBox(height: AppSpacing.md),
+                  itemBuilder: (context, index) => OrderSummaryCard(
                     order: orders[index],
-                    role: Roles.ROLE_CUSTOMER,
+                    onTap: () => _openOrder(context, orders[index].id),
                   ).animateEntrance(index: index),
                 ),
               ),
@@ -155,6 +202,20 @@ class CustomerProfile extends StatelessWidget {
     );
   }
 
+  /// Reloads history on the way back, so a status the shop advanced while
+  /// the customer was away shows up without a manual pull-to-refresh.
+  Future<void> _openOrders(BuildContext context) async {
+    final bloc = context.read<CustomerAuthBloc>();
+    await context.pushScreen(() => const CustomerOrdersScreen());
+    bloc.add(CustomerDataLoadMyOrdersEvent());
+  }
+
+  Future<void> _openOrder(BuildContext context, int orderId) async {
+    final bloc = context.read<CustomerAuthBloc>();
+    await context.pushScreen(() => OrderDetailScreen(orderId: orderId));
+    bloc.add(CustomerDataLoadMyOrdersEvent());
+  }
+
   Future<void> _changeLocation(BuildContext context) async {
     final repository = context.read<CustomerDataRepository>();
     final picked = await context.pushModal<dynamic>(
@@ -164,40 +225,33 @@ class CustomerProfile extends StatelessWidget {
     repository.setLocation(picked);
   }
 
-  Future<void> _confirmSignOut(BuildContext context) async {
-    final bloc = context.read<CustomerAuthBloc>();
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Sign out?'),
-        content: Text(
-          'Your bag and saved items stay on this device.',
-          style: AppTextStyles.bodyMedium,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text('Sign out',
-                style: AppTextStyles.link.copyWith(color: AppColors.error)),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) bloc.add(CustomerLogoutEvent());
+  /// Says how many identities this device holds, so the tile reads as a
+  /// switcher rather than a settings dead end.
+  String _accountsSubtitle() {
+    final others = SessionManager.instance.otherAccounts.length;
+    if (others == 0) return 'Add an account, or sign out';
+    return others == 1
+        ? '1 other account — switch or sign out'
+        : '$others other accounts — switch or sign out';
   }
 }
 
 class _IdentityCard extends StatelessWidget {
-  const _IdentityCard({required this.customer});
+  const _IdentityCard({required this.customer, required this.onTap});
 
   final Customer customer;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    return PressableScale(
+      onTap: onTap,
+      scale: 0.985,
+      child: _card(context),
+    );
+  }
+
+  Widget _card(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -238,6 +292,25 @@ class _IdentityCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.inkSoft,
+              borderRadius: AppSpacing.borderRadiusFull,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.swap_horiz_rounded,
+                    size: 14, color: AppColors.lime),
+                const SizedBox(width: 4),
+                Text('Switch',
+                    style:
+                        AppTextStyles.micro.copyWith(color: AppColors.lime)),
               ],
             ),
           ),
@@ -297,18 +370,16 @@ class _ActionTile extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.onTap,
-    this.destructive = false,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
-  final bool destructive;
 
   @override
   Widget build(BuildContext context) {
-    final tint = destructive ? AppColors.error : AppColors.ink;
+    const tint = AppColors.ink;
 
     return PressableScale(
       onTap: onTap,
@@ -325,10 +396,8 @@ class _ActionTile extends StatelessWidget {
             Container(
               width: 40,
               height: 40,
-              decoration: BoxDecoration(
-                color: destructive
-                    ? AppColors.errorSurface
-                    : AppColors.sageSurface,
+              decoration: const BoxDecoration(
+                color: AppColors.sageSurface,
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, size: 19, color: tint),
@@ -449,6 +518,18 @@ class _SignedOut extends StatelessWidget {
                 child: const Text('Sign in or create account'),
               ),
             ).animateEntrance(index: 3),
+            // Signing out of one account leaves the others on the device, so
+            // getting back into them must not mean retyping a password.
+            if (SessionManager.instance.accounts.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                width: 240,
+                child: TextButton(
+                  onPressed: () => AccountSwitcherSheet.show(context),
+                  child: const Text('Use a saved account'),
+                ),
+              ).animateEntrance(index: 4),
+            ],
           ],
         ),
       ),

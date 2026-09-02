@@ -69,7 +69,7 @@ List<NearzyNavItem> shopNavItems = [
 ];
 
 List<Widget> shopMainScreens = [
-  OrdersScreen(role: Roles.ROLE_SHOP),
+  OrdersScreen(),
   ShopInventoryScreen(),
   ShopProfileScreen(),
 ];

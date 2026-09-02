@@ -31,8 +31,13 @@ class _CustomerLoginState extends State<CustomerLogin> {
             content: Text(state.message),
           ));
         } else if (state is CustomerAuthLoggedInState) {
+          // Signing in publishes a session event and the app shell rebuilds
+          // onto the right home screen, taking this route with it — so pop
+          // only if it is somehow still standing.
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            Navigator.of(context).pop();
+            if (!context.mounted) return;
+            final navigator = Navigator.maybeOf(context);
+            if (navigator != null && navigator.canPop()) navigator.pop();
           });
         }
       }, builder: (context, state) {

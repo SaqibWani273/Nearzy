@@ -1,6 +1,7 @@
 const crypto = require('crypto');
-const { sequelize, Customer, Product, OrderRecord, OrderItem } = require('../models');
+const { sequelize, Customer, Product, OrderRecord, OrderItem, Address } = require('../models');
 const razorpay = require('../config/razorpay');
+const { formatAddress } = require('../dto/orderDto');
 
 const CURRENCY = 'INR';
 
@@ -55,7 +56,7 @@ const paymentService = {
    * Razorpay order. The client never supplies amounts — it only says which
    * products and how many.
    */
-  async createOrder(customerId, requestedItems, notes) {
+  async createOrder(customerId, requestedItems, { addressId, phoneNumber } = {}) {
     if (!razorpay.isConfigured()) return NOT_CONFIGURED;
 
     if (!Array.isArray(requestedItems) || requestedItems.length === 0) {
@@ -64,6 +65,19 @@ const paymentService = {
 
     const customer = await Customer.findByPk(customerId);
     if (!customer) return { error: 'Customer not found', status: 404 };
+
+    // A delivery order must resolve to a saved Address row. Checkout used to
+    // send a free-text string that reached only Razorpay's notes, leaving
+    // every order with a null shipping_address_id and nothing to deliver
+    // against. (Phase 3 pickup orders will legitimately have no address.)
+    if (addressId == null) {
+      return { error: 'A delivery address is required', status: 400 };
+    }
+    const address = await Address.findByPk(Number.parseInt(addressId, 10) || 0);
+    if (!address) return { error: 'Address not found', status: 400 };
+    if (String(address.customerId) !== String(customerId)) {
+      return { error: 'Address does not belong to this customer', status: 403 };
+    }
 
     const products = await Product.findAll({
       where: { id: requestedItems.map((item) => item.productId) },
@@ -105,7 +119,14 @@ const paymentService = {
     const orderNumber = generateOrderNumber();
     const order = await sequelize.transaction(async (transaction) => {
       const created = await OrderRecord.create(
-        { customerId, orderNumber, status: 'PLACED', paymentStatus: 'PENDING', totalAmountPaise },
+        {
+          customerId,
+          orderNumber,
+          status: 'PLACED',
+          paymentStatus: 'PENDING',
+          totalAmountPaise,
+          shippingAddressId: address.id,
+        },
         { transaction }
       );
 
@@ -129,7 +150,12 @@ const paymentService = {
         amount: totalAmountPaise,
         currency: CURRENCY,
         receipt: orderNumber,
-        notes: { ...sanitizeNotes(notes), orderNumber },
+        // Denormalised into the Razorpay dashboard for support lookups; the
+        // Address row remains the source of truth.
+        notes: {
+          ...sanitizeNotes({ shippingAddress: formatAddress(address), phoneNumber }),
+          orderNumber,
+        },
       });
     } catch (err) {
       await order.update({ status: 'CANCELLED', paymentStatus: 'FAILED' });

@@ -1,333 +1,371 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:mca_project/presentation/common/widgets/loading_widgets.dart';
-import 'package:mca_project/presentation/features/shop/product_upload/view_model/shop_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-import '../../../../constants/bottom_navbar_items.dart';
 import '../../../../data/models/order.dart';
 import '../../../../data/repositories/shop/shop_data_repository.dart';
+import '../../../../theme/app_colors.dart';
+import '../../../../theme/app_spacing.dart';
+import '../../../../theme/app_text_styles.dart';
+import '../../../../utils/money.dart';
+import '../../../common/animations/entrance.dart';
+import '../../../common/widgets/nearzy_network_image.dart';
+import '../../../common/widgets/shimmer_loading.dart';
+import '../../customer/orders/widgets/order_status_chip.dart';
+import '../product_upload/view_model/shop_bloc.dart';
 
+/// The shop's order book.
+///
+/// Each order arrives already narrowed to this shop's own line items, with
+/// the customer's contact details attached so it can be fulfilled. Advancing
+/// status goes through the backend, which permits only the next step — so the
+/// button offers exactly one destination rather than a free-form picker.
 class OrdersScreen extends StatefulWidget {
-  final Roles role;
-  const OrdersScreen({super.key, required this.role});
+  const OrdersScreen({super.key});
 
   @override
   State<OrdersScreen> createState() => _OrdersScreenState();
 }
 
 class _OrdersScreenState extends State<OrdersScreen> {
-  late List<Order> orders;
   @override
   void initState() {
-    orders = context.read<ShopDataRepository>().myOrders;
-    if (orders.isEmpty) {
+    super.initState();
+    if (context.read<ShopDataRepository>().myOrders.isEmpty) {
       context.read<ShopBloc>().add(ShopLoadMyOrdersEvent());
     }
-    super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
-    final double deviceWidth = MediaQuery.of(context).size.width;
     return Scaffold(
-        appBar: AppBar(),
-        body: BlocConsumer<ShopBloc, ShopState>(
-            listener: (context, state) {},
-            builder: (context, state) {
-              if (state is ShopLoadingState) {
-                return LoadingWidgets.spinKitFading(deviceWidth);
-              }
-              orders = context.read<ShopDataRepository>().myOrders;
-              if (orders.isEmpty) {
-                return const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.card_giftcard_outlined, size: 80),
-                      Text('No Orders Found'),
-                    ],
-                  ),
-                );
-              }
-              return ListView.builder(
-                  itemCount: orders.length,
-                  itemBuilder: (context, index) {
-                    return OrderCard(order: orders[index], role: widget.role);
-                  });
-            }));
-  }
-}
-
-class OrderCard extends StatelessWidget {
-  final Order order;
-  final Roles role;
-
-  const OrderCard({super.key, required this.order, required this.role});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 4.0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8.0),
-      ),
-      margin: EdgeInsets.all(8.0),
-      child: ExpansionTile(
-          title: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Order ID: ${order.id}',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      backgroundColor: AppColors.paper,
+      appBar: AppBar(title: const Text('Orders')),
+      body: BlocConsumer<ShopBloc, ShopState>(
+        listener: (context, state) {
+          if (state is ShopErrorState) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  state.customException.message,
+                  style: AppTextStyles.bodySmall
+                      .copyWith(color: AppColors.textOnInk),
                 ),
+                backgroundColor: AppColors.ink,
+                behavior: SnackBarBehavior.floating,
               ),
-              Text(
-                '₹${order.totalPrice}',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Customer: ${order.customerName}'),
-              Row(
-                children: [
-                  Text(
-                    'Order Status: ',
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                  SizedBox(
-                    width: 10,
-                  ),
-                  Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10.0,
-                        vertical: 5.0,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colorForOrderStatus(order.status),
-                        borderRadius: BorderRadius.circular(15.0),
-                        border:
-                            Border.all(color: Colors.grey.shade300, width: 2),
-                      ),
-                      child: Text(
-                        order.status,
-                        style: TextStyle(fontSize: 16, color: Colors.white),
-                      )),
-                ],
-              ),
-              Text('Created Date: ${order.createdDate}'),
-            ],
-          ),
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(height: 8.0),
-                  Text('Phone: ${order.customerPhone}'),
-                  Text('Shipping Address: ${order.shippingAddress}'),
-                  Text('Total Price: \$${order.totalPrice}'),
-                  Text('Order Status: ${order.status}'),
-                  Text('Payment Status: ${order.paymentStatus}'),
-                  SizedBox(height: 8.0),
-                  Text('Order Items:',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  ...order.orderItems
-                      .map((item) => OrderItemCard(orderItem: item)),
-                  SizedBox(height: 8.0),
-                  Center(
-                      child: role == Roles.ROLE_SHOP
-                          ? Row(
-                              children: [
-                                Expanded(
-                                    child: Text("Update Order Status to ")),
-                                Spacer(),
-                                InkWell(
-                                  child: InkWell(
-                                    onTap: () => showDialog(
-                                      builder: (context) {
-                                        return AlertDialog(
-                                          // title: Text('Change Status'),
-                                          content: Text('Are you sure?'),
+            );
+          }
+        },
+        builder: (context, state) {
+          if (state is ShopLoadingState) {
+            return Padding(
+              padding: const EdgeInsets.all(AppSpacing.gutter),
+              child: ShimmerLoading.listRows(count: 4, height: 176),
+            );
+          }
 
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () {
-                                                Navigator.of(context).pop();
-                                              },
-                                              child: Text('No'),
-                                            ),
-                                            TextButton(
-                                              onPressed: () {
-                                                // Handle change status
-                                                context.read<ShopBloc>().add(
-                                                    ShopUpdateOrderStatus(
-                                                        orderId: order.id,
-                                                        status:
-                                                            getNextOrderStatus(
-                                                                order.status)));
-                                                Navigator.of(context).pop();
-                                              },
-                                              child: Text('Confirm'),
-                                            ),
-                                          ],
-                                        );
-                                      },
-                                      context: context,
-                                    ),
-                                    child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10.0,
-                                          vertical: 5.0,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: colorForOrderStatus(
-                                              getNextOrderStatus(order.status)),
-                                          borderRadius:
-                                              BorderRadius.circular(15.0),
-                                          border: Border.all(
-                                              color: Colors.grey.shade300,
-                                              width: 2),
-                                        ),
-                                        child: Text(
-                                          getNextOrderStatus(order.status),
-                                          style: TextStyle(
-                                              fontSize: 16,
-                                              color: Colors.white),
-                                        )),
-                                  ),
-                                ),
-                              ],
-                            )
-                          : order.status == OrderStatus.PENDING.name ||
-                                  order.status == OrderStatus.PROCESSING.name
-                              ? InkWell(
-                                  onTap: () => showDialog(
-                                    builder: (context) {
-                                      return AlertDialog(
-                                        // title: Text('Change Status'),
-                                        content: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text('Are you sure?'),
-                                            order.status ==
-                                                    OrderStatus.PENDING.name
-                                                ? Text(
-                                                    'This Process Will Cancel your Order')
-                                                : Text(
-                                                    'Order process has already started.You"ll be charged the shipping charges'),
-                                          ],
-                                        ),
+          final orders = context.read<ShopDataRepository>().myOrders;
+          if (orders.isEmpty) return const _NoOrders();
 
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () {
-                                              Navigator.of(context).pop();
-                                            },
-                                            child: Text('No'),
-                                          ),
-                                          TextButton(
-                                            onPressed: () {
-                                              // Handle change status
-                                            },
-                                            child: Text('Cancel Order'),
-                                          ),
-                                        ],
-                                      );
-                                    },
-                                    context: context,
-                                  ),
-                                  child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10.0,
-                                        vertical: 5.0,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.redAccent,
-                                        borderRadius:
-                                            BorderRadius.circular(15.0),
-                                        border: Border.all(
-                                            color: Colors.grey.shade300,
-                                            width: 2),
-                                      ),
-                                      child: Text(
-                                        'Cancel Order',
-                                        style: TextStyle(
-                                            fontSize: 16, color: Colors.white),
-                                      )),
-                                )
-                              : Container())
-                ],
+          return RefreshIndicator(
+            color: AppColors.ink,
+            backgroundColor: AppColors.card,
+            onRefresh: () async =>
+                context.read<ShopBloc>().add(ShopLoadMyOrdersEvent()),
+            child: ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
               ),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.gutter,
+                AppSpacing.md,
+                AppSpacing.gutter,
+                AppSpacing.bottomNavInset,
+              ),
+              itemCount: orders.length,
+              separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
+              itemBuilder: (context, index) =>
+                  ShopOrderCard(order: orders[index])
+                      .animateEntrance(index: index),
             ),
-          ]),
+          );
+        },
+      ),
     );
   }
 }
 
-class OrderItemCard extends StatelessWidget {
-  final ShopOrderItem orderItem;
+class ShopOrderCard extends StatelessWidget {
+  const ShopOrderCard({super.key, required this.order});
 
-  const OrderItemCard({super.key, required this.orderItem});
+  final Order order;
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.symmetric(vertical: 8.0),
-      child: Stack(
-        children: [
-          ClipRect(
-            child: Container(
-              padding: EdgeInsets.all(8.0),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8.0),
-                color: Colors.grey.shade200,
-              ),
-              child: Row(
-                children: [
-                  Image.network(
-                    orderItem.images.first,
-                    height: 60,
-                    width: 60,
-                    fit: BoxFit.cover,
-                  ),
-                  SizedBox(width: 16.0),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          orderItem.productName,
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                        Text('Quantity: ${orderItem.quantity}'),
-                        Text('Price per Unit: ₹${orderItem.pricePerUnit}'),
-                        Text('Total Price: ₹${orderItem.totalPrice}'),
-                        Text('SKU: ${orderItem.sku}'),
-                      ],
-                    ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        '₹${orderItem.totalPrice}',
-                        style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      // if (double.tryParse(orderItem.totalPrice) > 100)
-                      //   Icon(Icons.local_offer, color: Colors.green),
-                    ],
-                  ),
-                ],
+  Future<void> _call(BuildContext context) async {
+    final number = order.customer?.phoneNumber ?? '';
+    if (number.isEmpty) return;
+    final uri = Uri(scheme: 'tel', path: number);
+    if (!await launchUrl(uri)) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not open the dialler',
+              style: AppTextStyles.bodySmall
+                  .copyWith(color: AppColors.textOnInk)),
+          backgroundColor: AppColors.ink,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _confirm(
+    BuildContext context, {
+    required OrderStatus target,
+    required String question,
+    required String action,
+    bool destructive = false,
+  }) async {
+    final bloc = context.read<ShopBloc>();
+    final agreed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(question, style: AppTextStyles.heading4),
+        content: Text(
+          'Order ${order.orderNumber}',
+          style: AppTextStyles.bodySmall,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Not now'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(
+              action,
+              style: AppTextStyles.labelLarge.copyWith(
+                color: destructive ? AppColors.error : AppColors.textPrimary,
               ),
             ),
           ),
         ],
+      ),
+    );
+    if (agreed != true) return;
+
+    HapticFeedback.lightImpact();
+    bloc.add(ShopUpdateOrderStatus(orderId: order.id, status: target));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final next = order.status.next;
+    final customer = order.customer;
+
+    return Container(
+      padding: AppSpacing.cardPadding,
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: AppSpacing.borderRadiusXl,
+        boxShadow: AppSpacing.shadowSoft,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      customer?.name.isNotEmpty == true
+                          ? customer!.name
+                          : 'Customer',
+                      style: AppTextStyles.labelLarge,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(order.orderNumber, style: AppTextStyles.caption),
+                  ],
+                ),
+              ),
+              Text(Money.exact(order.totalAmountPaise),
+                  style: AppTextStyles.priceSmall),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              OrderStatusChip(status: order.status),
+              const SizedBox(width: AppSpacing.sm),
+              PaymentStatusChip(status: order.paymentStatus),
+            ],
+          ),
+          Divider(height: 24, color: AppColors.line),
+
+          for (final line in order.items) ...[
+            _Line(line: line),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+
+          if (order.shippingAddressText.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.place_outlined,
+                    size: 15, color: AppColors.sage),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(order.shippingAddressText,
+                      style: AppTextStyles.caption),
+                ),
+              ],
+            ),
+          ],
+
+          if (next != null || customer?.phoneNumber.isNotEmpty == true) ...[
+            const SizedBox(height: AppSpacing.base),
+            Row(
+              children: [
+                if (customer?.phoneNumber.isNotEmpty == true)
+                  OutlinedButton.icon(
+                    onPressed: () => _call(context),
+                    icon: const Icon(Icons.call_outlined, size: 16),
+                    label: const Text('Call'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.textPrimary,
+                      side: const BorderSide(color: AppColors.line),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: AppSpacing.borderRadiusFull,
+                      ),
+                    ),
+                  ),
+                const Spacer(),
+                if (!order.status.isTerminal)
+                  TextButton(
+                    onPressed: () => _confirm(
+                      context,
+                      target: OrderStatus.cancelled,
+                      question: 'Cancel this order?',
+                      action: 'Cancel order',
+                      destructive: true,
+                    ),
+                    child: Text('Cancel',
+                        style: AppTextStyles.labelMedium
+                            .copyWith(color: AppColors.error)),
+                  ),
+                if (next != null) ...[
+                  const SizedBox(width: AppSpacing.sm),
+                  // Lime marks the single highest-intent action on the card.
+                  ElevatedButton(
+                    onPressed: () => _confirm(
+                      context,
+                      target: next,
+                      question: 'Mark as ${next.label.toLowerCase()}?',
+                      action: 'Mark ${next.label.toLowerCase()}',
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.lime,
+                      foregroundColor: AppColors.ink,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: AppSpacing.borderRadiusFull,
+                      ),
+                    ),
+                    child: Text(
+                      next.label,
+                      style: AppTextStyles.labelMedium
+                          .copyWith(color: AppColors.ink),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _Line extends StatelessWidget {
+  const _Line({required this.line});
+
+  final OrderLine line;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        ClipRRect(
+          borderRadius: AppSpacing.borderRadiusSm,
+          child: NearzyNetworkImage(
+            url: line.thumbnail ?? '',
+            width: 40,
+            height: 40,
+            semanticLabel: line.name,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(line.name,
+                  style: AppTextStyles.labelMedium,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis),
+              Text(
+                line.sku.isEmpty
+                    ? '${line.quantity} × ${Money.exact(line.unitPricePaise)}'
+                    : '${line.sku} · ${line.quantity} × ${Money.exact(line.unitPricePaise)}',
+                style: AppTextStyles.caption,
+              ),
+            ],
+          ),
+        ),
+        Text(Money.exact(line.lineTotalPaise), style: AppTextStyles.labelMedium),
+      ],
+    );
+  }
+}
+
+class _NoOrders extends StatelessWidget {
+  const _NoOrders();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.gutter),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.line, width: 1.5),
+              ),
+              child: const Icon(Icons.receipt_long_outlined,
+                  size: 34, color: AppColors.sage),
+            ).animateEntrance(),
+            const SizedBox(height: AppSpacing.lg),
+            Text('No orders yet', style: AppTextStyles.heading3)
+                .animateEntrance(index: 1),
+            const SizedBox(height: 6),
+            Text(
+              'Orders customers place with your shop show up here.',
+              style: AppTextStyles.bodySmall,
+              textAlign: TextAlign.center,
+            ).animateEntrance(index: 2),
+          ],
+        ),
       ),
     );
   }
