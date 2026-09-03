@@ -39,6 +39,7 @@ const Review = require('./Review')(sequelize);
 const OrderRecord = require('./OrderRecord')(sequelize);
 const OrderItem = require('./OrderItem')(sequelize);
 const RefreshToken = require('./RefreshToken')(sequelize);
+const ShopAlert = require('./ShopAlert')(sequelize);
 
 // ============================
 // Associations
@@ -144,6 +145,14 @@ Shop.hasMany(OrderItem, { foreignKey: 'shop_id', as: 'orderItems' });
 RefreshToken.belongsTo(NearzyUser, { foreignKey: 'user_id', as: 'user' });
 NearzyUser.hasMany(RefreshToken, { foreignKey: 'user_id', as: 'refreshTokens' });
 
+// 26. Shop <-> ShopAlert (1:N)
+ShopAlert.belongsTo(Shop, { foreignKey: 'shop_id', as: 'shop' });
+Shop.hasMany(ShopAlert, { foreignKey: 'shop_id', as: 'alerts' });
+
+// 27. Product <-> ShopAlert (1:N)
+ShopAlert.belongsTo(Product, { foreignKey: 'product_id', as: 'product' });
+Product.hasMany(ShopAlert, { foreignKey: 'product_id', as: 'alerts' });
+
 module.exports = {
   sequelize,
   NearzyUser,
@@ -164,4 +173,5 @@ module.exports = {
   OrderRecord,
   OrderItem,
   RefreshToken,
+  ShopAlert,
 };

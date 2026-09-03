@@ -1,9 +1,10 @@
 'use strict';
 
 const { Op } = require('sequelize');
-const { OrderRecord, OrderItem, Shop } = require('../models');
+const { sequelize, OrderRecord, OrderItem, Shop } = require('../models');
 const { toOrderDto } = require('../dto/orderDto');
 const { paging, envelope } = require('../utils/paging');
+const { applyStockDelta } = require('./inventoryService');
 
 /**
  * Reading orders back.
@@ -205,7 +206,19 @@ const orderService = {
       }
     }
 
-    await order.update({ status: target });
+    // Cancelling returns the units the payment consumed. Without this the
+    // stock drawn down at checkout would be destroyed permanently: a cancelled
+    // order's goods were never shipped, but the count would never recover.
+    // Only a paid order reserved anything, so only a paid order gives it back.
+    const restocks = target === 'CANCELLED' && order.paymentStatus === 'PAID';
+
+    await sequelize.transaction(async (transaction) => {
+      await order.update({ status: target }, { transaction });
+      if (restocks) {
+        await applyStockDelta(order.id, 1, transaction);
+      }
+    });
+
     await order.reload({ include: orderIncludes({ forShop: true }) });
 
     return toOrderDto(order, { forShop: true, shopId: shop.id });

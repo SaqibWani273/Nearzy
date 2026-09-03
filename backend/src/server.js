@@ -2,6 +2,7 @@ require('dotenv').config();
 
 const app = require('./app');
 const { sequelize } = require('./models');
+const { startJobs } = require('./jobs');
 
 const PORT = process.env.PORT || 8080;
 
@@ -17,6 +18,9 @@ async function start() {
     // to data loss or corruption if the models change significantly.
     await sequelize.sync({ alter: true });
     console.log('Database models synchronized.');
+
+    // Background schedule. Off by default — see jobs/index.js.
+    startJobs();
 
     // Start server
     app.listen(PORT, () => {

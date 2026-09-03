@@ -27,9 +27,7 @@
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
 		<key>NSCameraUsageDescription</key>
-		<string>Scan your card to add it automatically</string>
-		<key>NSCameraUsageDescription &lt;string>To scan cards&lt;/string></key>
-		<string>To scan cards</string>
+		<string>Scan product barcodes to update your shop's stock.</string>
 		<key>UIApplicationSceneManifest</key>
 		<dict>
 			<key>UIApplicationSupportsMultipleScenes</key>

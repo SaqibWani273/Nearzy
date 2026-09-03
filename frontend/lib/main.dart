@@ -17,6 +17,8 @@ import 'presentation/features/customer/customer_home_page.dart';
 import 'presentation/features/customer/dashboard/view_model/customer_data_bloc.dart';
 import 'presentation/features/onboarding/view/onboarding_screen.dart';
 import 'presentation/features/shop/product_upload/view_model/shop_bloc.dart';
+import 'constants/bottom_navbar_items.dart';
+import 'presentation/features/admin/admin_home_page.dart';
 import 'presentation/features/shop/shop_authentication/view_model/shop_auth_bloc.dart';
 import 'services/api_service.dart';
 import 'services/session_manager.dart';
@@ -119,9 +121,17 @@ class _MyAppState extends State<MyApp> {
       shopModel = userModel;
     }
 
+    // An admin has no profile model: `/user/me` only builds one for customers
+    // and shops, so `getUserModel` returns null for them and they fell through
+    // to the customer home — leaving AdminHomePage unreachable from anywhere in
+    // the app. The session's own role is the authority here.
+    final isAdmin = SessionManager.instance.active?.role == Roles.ROLE_ADMIN;
+
     Widget homeScreen;
     if (_switching) {
       homeScreen = const _SwitchingScreen();
+    } else if (isAdmin) {
+      homeScreen = const AdminHomePage();
     } else if (userModel == null && !widget.hasSeenOnboarding) {
       homeScreen = const OnboardingScreen();
     } else if (userModel is Customer || userModel == null) {

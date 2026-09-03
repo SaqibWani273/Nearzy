@@ -1,0 +1,1324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<!--
+  Nearzy — engineering reference. Local copy of the published artifact at
+  https://claude.ai/code/artifact/d2188cd8-c17a-48e5-90f2-5693cfd764ef
+
+  This file is the source of truth: edit it here.
+
+  The doctype, meta tags and reset below exist only so this opens correctly as
+  a standalone local page. The artifact runtime supplies its own wrapper, so
+  republishing means sending the content WITHOUT them — everything from
+  <div class="shell"> onward, preceded by the title tag. Handing over this file
+  as-is would nest one document inside another.
+-->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nearzy Engineering Reference</title>
+<style>
+:root { color-scheme: light dark; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+/* ─────────────────────────────────────────────────────────────────────
+   Tokens — lifted from frontend/lib/theme/app_colors.dart so this page
+   reads as the same product as the app it documents.
+   ───────────────────────────────────────────────────────────────────── */
+:root {
+  --ink: #0F1A15;
+  --ink-soft: #1B2A23;
+  --ink-muted: #3A4A42;
+  --lime: #C9F24E;
+  --lime-deep: #A8D62F;
+  --lime-surface: #EEF9D2;
+  --sage: #8FA396;
+  --sage-deep: #4C6357;
+  --sage-surface: #E4EBE4;
+  --paper: #F7F6F1;
+  --paper-dim: #EFEDE5;
+
+  --ground: #F7F6F1;
+  --surface: #FFFFFF;
+  --surface-alt: #EFEDE5;
+  --line: #E6E4DC;
+  --line-strong: #D6D3C8;
+
+  --text: #0F1A15;
+  --text-2: #5D6B63;
+  --text-3: #94A19A;
+  --on-accent: #0F1A15;
+
+  --success: #2E9E6B;
+  --success-bg: #E3F5EC;
+  --warning: #E0A03C;
+  --warning-bg: #FBF1DF;
+  --danger: #D5533D;
+  --danger-bg: #FBEAE7;
+  --info: #3C7D8C;
+  --info-bg: #E6F1F3;
+
+  --rule: var(--line);
+  --marker: var(--lime-deep);
+  --code-bg: #EFEDE5;
+  --code-text: #1B2A23;
+
+  --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --display: "Plus Jakarta Sans", "Inter", -apple-system, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0F1A15;
+    --surface: #1B2A23;
+    --surface-alt: #16241E;
+    --line: #2B3A33;
+    --line-strong: #3A4A42;
+    --text: #F7F6F1;
+    --text-2: #A8B6AC;
+    --text-3: #7E8E84;
+    --sage-surface: #22322A;
+    --lime-surface: #2A3A1E;
+    --success-bg: #16301F;
+    --warning-bg: #33280F;
+    --danger-bg: #33170F;
+    --info-bg: #14282C;
+    --marker: var(--lime);
+    --code-bg: #16241E;
+    --code-text: #DCE6DC;
+  }
+}
+
+:root[data-theme="dark"] {
+  --ground: #0F1A15;
+  --surface: #1B2A23;
+  --surface-alt: #16241E;
+  --line: #2B3A33;
+  --line-strong: #3A4A42;
+  --text: #F7F6F1;
+  --text-2: #A8B6AC;
+  --text-3: #7E8E84;
+  --sage-surface: #22322A;
+  --lime-surface: #2A3A1E;
+  --success-bg: #16301F;
+  --warning-bg: #33280F;
+  --danger-bg: #33170F;
+  --info-bg: #14282C;
+  --marker: var(--lime);
+  --code-bg: #16241E;
+  --code-text: #DCE6DC;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Shell ────────────────────────────────────────────────────────── */
+.shell {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 0 24px 96px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0 56px;
+}
+@media (min-width: 1060px) {
+  .shell { grid-template-columns: 232px minmax(0, 1fr); }
+}
+
+/* ── Masthead ─────────────────────────────────────────────────────── */
+.masthead {
+  grid-column: 1 / -1;
+  padding: 64px 0 40px;
+  border-bottom: 1px solid var(--line);
+}
+.wordmark {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.wordmark h1 {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(38px, 7vw, 62px);
+  letter-spacing: -0.035em;
+  line-height: 0.95;
+  margin: 0;
+  text-wrap: balance;
+}
+.wordmark .dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  background: var(--lime);
+  flex: none;
+  transform: translateY(-6px);
+}
+.tagline {
+  font-size: 19px;
+  line-height: 1.5;
+  color: var(--text-2);
+  max-width: 62ch;
+  margin: 18px 0 0;
+}
+.tagline strong { color: var(--text); font-weight: 600; }
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  margin-top: 34px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.stat {
+  flex: 1 1 128px;
+  padding: 16px 18px;
+  border-right: 1px solid var(--line);
+}
+.stat:last-child { border-right: 0; }
+.stat b {
+  display: block;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 25px;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.stat span {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+
+.chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 22px; }
+.chip {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  color: var(--text-2);
+  background: var(--surface);
+  white-space: nowrap;
+}
+
+/* ── Index rail ───────────────────────────────────────────────────── */
+.rail { display: none; }
+@media (min-width: 1060px) {
+  .rail {
+    display: block;
+    position: sticky;
+    top: 0;
+    align-self: start;
+    max-height: 100vh;
+    overflow-y: auto;
+    padding: 40px 0 40px;
+    font-size: 13.5px;
+  }
+}
+.rail h2 {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-3);
+  margin: 0 0 12px;
+  font-weight: 500;
+}
+.rail ol { list-style: none; margin: 0 0 26px; padding: 0; }
+.rail li { margin: 0; }
+.rail a {
+  display: block;
+  padding: 4px 0 4px 14px;
+  border-left: 2px solid var(--line);
+  color: var(--text-2);
+  text-decoration: none;
+  transition: color .12s, border-color .12s;
+}
+.rail a:hover { color: var(--text); }
+.rail a.active {
+  color: var(--text);
+  border-left-color: var(--marker);
+  font-weight: 600;
+}
+.rail a.sub { padding-left: 26px; font-size: 12.5px; }
+
+/* ── Content ──────────────────────────────────────────────────────── */
+main { padding-top: 40px; min-width: 0; }
+
+section { padding-top: 32px; margin-bottom: 24px; }
+section + section { border-top: 1px solid var(--line); padding-top: 46px; }
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--sage);
+  margin: 0 0 8px;
+}
+h2.head {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(26px, 3.4vw, 34px);
+  letter-spacing: -0.028em;
+  line-height: 1.12;
+  margin: 0 0 14px;
+  text-wrap: balance;
+}
+h3 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: -0.015em;
+  margin: 38px 0 10px;
+  text-wrap: balance;
+}
+h4 {
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.01em;
+  margin: 26px 0 8px;
+}
+p { margin: 0 0 14px; max-width: 74ch; }
+.lede { font-size: 16.5px; color: var(--text-2); max-width: 70ch; }
+ul, ol.body { max-width: 74ch; padding-left: 20px; margin: 0 0 16px; }
+li + li { margin-top: 5px; }
+a { color: var(--text); text-decoration: underline; text-decoration-color: var(--marker); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+a:focus-visible, .rail a:focus-visible { outline: 2px solid var(--marker); outline-offset: 3px; border-radius: 3px; }
+
+code {
+  font-family: var(--mono);
+  font-size: 0.875em;
+  background: var(--code-bg);
+  color: var(--code-text);
+  padding: 1.5px 5px;
+  border-radius: 5px;
+}
+pre {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.7;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 18px 20px;
+  overflow-x: auto;
+  margin: 0 0 18px;
+}
+pre code { background: none; padding: 0; font-size: inherit; color: inherit; }
+pre .c { color: var(--text-3); }
+
+/* ── Tables ───────────────────────────────────────────────────────── */
+.tw { overflow-x: auto; margin: 0 0 22px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+thead th {
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-2);
+  background: var(--surface-alt);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+tbody td { padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tbody tr:last-child td { border-bottom: 0; }
+td.p { font-family: var(--mono); font-size: 12.5px; white-space: nowrap; }
+td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.muted { color: var(--text-2); }
+
+/* ── Method + status chips ────────────────────────────────────────── */
+.m {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  padding: 3px 7px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+.m-get { background: var(--info-bg); color: var(--info); }
+.m-post { background: var(--success-bg); color: var(--success); }
+.m-patch, .m-put { background: var(--warning-bg); color: var(--warning); }
+.m-del { background: var(--danger-bg); color: var(--danger); }
+.badge {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.badge-open { background: var(--sage-surface); border-color: transparent; }
+.badge-cust { background: var(--info-bg); color: var(--info); border-color: transparent; }
+.badge-shop { background: var(--warning-bg); color: var(--warning); border-color: transparent; }
+.badge-admin { background: var(--ink); color: var(--paper); border-color: transparent; }
+:root[data-theme="dark"] .badge-admin { background: var(--lime); color: var(--ink); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .badge-admin { background: var(--lime); color: var(--ink); }
+}
+
+/* ── Callouts ─────────────────────────────────────────────────────── */
+.note {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--sage);
+  background: var(--surface);
+  border-radius: 4px 16px 16px 4px;
+  padding: 15px 18px;
+  margin: 0 0 20px;
+  max-width: 78ch;
+}
+.note p:last-child { margin-bottom: 0; }
+.note-t {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--sage);
+  margin: 0 0 6px;
+}
+
+/* ── Layer diagrams ──────────────────────────────────────────────── */
+.pipe { margin: 0 0 24px; max-width: 780px; }
+.layer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px 18px;
+  align-items: baseline;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 12px;
+}
+@media (min-width: 640px) {
+  .layer { grid-template-columns: 210px minmax(0, 1fr); }
+}
+.layer b {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text);
+}
+.layer span { font-size: 13px; color: var(--text-2); }
+.layer.accent { border-color: var(--marker); border-width: 1px; box-shadow: inset 3px 0 0 var(--marker); }
+.arrow {
+  height: 16px;
+  margin-left: 26px;
+  border-left: 1px solid var(--line-strong);
+}
+.pipe .layer + .arrow { margin-top: 0; }
+
+/* ── Step list (real sequences only) ─────────────────────────────── */
+ol.steps { list-style: none; counter-reset: s; padding: 0; margin: 0 0 22px; max-width: 78ch; }
+ol.steps > li {
+  counter-increment: s;
+  position: relative;
+  padding-left: 40px;
+  margin: 0 0 14px;
+}
+ol.steps > li::before {
+  content: counter(s);
+  position: absolute;
+  left: 0;
+  top: 1px;
+  width: 25px;
+  height: 25px;
+  border-radius: 999px;
+  background: var(--sage-surface);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+
+/* ── Swatches ─────────────────────────────────────────────────────── */
+.sw { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 22px; }
+.swatch {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  width: 116px;
+  background: var(--surface);
+}
+.swatch .fill { height: 46px; }
+.swatch .lbl { padding: 7px 9px; font-family: var(--mono); font-size: 10.5px; line-height: 1.45; }
+.swatch .lbl b { display: block; font-weight: 500; }
+.swatch .lbl span { color: var(--text-3); }
+
+/* ── Edge cards ───────────────────────────────────────────────────── */
+.edges { display: grid; gap: 12px; margin: 0 0 22px; }
+@media (min-width: 760px) { .edges { grid-template-columns: 1fr 1fr; } }
+.edge {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 15px 17px;
+  background: var(--surface);
+}
+.edge .k {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 7px;
+}
+.edge .k i { width: 7px; height: 7px; border-radius: 999px; flex: none; font-style: normal; }
+.edge.sec .k { color: var(--danger); }
+.edge.sec .k i { background: var(--danger); }
+.edge.stub .k { color: var(--warning); }
+.edge.stub .k i { background: var(--warning); }
+.edge.cfg .k { color: var(--info); }
+.edge.cfg .k i { background: var(--info); }
+.edge h4 { margin: 0 0 5px; font-size: 14.5px; }
+.edge p { font-size: 13px; margin: 0; color: var(--text-2); max-width: none; }
+.edge p code { font-size: 12px; }
+
+footer {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--line);
+  margin-top: 56px;
+  padding-top: 22px;
+  font-size: 12.5px;
+  color: var(--text-3);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+}
+footer code { font-size: 11.5px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+}
+html { scroll-behavior: smooth; }
+</style>
+
+</head>
+<body>
+
+<div class="shell">
+
+  <header class="masthead">
+    <div class="wordmark">
+      <h1>Nearzy</h1>
+      <span class="dot" aria-hidden="true"></span>
+    </div>
+    <p class="tagline">A hyperlocal marketplace: an <strong>Express + Sequelize + PostgreSQL</strong> REST API and a <strong>Flutter</strong> client, built around one idea — the shops you buy from are a few streets away, so <strong>location is the primary filter</strong>, not a facet.</p>
+
+    <div class="stats">
+      <div class="stat"><b>19</b><span>DB models</span></div>
+      <div class="stat"><b>61</b><span>Routes</span></div>
+      <div class="stat"><b>3</b><span>Actor types</span></div>
+      <div class="stat"><b>3</b><span>Cron jobs</span></div>
+      <div class="stat"><b>157</b><span>Dart files</span></div>
+    </div>
+
+    <div class="chips">
+      <span class="chip">Node ≥18</span>
+      <span class="chip">Express 4.21</span>
+      <span class="chip">Sequelize 6.37</span>
+      <span class="chip">PostgreSQL</span>
+      <span class="chip">JWT · bcrypt</span>
+      <span class="chip">Razorpay 2.9</span>
+      <span class="chip">node-cron</span>
+      <span class="chip">Swagger / OpenAPI 3</span>
+      <span class="chip">Flutter 3.44.7 (fvm)</span>
+      <span class="chip">flutter_bloc 9.1</span>
+      <span class="chip">flutter_map 8.3</span>
+      <span class="chip">mobile_scanner</span>
+      <span class="chip">Cloudinary</span>
+      <span class="chip">Nominatim</span>
+    </div>
+  </header>
+
+  <nav class="rail" aria-label="Contents">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#layout">Repository layout</a></li>
+      <li><a href="#backend">Backend</a></li>
+      <li><a href="#pipeline" class="sub">Request pipeline</a></li>
+      <li><a href="#auth" class="sub">Auth &amp; roles</a></li>
+      <li><a href="#api" class="sub">API reference</a></li>
+      <li><a href="#payments" class="sub">Payments</a></li>
+      <li><a href="#jobs" class="sub">Background jobs</a></li>
+      <li><a href="#discovery" class="sub">Location discovery</a></li>
+      <li><a href="#dto" class="sub">The DTO layer</a></li>
+      <li><a href="#schema">Data model</a></li>
+      <li><a href="#frontend">Flutter client</a></li>
+      <li><a href="#state" class="sub">State &amp; data flow</a></li>
+      <li><a href="#screens" class="sub">Screens &amp; navigation</a></li>
+      <li><a href="#design" class="sub">Design system</a></li>
+      <li><a href="#running">Running locally</a></li>
+      <li><a href="#edges">Sharp edges</a></li>
+      <li><a href="#resolved" class="sub">Resolved since v1</a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <section id="overview">
+      <p class="eyebrow">Orientation</p>
+      <h2 class="head">What Nearzy is</h2>
+      <p class="lede">Three kinds of account share one API. Customers browse products from shops near a coordinate they choose; shop owners register, get verified, and list inventory; an admin curates the category tree and approves shops.</p>
+
+      <div class="tw">
+        <table>
+          <thead><tr><th>Actor</th><th>JWT role claim</th><th>Can do</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="badge badge-cust">Customer</span></td>
+              <td class="p">ROLE_CUSTOMER</td>
+              <td>Browse and search products near a location, manage a cart and saved delivery addresses, pay via Razorpay, read their own order history, save favourites</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-shop">Shop owner</span></td>
+              <td class="p">ROLE_SHOP_OWNER<br><span class="muted">or ROLE_SHOP</span></td>
+              <td>Register a shop with a geocoded location, submit verification documents, list and edit inventory (including barcode restocking), work a triage dashboard of alerts, advance order status</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-admin">Admin</span></td>
+              <td class="p">ROLE_ADMIN</td>
+              <td>Create the hierarchical product categories, work the shop verification queue, read platform stats and an order-density heatmap</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note">
+        <p class="note-t">Two role names, one actor</p>
+        <p>Shop accounts exist under both <code>SHOP_OWNER</code> and <code>SHOP</code>. Registration writes <code>SHOP_OWNER</code>; the seed script writes <code>SHOP</code>; <code>src/middleware/authorize.js</code> treats the two as interchangeable. The Flutter client compares against <code>ROLE_SHOP</code>, so both paths resolve to the same shell.</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <section id="layout">
+      <p class="eyebrow">Orientation</p>
+      <h2 class="head">Repository layout</h2>
+      <p>Two independent apps in one repo, with no shared build. Each is developed and run on its own.</p>
+<pre><code>Nearzy/
+├── backend/                    <span class="c"># Express REST API</span>
+│   ├── Dockerfile              <span class="c"># two-stage node:18-alpine, prod deps only</span>
+│   ├── .env.example            <span class="c"># every variable the server reads</span>
+│   └── src/
+│       ├── server.js           <span class="c"># boot: connect → sync → listen</span>
+│       ├── app.js              <span class="c"># middleware chain + route mounting</span>
+│       ├── config/             <span class="c"># swagger spec, razorpay client</span>
+│       ├── middleware/         <span class="c"># auth (JWT), authorize (roles), errorHandler</span>
+│       ├── models/             <span class="c"># 19 Sequelize models + index.js associations</span>
+│       ├── routes/             <span class="c"># admin / customer / shop / common / health</span>
+│       ├── services/           <span class="c"># business logic per actor + jwt, payment, alerts</span>
+│       ├── jobs/               <span class="c"># cron: replenishment scan, markdown ramp</span>
+│       ├── dto/                <span class="c"># product / order / verification → client JSON</span>
+│       ├── seed.js             <span class="c"># demo catalogue, shops, customers, reviews</span>
+│       └── seed_orders.js      <span class="c"># sample order history</span>
+│
+└── frontend/                   <span class="c"># Flutter app — pubspec name: mca_project</span>
+    ├── .fvmrc                  <span class="c"># pins Flutter 3.44.7</span>
+    └── lib/
+        ├── main.dart           <span class="c"># splash → session restore → role routing</span>
+        ├── constants/          <span class="c"># rest_api_const.dart holds every URL</span>
+        ├── data/
+        │   ├── models/         <span class="c"># json_serializable DTOs (*.g.dart generated)</span>
+        │   └── repositories/   <span class="c"># CustomerDataRepository, ShopDataRepository</span>
+        ├── services/           <span class="c"># api_client, session_manager, razorpay, cloudinary…</span>
+        ├── presentation/
+        │   ├── common/         <span class="c"># shared widgets, animations, error screens</span>
+        │   └── features/       <span class="c"># customer / shop / admin / onboarding</span>
+        ├── theme/              <span class="c"># colours, type, spacing, motion tokens</span>
+        └── utils/              <span class="c"># secure storage, validation, exceptions</span></code></pre>
+      <p class="muted">The Flutter package is named <code>mca_project</code>, so internal imports read <code>package:mca_project/…</code> rather than <code>package:nearzy/…</code>.</p>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <section id="backend">
+      <p class="eyebrow">Backend</p>
+      <h2 class="head">Server anatomy</h2>
+      <p class="lede">A conventional four-layer Express app: routes validate and unpack, services hold the logic, a DTO module shapes the response, Sequelize models own the schema. Every layer is plain CommonJS — no build step, no TypeScript.</p>
+
+      <h3 id="pipeline">Request pipeline</h3>
+      <p>Set up in <code>src/app.js</code>. The notable choice is that authentication never rejects: it decodes a bearer token if one is present and moves on, leaving every access decision to the route.</p>
+
+      <div class="pipe">
+        <div class="layer"><b>cors()</b><span>Reflects any origin, credentials allowed — permissive by design for device and web builds</span></div>
+        <div class="arrow" aria-hidden="true"></div>
+        <div class="layer"><b>express.json / .text</b><span>Both parsers registered: several <code>/me</code> endpoints post the raw JWT as a text body</span></div>
+        <div class="arrow" aria-hidden="true"></div>
+        <div class="layer accent"><b>authenticate</b><span>Verifies the <code>Bearer</code> token, loads the user by email, attaches <code>req.user = {id, email, role, rawRole}</code>. Invalid or absent token → continues unauthenticated</span></div>
+        <div class="arrow" aria-hidden="true"></div>
+        <div class="layer"><b>router</b><span><code>/admin</code> · <code>/customer</code> · <code>/shop</code> · <code>/user</code> · <code>/health</code></span></div>
+        <div class="arrow" aria-hidden="true"></div>
+        <div class="layer accent"><b>authorize(…roles)</b><span>Per-route gate. 401 without <code>req.user</code>, 403 on role mismatch. Routes without it are public</span></div>
+        <div class="arrow" aria-hidden="true"></div>
+        <div class="layer"><b>service</b><span>Queries, transactions, external calls (SMTP, Razorpay)</span></div>
+        <div class="arrow" aria-hidden="true"></div>
+        <div class="layer"><b>dto/</b><span>Entities mapped to the exact shapes the Flutter models parse — <code>productDto</code>, <code>orderDto</code>, <code>verificationDto</code></span></div>
+        <div class="arrow" aria-hidden="true"></div>
+        <div class="layer"><b>errorHandler</b><span>Terminal middleware translating Sequelize unique / validation / database errors into <code>{message, status, error}</code></span></div>
+      </div>
+
+      <h4>Boot sequence — <code>src/server.js</code></h4>
+      <ol class="steps">
+        <li><code>dotenv.config()</code>, then <code>sequelize.authenticate()</code> — a failed connection exits the process rather than serving 500s.</li>
+        <li><code>sequelize.sync({ alter: true })</code> reconciles tables with the models on every start. There are no migration files; the schema is whatever the models say.</li>
+        <li><code>startJobs()</code> registers the cron schedule — but only when <code>ENABLE_JOBS=true</code>. Off by default, because the jobs write shared state and <code>nodemon</code> restarts on every save.</li>
+        <li><code>app.listen(PORT)</code> — default <code>8080</code>, with Swagger UI served at <code>/swagger-ui</code> and the raw spec at <code>/v3/api-docs</code>.</li>
+      </ol>
+
+      <h3 id="auth">Authentication &amp; roles</h3>
+      <p>Email-and-password with bcrypt (10 salt rounds) and an emailed confirmation link, issuing a <strong>short-lived HS256 access token plus a rotating refresh token</strong>. Sessions are server-side state: <code>refresh_tokens</code> rows are what a sign-out revokes, so logging out is no longer just forgetting a string on the device.</p>
+
+      <div class="tw">
+        <table>
+          <thead><tr><th>Concern</th><th>Implementation</th></tr></thead>
+          <tbody>
+            <tr><td>Token payload</td><td class="p">{ sub: email, name: email, role: "ROLE_&lt;ROLE&gt;" }</td></tr>
+            <tr><td>Signing</td><td>HS256 with <code>JWT_SECRET_KEY</code>; expiry from <code>JWT_EXPIRATION_HOURS</code> (code default 48, <code>.env</code> sets 24)</td></tr>
+            <tr><td>Password hash</td><td><code>bcryptjs</code>, 10 rounds, stored in <code>nearzy_users.password_hash</code></td></tr>
+            <tr><td>Email confirmation</td><td>A <code>uuid v4</code> row in <code>email_confirmations</code>, valid 24 h, single-use; link is <code>HOST_URL + &lt;role&gt;/verify-email?token=…</code></td></tr>
+            <tr><td>Mail transport</td><td>Nodemailer; SMTP AUTH is offered only when <code>MAIL_PASS</code> is set, so a local catcher such as Mailpit works unauthenticated</td></tr>
+            <tr><td>Login response</td><td>A session object: <code>{token, accessToken, refreshToken, tokenType, expiresIn, expiresAt, refreshExpiresIn, email, username, role}</code>. <code>token</code> is kept alongside <code>accessToken</code> so callers that only ever wanted the JWT still work</td></tr>
+            <tr><td>Refresh token</td><td>48 random bytes, base64url. The row stores only its <code>SHA-256</code> — a leaked dump must not hand out month-long sessions</td></tr>
+            <tr><td>Rotation</td><td>Single-use. Every refresh issues a new pair and revokes the old row with <code>revoked_reason: 'rotated'</code></td></tr>
+            <tr><td>Reuse detection</td><td>Rotations of one sign-in share a <code>family_id</code>. Presenting an already-spent token revokes the <em>whole family</em> and answers <code>401 REFRESH_TOKEN_REUSED</code></td></tr>
+            <tr><td>Verified-email gate</td><td>Enforced on customer and shop login; admin login skips it</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note">
+        <p class="note-t">The <code>/me</code> convention</p>
+        <p>The four profile endpoints are still <code>POST</code>, a carry-over from the app's earlier Spring Boot backend. They now resolve identity through <code>utils/identity.js</code>, which <strong>prefers the verified <code>req.user</code></strong> and keeps the body token only as a fallback for older clients — the body token was never validated by the middleware, and with a rotating access token the app has no way to keep it in sync.</p>
+      </div>
+
+      <h3 id="api">API reference</h3>
+      <p>Base URL <code>http://localhost:8080</code> in development. <span class="badge badge-open">public</span> means no <code>authorize()</code> guard — the route is reachable without a token.</p>
+
+      <h4>Health &amp; shared</h4>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Endpoint</th><th>Access</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td class="p"><span class="m m-get">GET</span> /health</td><td><span class="badge badge-open">public</span></td><td>Status, application name, uptime string, live Postgres version</td></tr>
+            <tr><td class="p"><span class="m m-get">GET</span> /user/get-all-categories</td><td><span class="badge badge-open">public</span></td><td>Full category tree with <code>children</code>, ordered by <code>display_order</code></td></tr>
+            <tr><td class="p"><span class="m m-post">POST</span> /user/email-exists</td><td><span class="badge badge-open">public</span></td><td>Body <code>{email}</code> or a bare string → boolean</td></tr>
+            <tr><td class="p"><span class="m m-post">POST</span> /user/username-exists</td><td><span class="badge badge-open">public</span></td><td>Body <code>{username}</code> or a bare string → boolean</td></tr>
+            <tr><td class="p"><span class="m m-post">POST</span> /user/me</td><td><span class="badge badge-cust">C</span> <span class="badge badge-shop">S</span></td><td>Role-dispatching profile fetch → <code>{role, model}</code>. Drives session restore at app start</td></tr>
+            <tr><td class="p"><span class="m m-post">POST</span> /user/refresh</td><td><span class="badge badge-open">public</span></td><td><code>{refreshToken}</code> (JSON, bare string, or <code>x-refresh-token</code>) → a new pair. <strong>Single-use</strong>: the response's <code>refreshToken</code> must replace the one sent. Replay → <code>401 REFRESH_TOKEN_REUSED</code> and the family is revoked</td></tr>
+            <tr><td class="p"><span class="m m-post">POST</span> /user/logout</td><td><span class="badge badge-open">public</span></td><td>Revokes the presented refresh token. <code>{allDevices: true}</code> ends every session for the account instead — that branch needs a <em>valid</em> access token, single-device sign-out does not, which is what lets an app with a dead access token still sign out cleanly</td></tr>
+            <tr><td class="p"><span class="m m-get">GET</span> /user/test</td><td><span class="badge badge-open">public</span></td><td>Connectivity probe</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>Customer — authentication</h4>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Endpoint</th><th>Access</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td class="p"><span class="m m-post">POST</span> /customer/register</td><td><span class="badge badge-open">public</span></td><td><code>{username, email, password}</code>. One transaction creates the user, customer and empty cart, then sends the verification mail. Replies <code>{message, emailSent}</code></td></tr>
+            <tr><td class="p"><span class="m m-get">GET</span> <span class="m m-post">POST</span> /customer/verify-email</td><td><span class="badge badge-open">public</span></td><td><code>?token=</code> — marks the user verified and burns the token</td></tr>
+            <tr><td class="p"><span class="m m-post">POST</span> /customer/login</td><td><span class="badge badge-open">public</span></td><td><code>{email, password}</code> → JWT. Requires a verified email</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>Customer — profile &amp; cart</h4>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Endpoint</th><th>Access</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td class="p"><span class="m m-post">POST</span> /customer/me</td><td><span class="badge badge-cust">C</span></td><td>Customer with user, addresses and cart items</td></tr>
+            <tr><td class="p"><span class="m m-post">POST</span> /customer/update</td><td><span class="badge badge-cust">C</span></td><td>Updates name, phone and nested user fields; target taken from <code>body.id</code></td></tr>
+            <tr><td class="p"><span class="m m-post">POST</span> /customer/update-cart-items</td><td><span class="badge badge-cust">C</span></td><td><code>{customerId, cartItems:[{productId, quantity}]}</code>. Quantity <code>≤ 0</code> deletes the line; the cart is created on demand</td></tr>
+            <tr><td class="p"><span class="m m-post">POST</span> /customer/get-products-by-ids</td><td><span class="badge badge-cust">C</span></td><td><code>{productIds:[…]}</code> → raw entities with images, colours, shop, category</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>Customer — orders &amp; addresses</h4>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Endpoint</th><th>Access</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td class="p"><span class="m m-get">GET</span> /customer/orders</td><td><span class="badge badge-cust">C</span></td><td><code>?page=1&amp;limit=20&amp;status=</code> — newest first. <code>status</code> takes a comma-separated list (<code>SHIPPED,DELIVERED</code>)</td></tr>
+            <tr><td class="p"><span class="m m-get">GET</span> /customer/orders/:id</td><td><span class="badge badge-cust">C</span></td><td>One order in full. <code>403</code> if it belongs to another customer, <code>404</code> if it does not exist</td></tr>
+            <tr><td class="p"><span class="m m-get">GET</span> /customer/addresses</td><td><span class="badge badge-cust">C</span></td><td>Saved delivery addresses, default first</td></tr>
+            <tr><td class="p"><span class="m m-post">POST</span> /customer/addresses</td><td><span class="badge badge-cust">C</span></td><td>Save a new one. <code>400</code> on missing required fields</td></tr>
+            <tr><td class="p"><span class="m m-put">PUT</span> /customer/addresses/:id</td><td><span class="badge badge-cust">C</span></td><td>Update. <code>403</code> on another customer's row</td></tr>
+            <tr><td class="p"><span class="m m-del">DELETE</span> /customer/addresses/:id</td><td><span class="badge badge-cust">C</span></td><td>Remove. <code>409</code> when past orders still reference it — delivery history must stay readable</td></tr>
+            <tr><td class="p"><span class="m m-patch">PATCH</span> /customer/addresses/:id/default</td><td><span class="badge badge-cust">C</span></td><td>Promote to default</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>Customer — catalogue &amp; discovery</h4>
+      <p>Every listing here accepts <code>page</code> / <code>limit</code> (max 100) and answers with an envelope <code>{total, page, limit, totalPages, products}</code> — except <code>get-all-products</code>, which returns a bare array and counts pages from zero to match the client's paging controller.</p>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Endpoint</th><th>Query</th><th>Behaviour</th></tr></thead>
+          <tbody>
+            <tr><td class="p"><span class="m m-get">GET</span> /customer/get-all-products</td><td class="p">page (0-based), pageSize</td><td>Unfiltered catalogue, ascending id. Bare array of product DTOs</td></tr>
+            <tr><td class="p"><span class="m m-get">GET</span> /customer/shops-near-location</td><td class="p">city, state, pincode,<br>latitude, longitude,<br>radiusKm=10, page, limit</td><td>Active shops matching the text fields or inside the Haversine radius. Each shop carries <code>distanceKm</code>; with coordinates the page is re-sorted nearest-first</td></tr>
+            <tr><td class="p"><span class="m m-get">GET</span> /customer/location-specialities</td><td class="p">city, state, pincode,<br>latitude, longitude, radiusKm</td><td>The home feed: up to 6 <code>CATEGORY_SPOTLIGHT</code> sections (top 5 products each by rating) preceded by an <code>AFFORDABLE</code> section of the 10 cheapest items nearby</td></tr>
+            <tr><td class="p"><span class="m m-get">GET</span> /customer/affordable-products</td><td class="p">…location, maxPriceInPaise,<br>page, limit</td><td>Cheapest-first within the area</td></tr>
+            <tr><td class="p"><span class="m m-get">GET</span> /customer/discounted-products</td><td class="p">…location, minPercent=1,<br>page, limit</td><td>Deepest discount first, then rating</td></tr>
+            <tr><td class="p"><span class="m m-get">GET</span> /customer/search-products</td><td class="p">q, …location, page, limit</td><td>Case-insensitive match on name, brand, SKU and short description. <code>q</code> under 2 characters returns an empty envelope. Exact prefix matches rank first, then rating</td></tr>
+            <tr><td class="p"><span class="m m-get">GET</span> /customer/shops/:shopId/products</td><td class="p">page, limit,<br>includeUnavailable</td><td>One shop's catalogue, rating-ordered. Unavailable items hidden unless asked for</td></tr>
+            <tr><td class="p"><span class="m m-get">GET</span> /customer/products-by-category/:categoryId</td><td class="p">…location, page, limit</td><td>Includes the category's direct children, so a parent browse surfaces sub-category stock</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted">All of these are public. Every one now passes through <code>toProductDto</code> except <code>location-specialities</code>, whose <code>AFFORDABLE</code> section still emits raw Sequelize rows.</p>
+
+      <h4>Shop</h4>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Endpoint</th><th>Access</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td class="p"><span class="m m-post">POST</span> /shop/register</td><td><span class="badge badge-open">public</span></td><td>One call creates the user (role <code>SHOP_OWNER</code>), an optional <code>LocationInfo</code>, the shop with a slug derived from its name, a <code>PENDING</code> verification record, and the category links from <code>categoryIds</code></td></tr>
+            <tr><td class="p"><span class="m m-get">GET</span> <span class="m m-post">POST</span> /shop/verify-email</td><td><span class="badge badge-open">public</span></td><td><code>?token=</code></td></tr>
+            <tr><td class="p"><span class="m m-post">POST</span> /shop/login</td><td><span class="badge badge-open">public</span></td><td>Rejects unverified emails and non-shop roles</td></tr>
+            <tr><td class="p"><span class="m m-post">POST</span> /shop/me</td><td><span class="badge badge-shop">S</span></td><td>Shop with location, verification, categories and the full product tree</td></tr>
+            <tr><td class="p"><span class="m m-post">POST</span> /shop/add-product</td><td><span class="badge badge-shop">S</span></td><td>Accepts <code>images</code> as URL strings or objects and <code>colors</code> as names or objects; maps the legacy <code>price</code> / <code>discountInPercentage</code> field names</td></tr>
+            <tr><td class="p"><span class="m m-get">GET</span> /shop/my-products</td><td><span class="badge badge-shop">S</span></td><td><code>?page=1&amp;limit=50&amp;q=</code> (limit capped at 200). Resolves the shop from the JWT and includes items marked unavailable</td></tr>
+            <tr><td class="p"><span class="m m-get">GET</span> /shop/products/:id</td><td><span class="badge badge-shop">S</span></td><td>One product. <code>404</code> — not <code>403</code> — for an id outside this shop: a shop has no business learning which ids exist elsewhere</td></tr>
+            <tr><td class="p"><span class="m m-patch">PATCH</span> /shop/products/:id</td><td><span class="badge badge-shop">S</span></td><td>Validated per field: <code>priceInPaise</code> (&gt;0), <code>discountPercent</code> / <code>markdownFloorPercent</code> (0–100), <code>stockQuantity</code> (≥0), <code>available</code>, <code>markdownEnabled</code>. Editing <code>discountPercent</code> by hand also becomes the new <code>baseDiscountPercent</code>, so the midnight reset returns to the edit rather than reverting it</td></tr>
+            <tr><td class="p"><span class="m m-post">POST</span> /shop/products/bulk-stock</td><td><span class="badge badge-shop">S</span></td><td>Backs the barcode scanner. <code>entries:[{sku, delta | stockQuantity}]</code> — relative or absolute. Unknown SKUs are reported per row instead of failing the batch</td></tr>
+            <tr><td class="p"><span class="m m-get">GET</span> /shop/dashboard</td><td><span class="badge badge-shop">S</span></td><td>The <em>Today</em> screen: orders awaiting dispatch (counted over <em>distinct</em> orders, since one order can hold several of this shop's lines), open alerts, stock totals, verification state</td></tr>
+            <tr><td class="p"><span class="m m-get">GET</span> /shop/alerts</td><td><span class="badge badge-shop">S</span></td><td><code>?status=</code> — <code>OPEN</code> (default), <code>ALL</code>, or one of <code>UNREAD</code> / <code>READ</code> / <code>RESOLVED</code>. Ordered <code>CRITICAL → WARNING → INFO</code></td></tr>
+            <tr><td class="p"><span class="m m-patch">PATCH</span> /shop/alerts/:id</td><td><span class="badge badge-shop">S</span></td><td>Mark read or resolved</td></tr>
+            <tr><td class="p"><span class="m m-get">GET</span> /shop/orders</td><td><span class="badge badge-shop">S</span></td><td>Orders containing this shop's items, newest first. <code>?page&amp;limit&amp;status</code></td></tr>
+            <tr><td class="p"><span class="m m-patch">PATCH</span> /shop/orders/:id/status</td><td><span class="badge badge-shop">S</span></td><td>Forward-only through <code>PLACED → CONFIRMED → SHIPPED → DELIVERED</code>; <code>CANCELLED</code> is reachable from anything unterminated. <code>400</code> on an illegal jump, <code>403</code> when the order holds none of this shop's items. Cancelling a paid order returns its stock</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>Admin</h4>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Endpoint</th><th>Access</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td class="p"><span class="m m-post">POST</span> /admin/register</td><td><span class="badge badge-open">public</span></td><td><code>{user, secretCode}</code> — <code>secretCode</code> must equal <code>ADMIN_PASSWORD</code></td></tr>
+            <tr><td class="p"><span class="m m-get">GET</span> <span class="m m-post">POST</span> /admin/verify-email</td><td><span class="badge badge-open">public</span></td><td><code>?token=</code></td></tr>
+            <tr><td class="p"><span class="m m-post">POST</span> /admin/login</td><td><span class="badge badge-open">public</span></td><td>Rejects any account whose role is not <code>ADMIN</code></td></tr>
+            <tr><td class="p"><span class="m m-post">POST</span> /admin/add-category</td><td><span class="badge badge-admin">A</span></td><td>Slug auto-derived from the name when omitted; <code>parentId</code> makes it a sub-category</td></tr>
+            <tr><td class="p"><span class="m m-post">POST</span> /admin/me</td><td><span class="badge badge-admin">A</span></td><td>Token check → <code>{message: "Email Verified"}</code></td></tr>
+            <tr><td class="p"><span class="m m-get">GET</span> /admin/stats</td><td><span class="badge badge-admin">A</span></td><td>Six counts: <code>shops</code>, <code>activeShops</code>, <code>products</code>, <code>categories</code>, <code>pendingVerifications</code>, <code>customers</code></td></tr>
+            <tr><td class="p"><span class="m m-get">GET</span> /admin/demand-heatmap</td><td><span class="badge badge-admin">A</span></td><td><code>?days=30&amp;precision=2</code> — order density by <em>delivery address</em>, grid-binned (2 dp ≈ 1.1 km cells). Addresses, not shop pins: a shop says where supply is, the address says where the demand came from</td></tr>
+            <tr><td class="p"><span class="m m-get">GET</span> /admin/shop-verifications</td><td><span class="badge badge-admin">A</span></td><td>The queue, oldest submission first. <code>?status=PENDING</code> (default) / <code>APPROVED</code> / <code>REJECTED</code> / <code>ALL</code>, paginated</td></tr>
+            <tr><td class="p"><span class="m m-post">POST</span> /admin/shop-verifications/:shopId/decide</td><td><span class="badge badge-admin">A</span></td><td><code>{status: APPROVED | REJECTED}</code>, stamping the deciding admin. <code>409</code> if already decided</td></tr>
+            <tr><td class="p"><span class="m m-get">GET</span> /admin/test-get · <span class="m m-post">POST</span> /admin/test-post</td><td><span class="badge badge-open">public</span></td><td>Connectivity probes</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="payments">Payments — Razorpay</h3>
+      <p>The design principle is that <strong>the client never names a price</strong>. It sends product ids and quantities; the server prices the order from its own table, opens a matching Razorpay order, and later proves the payment by recomputing Razorpay's signature.</p>
+
+      <ol class="steps">
+        <li><code>GET /customer/payment/config</code> → <code>{keyId, currency: "INR"}</code>. The key secret never leaves the process; with credentials unset every payment route answers <code>503</code> and the rest of the API keeps working.</li>
+        <li><code>POST /customer/payment/create-order</code> with <code>{orderItems:[{productId, quantity}], shippingAddress, billingAddress, phoneNumber}</code>. Each line is checked for existence, availability and stock; the unit price is <code>priceInPaise × (1 − discountPercent/100)</code>; totals below ₹1 are rejected. One transaction writes a <code>PLACED</code> / <code>PENDING</code> order plus its items, then the Razorpay order is created and its id stored. A gateway failure marks the order <code>CANCELLED</code> / <code>FAILED</code> and returns <code>502</code>.</li>
+        <li>The app opens Razorpay Checkout with the returned <code>razorpayOrderId</code>, <code>amountPaise</code> and <code>keyId</code>.</li>
+        <li><code>POST /customer/payment/verify</code> with the three values checkout hands back. The server recomputes <code>HMAC-SHA256(orderId|paymentId, keySecret)</code> and compares with <code>crypto.timingSafeEqual</code>. A match moves the order to <code>PAID</code> / <code>CONFIRMED</code>; a mismatch marks it <code>FAILED</code>. Verification is idempotent and refuses an order belonging to another customer.</li>
+      </ol>
+      <p class="muted">Order numbers look like <code>NZ-&lt;base36 timestamp&gt;-&lt;6 hex&gt;</code>, kept inside Razorpay's 40-character receipt limit. Note values are trimmed to 256 characters.</p>
+
+      <h3 id="jobs">Background jobs</h3>
+      <p>Three cron jobs in <code>src/jobs/</code>, all <strong>off unless <code>ENABLE_JOBS=true</code></strong>. The guard is not caution for its own sake: these jobs write shared state, so two dev instances against one database would each raise the same alerts and each escalate the same markdown, and <code>nodemon</code> restarting on every file save would re-run them constantly. Timezone comes from <code>JOBS_TIMEZONE</code> (default <code>Asia/Kolkata</code>), and each run is wrapped so a job's failure can never take the API process down with it.</p>
+
+      <div class="tw">
+        <table>
+          <thead><tr><th>Job</th><th>Schedule</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td class="p">replenishment</td><td class="p">0 * * * *</td><td>Flags stock by <strong>days of cover</strong> — how long stock on hand lasts at the rate the item is actually moving — and only when it is <em>also</em> selling faster than its own 7-day mean (×1.3). Raises <code>LOW_STOCK</code> / <code>STOCKOUT</code></td></tr>
+            <tr><td class="p">markdown-sweep</td><td class="p">*/30 15-21 * * *</td><td>Escalates end-of-day discounts along a ramp from 15:00 to 21:00, toward each product's owner-set floor. Raises <code>MARKDOWN_APPLIED</code></td></tr>
+            <tr><td class="p">markdown-reset</td><td class="p">5 0 * * *</td><td>Just after midnight, restores <code>baseDiscountPercent</code> — the owner's own pricing</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note">
+        <p class="note-t">Why the thresholds are relative</p>
+        <p>A flat "stock below N" rule is wrong for a marketplace where one shop sells three shawls a month and another sells forty loaves a day: the same threshold is either constant noise or a warning that arrives after the stockout. Cover is measured in days (<code>CRITICAL ≤ 1</code>, <code>WARNING ≤ 3</code>), and cancelled and unpaid orders are excluded from velocity — goods never handed over did not consume stock, so counting them would inflate the rate and cry wolf.</p>
+      </div>
+
+      <p>The markdown engine is the one piece of this system that <strong>rewrites a price a merchant chose</strong>, so it is opt-in per product via <code>markdownEnabled</code> and never passes <code>markdownFloorPercent</code>. Within a day discounts only ever move <em>up</em>, so a shopper who saw 30% off never finds it back at 20%.</p>
+
+      <p>Alerts are <strong>upserted, never appended</strong>. Identity is <code>(shop, product, type)</code> among rows that are not yet <code>RESOLVED</code>, so a scheduled scan refreshes one alert instead of turning one real problem into twenty-four identical rows a day. A <em>resolved</em> alert is deliberately not matched — the owner dealt with it, and the problem recurring later is genuinely new news.</p>
+
+      <h3 id="discovery">How "nearby" is computed</h3>
+      <p>There is no PostGIS. Radius filtering is a raw Haversine expression injected as a Sequelize <code>literal</code> into the <code>location_infos</code> where-clause:</p>
+<pre><code>(6371 * acos(
+    cos(radians(:lat)) * cos(radians(latitude))
+  * cos(radians(longitude) - radians(:lng))
+  + sin(radians(:lat)) * sin(radians(latitude))
+)) &lt;= :radiusKm</code></pre>
+      <p>The same formula is mirrored in JavaScript in <code>src/dto/productDto.js</code> so the <code>distanceKm</code> each shop reports agrees with the set of rows the query returned. Product endpoints reuse it indirectly: <code>_shopIdsNearLocation</code> resolves the nearby shop ids first, then constrains <code>products.shop_id</code>. An empty result narrows the query rather than being ignored — "nothing nearby" is a real answer.</p>
+      <div class="note">
+        <p class="note-t">Filter precedence</p>
+        <p><code>city</code> / <code>state</code> / <code>pincode</code> are <code>ILIKE</code> matches and combine <em>with</em> the radius when both are supplied. Supplying neither returns unfiltered results, which is why the client always sends coordinates.</p>
+      </div>
+
+      <h3 id="dto">Why the DTO layer exists</h3>
+      <p>The Flutter models are generated by <code>json_serializable</code> with non-nullable casts — <code>json['brand'] as String</code> — against columns that are nullable in Postgres. Returning raw ORM entities threw on the client and leaked internal names (<code>priceInPaise</code>, <code>avgRating</code>) along with the password hash. <code>src/dto/productDto.js</code> is the single place where entities become the exact shapes the app parses.</p>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Mapper</th><th>Produces</th><th>Worth knowing</th></tr></thead>
+          <tbody>
+            <tr><td class="p">toProductDto</td><td>client <code>Product</code></td><td><code>price</code> is still <em>paise</em> — the client divides by 100 at render time. Images sorted by <code>displayOrder</code></td></tr>
+            <tr><td class="p">toShopDto</td><td><code>ShopModel1</code></td><td>Adds <code>name</code>, <code>slug</code>, <code>isVerified</code>, <code>distanceKm</code>, <code>productCount</code>. Verification-document URLs are folded in from the related record</td></tr>
+            <tr><td class="p">toCustomerDto</td><td><code>Customer.fromMap</code></td><td>Nests the user under <code>myUser</code> and flattens <code>cart.items</code> to <code>cartItems</code>. Orders are deliberately omitted</td></tr>
+            <tr><td class="p">toBasicUserDto</td><td><code>BasicUserModel</code></td><td>Sends <code>password: ""</code> because the client model declares the field non-nullable</td></tr>
+            <tr><td class="p">toLocationDto</td><td>client <code>LocationInfo</code></td><td>Emits <code>longtitude</code> — the client's field name is misspelled and the wire format matches it</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <section id="schema">
+      <p class="eyebrow">Backend</p>
+      <h2 class="head">Data model</h2>
+      <p class="lede">Nineteen models plus one join table, all <code>BIGINT</code> auto-increment surrogate keys with snake_case columns. Associations are declared centrally in <code>src/models/index.js</code> — the model files themselves define only columns.</p>
+
+      <div class="note">
+        <p class="note-t">Two conventions to internalise</p>
+        <p><strong>Money is always integer paise</strong> — <code>price_in_paise</code>, <code>total_amount_paise</code>, <code>unit_price_paise</code>. Nothing stores rupees or floats. And <code>pg.defaults.parseInt8 = true</code> is set at the top of <code>models/index.js</code>: without it every BIGINT id would serialise as the string <code>"1"</code> and break the typed client.</p>
+      </div>
+
+      <h4>Identity</h4>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Table</th><th>Key columns</th><th>Relationships</th></tr></thead>
+          <tbody>
+            <tr><td class="p">nearzy_users</td><td class="p">username <span class="muted">uq</span>, email <span class="muted">uq</span>, password_hash, role, is_email_verified</td><td>Root of identity. <code>role ∈ CUSTOMER · SHOP_OWNER · SHOP · ADMIN</code>. 1:1 to admin / customer / shop</td></tr>
+            <tr><td class="p">email_confirmations</td><td class="p">token <span class="muted">uq</span>, user_id, expires_at, used</td><td>N:1 user</td></tr>
+            <tr><td class="p">refresh_tokens</td><td class="p">token_hash <span class="muted">uq</span>, user_id, family_id, expires_at, revoked_at, revoked_reason, device_label</td><td>N:1 user. Stores the <code>SHA-256</code> only. <code>family_id</code> groups the rotations of one sign-in so a replay can revoke the chain; <code>revoked_reason ∈ rotated · logout · logout_all · reuse_detected</code> is diagnostic, and it is what makes "why was I signed out?" answerable</td></tr>
+            <tr><td class="p">admins</td><td class="p">user_id <span class="muted">uq</span></td><td>1:1 user · 1:N shop_verifications approved</td></tr>
+            <tr><td class="p">customers</td><td class="p">user_id <span class="muted">uq</span>, first_name, last_name, phone_number</td><td>1:1 user · 1:1 cart · 1:N addresses, reviews, orders</td></tr>
+            <tr><td class="p">addresses</td><td class="p">customer_id, line1, city, state, postal_code, country, latitude, longitude, is_default</td><td>N:1 customer · 1:N orders shipped there</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>Shops</h4>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Table</th><th>Key columns</th><th>Relationships</th></tr></thead>
+          <tbody>
+            <tr><td class="p">shops</td><td class="p">user_id <span class="muted">uq</span>, location_id, name, slug <span class="muted">uq</span>, phone_number <span class="muted">uq</span>, shop_pic_url, address, description, is_active</td><td>1:1 user · N:1 location_infos · 1:1 verification · M:N categories · 1:N products</td></tr>
+            <tr><td class="p">location_infos</td><td class="p">latitude, longitude <span class="muted">not null</span>, short_address, complete_address, city, state, pincode</td><td>1:N shops. The table every radius query filters on</td></tr>
+            <tr><td class="p">shop_verifications</td><td class="p">shop_id <span class="muted">uq</span>, owner_name, owner_pic_url, pancard_pic_url, owner_id_pic_url, business_license, status, verified_by_admin_id, verified_at, submitted_at</td><td><code>status ∈ PENDING · APPROVED · REJECTED</code>. <code>isVerified</code> in the API means <code>APPROVED</code></td></tr>
+            <tr><td class="p">shop_categories</td><td class="p">shop_id, category_id</td><td>Join table, no timestamps — which categories a shop trades in</td></tr>
+            <tr><td class="p">shop_alerts</td><td class="p">shop_id, product_id, type, severity, title, body, status, resolved_at</td><td>The dashboard's triage list, written by the cron jobs. <code>type ∈ LOW_STOCK · STOCKOUT · MARKDOWN_APPLIED</code>; <code>severity ∈ INFO · WARNING · CRITICAL</code>; <code>status ∈ UNREAD · READ · RESOLVED</code>. Upserted on <code>(shop, product, type)</code> among unresolved rows</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>Catalogue</h4>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Table</th><th>Key columns</th><th>Relationships</th></tr></thead>
+          <tbody>
+            <tr><td class="p">product_categories</td><td class="p">parent_id, name <span class="muted">uq</span>, slug <span class="muted">uq</span>, image_url, is_top_category, display_order, required_attributes <span class="muted">json</span>, optional_attributes <span class="muted">json</span></td><td>Self-referencing hierarchy (one level used in practice) · M:N shops · 1:N products</td></tr>
+            <tr><td class="p">products</td><td class="p">shop_id, category_id, name, brand, sku <span class="muted">uq</span>, short_description, complete_description, price_in_paise, discount_percent, base_discount_percent, markdown_enabled, markdown_floor_percent, stock_quantity, available, auto_unpublished_at, avg_rating, review_count</td><td>N:1 shop and category · 1:N images, colours, reviews, cart_items, order_items. Indexed on <code>(shop_id, name)</code> and <code>brand</code>. A <code>beforeSave</code> hook flips <code>available</code> to false at zero stock — which is why stock must move through an instance <code>.save()</code>, never a bulk <code>decrement()</code></td></tr>
+            <tr><td class="p">product_images</td><td class="p">product_id, url, display_order, is_primary</td><td>Cloudinary URLs uploaded from the app before the product is saved</td></tr>
+            <tr><td class="p">product_colors</td><td class="p">product_id, color_name, hex_code</td><td>N:1 product</td></tr>
+            <tr><td class="p">reviews</td><td class="p">product_id, customer_id, rating <span class="muted">1–5</span>, title, body</td><td>Unique on <code>(product_id, customer_id)</code> — one review per customer per product. No write endpoint yet</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>Cart &amp; orders</h4>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Table</th><th>Key columns</th><th>Relationships</th></tr></thead>
+          <tbody>
+            <tr><td class="p">carts</td><td class="p">customer_id <span class="muted">uq</span>, updated_at</td><td>Created with the customer at registration; 1:N cart_items</td></tr>
+            <tr><td class="p">cart_items</td><td class="p">cart_id, product_id, quantity, added_at</td><td>Unique on <code>(cart_id, product_id)</code>, so an update is a <code>findOrCreate</code> plus a quantity write</td></tr>
+            <tr><td class="p">order_records</td><td class="p">customer_id, shipping_address_id, order_number <span class="muted">uq</span>, status, payment_status, total_amount_paise, discount_amount_paise, razorpay_order_id <span class="muted">uq</span>, razorpay_payment_id, razorpay_signature, placed_at</td><td><code>status ∈ PLACED · CONFIRMED · SHIPPED · DELIVERED · CANCELLED</code>; <code>payment_status ∈ PENDING · PAID · FAILED · REFUNDED</code>. <code>createdAt</code> is aliased to <code>placed_at</code></td></tr>
+            <tr><td class="p">order_items</td><td class="p">order_id, product_id, shop_id, quantity, unit_price_paise, discount_paise</td><td>Carries <code>shop_id</code> so a multi-shop basket can be split per seller, and it is what <code>/shop/orders</code> filters on. Prices are copied at purchase time, not joined live</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Seed data</h3>
+      <p><code>node src/seed.js</code> builds a coherent demo catalogue rooted in Kashmir and metro India — the fixture the UI was designed against. It refuses to run when <code>nearzy_users</code> is non-empty unless <code>SEED_FORCE=1</code>.</p>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Rows</th><th>What</th></tr></thead>
+          <tbody>
+            <tr><td class="n">1</td><td>Admin — <code>admin@nearzy.com</code></td></tr>
+            <tr><td class="n">8</td><td>Locations: Srinagar ×3, Jammu, Delhi ×2, Mumbai, Bangalore</td></tr>
+            <tr><td class="n">8</td><td>Shops, all <code>APPROVED</code> — shawls, saffron, woodcraft, silk, spices, crafts, organics</td></tr>
+            <tr><td class="n">15</td><td>Customers, plus 7 addresses</td></tr>
+            <tr><td class="n">12</td><td>Categories — 8 top-level, 4 sub</td></tr>
+            <tr><td class="n">—</td><td>Products with Picsum images, colours, reviews and a handful of orders</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Every seeded account uses the password <code>Test@1234</code>; the admin uses <code>ADMIN_PASSWORD</code>, falling back to <code>Admin@1234</code>. <code>node src/seed_orders.js</code> adds 8 further orders across mixed statuses and skips if any order already exists.</p>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <section id="frontend">
+      <p class="eyebrow">Flutter client</p>
+      <h2 class="head">The app</h2>
+      <p class="lede">A single Flutter app serving all three roles, structured feature-first with BLoC for state. There is no router package: navigation is <code>Navigator.push</code> with a custom shared-axis route, and the root widget picks a shell based on the restored session.</p>
+
+      <h4>Startup — <code>lib/main.dart</code></h4>
+      <ol class="steps">
+        <li><code>FlutterNativeSplash.preserve</code> holds the splash while work happens.</li>
+        <li><code>SessionManager.instance.restore()</code> loads every account saved on the device. This has to happen before the first profile fetch, because that fetch is what decides which home screen the app opens on.</li>
+        <li><code>mainAsyncTasks()</code> checks connectivity, then calls <code>POST /user/me</code> with the active account's token. It returns a <code>Customer</code>, a <code>ShopModel1</code>, a <code>NoInternetModel</code>, or null.</li>
+        <li>The result and the <code>has_seen_onboarding</code> flag choose the home widget: onboarding, <code>CustomerHomePage</code>, <code>ShopHomePage</code>, or the offline screen. An unauthenticated visitor lands in the customer shell and browses as a guest.</li>
+        <li>Two repositories and four BLoCs are provided above <code>MaterialApp</code>, so state survives tab switches.</li>
+      </ol>
+
+      <h3 id="state">State &amp; data flow</h3>
+      <div class="pipe">
+        <div class="layer"><b>Screen / widget</b><span><code>BlocBuilder</code> renders; user intent is dispatched as an event</span></div>
+        <div class="arrow" aria-hidden="true"></div>
+        <div class="layer accent"><b>Bloc</b><span>Emits loading → loaded / error. Holds no data itself</span></div>
+        <div class="arrow" aria-hidden="true"></div>
+        <div class="layer accent"><b>Repository</b><span>The in-memory source of truth: products, shops, categories, cart details, selected location, radius, favourites, recent searches</span></div>
+        <div class="arrow" aria-hidden="true"></div>
+        <div class="layer"><b>Service</b><span><code>ApiService</code>, <code>CustomerProfileService</code>, <code>RazorpayService</code>, <code>CloudinaryService</code>, <code>GeoLocatorService</code>, <code>LocationSearchService</code></span></div>
+        <div class="arrow" aria-hidden="true"></div>
+        <div class="layer accent"><b>NearzyHttp</b><span>The single HTTP entry point (<code>services/api_client.dart</code>). One place attaches the token, so no call site can send one a refresh has replaced; a 401 is retried <em>once</em> after renewing, so an expiry mid-session is invisible rather than a spurious "please sign in again"</span></div>
+        <div class="arrow" aria-hidden="true"></div>
+        <div class="layer"><b>package:http</b><span>Every URL is centralised in <code>constants/rest_api_const.dart</code>; each request carries <code>ngrok-skip-browser-warning</code>, which otherwise replaces the JSON body with an HTML warning page</span></div>
+      </div>
+
+      <div class="tw">
+        <table>
+          <thead><tr><th>BLoC</th><th>Owns</th><th>Representative events</th></tr></thead>
+          <tbody>
+            <tr><td class="p">CustomerAuthBloc</td><td>Sign-up, sign-in, sign-out, session verification, order loading</td><td class="p">CustomerLoginEvent · CustomerRegisterEvent · CustomerAuthVerificationEvent</td></tr>
+            <tr><td class="p">CustomerDataBloc</td><td>Catalogue, cart mutations, location and radius, search, favourites</td><td class="p">LoadCustomerDataEvent · SetCustomerLocationEvent · ChangeSearchRadiusEvent · CustomerDataAddProductToCartEvent · CustomerDataToggleFavouriteEvent</td></tr>
+            <tr><td class="p">ShopAuthBloc</td><td>Shop registration including device location capture, sign-in/out</td><td class="p">ShopAuthRegisterEvent · ShopAuthLoadLocationEvent</td></tr>
+            <tr><td class="p">ShopBloc</td><td>Product upload, image upload, inventory, order status</td><td class="p">ShopLoadProductsEvent · ShopSearchProductEvent · ShopUpdateOrderStatus</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>Sessions on the device</h4>
+      <p><code>SessionManager</code> owns <strong>every account signed into on this device</strong> and which one is live, serialised under the <code>nearzy_accounts</code> key. Two jobs that are really one:</p>
+      <ul>
+        <li><strong>Switching.</strong> Signing out to try another account used to mean retyping a password. Sessions are kept per account, so switching is a tap and the previous account is still signed in when you come back.</li>
+        <li><strong>Refreshing.</strong> <code>accessToken</code> renews the active token before handing it out, and <code>refreshActive</code> is what <code>NearzyHttp</code> calls when the server rejects one anyway. Both funnel through a <em>single in-flight future</em>, so twenty parallel requests hitting an expired token produce one refresh, not twenty — which matters because refresh tokens rotate, and racing refreshes would each invalidate the others and sign the user out.</li>
+      </ul>
+      <p>Consumers listen for a <code>SessionEvent</code>: the shell rebuilds on <code>signedIn</code>, <code>switched</code> and <code>signedOut</code>, while <code>refreshed</code> is routine maintenance that must not disturb anything on screen, and <code>expired</code> carries the message explaining why a password is being asked for again.</p>
+      <p class="muted">Also in <code>flutter_secure_storage</code>, through <code>SecureStorage</code>: <code>has_seen_onboarding</code>, <code>favourite_product_ids</code> and <code>recent_searches</code>. Favourites are a client-only wishlist — there is still no server endpoint for them. <code>jwt_token</code> remains as the legacy single-token key that <code>restore()</code> migrates from, and <code>normalizeToken</code> still unwraps a token whether it arrives bare, JSON-quoted, or inside <code>{"token": …}</code>.</p>
+
+      <h4>External services</h4>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Service</th><th>Used for</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td class="p">Cloudinary</td><td>Product, shop and document images</td><td>Unsigned upload with <code>test_preset</code>; images are compressed client-side, cap 10 MB. The cloud name and API key are compiled into <code>rest_api_const.dart</code></td></tr>
+            <tr><td class="p">OSM Nominatim</td><td>Forward and reverse geocoding in the location picker</td><td>No API key needed. The service enforces the usage policy: an identifying User-Agent, one request per 1.1 s, and a memo cache. Failures degrade to "no suggestions"</td></tr>
+            <tr><td class="p">geolocator / geocoding</td><td>Device position and address resolution</td><td>Permission and service-disabled states are surfaced as typed <code>CustomException</code>s</td></tr>
+            <tr><td class="p">flutter_map</td><td>Nearby-shops map, location picker</td><td>OSM raster tiles with <code>latlong2</code>; no Google Maps key required</td></tr>
+            <tr><td class="p">razorpay_flutter</td><td>Checkout</td><td>Opened with the key id the backend hands out per order — no key is baked into the app</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="screens">Screens &amp; navigation</h3>
+      <p>Each role gets its own shell with an animated bottom nav. The customer shell starts on <em>Home</em> (index 2) and exposes <code>HomeTabScope</code> so the drawer can move the existing tab instead of pushing a duplicate screen.</p>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Shell</th><th>Tabs</th><th>Pushed screens</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="badge badge-cust">Customer</span></td>
+              <td>Explore (nearby shops) · Categories · Home (discovery feed) · Cart · Profile</td>
+              <td>Product details, shop details, category, search, checkout, saved items, offers, location picker, nearby-shops map, help, login/register</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-shop">Shop</span></td>
+              <td>Today (dashboard) · Orders · Inventory · Profile</td>
+              <td>Product upload, bulk barcode scan, shop registration and the extra-details step, upload success</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-admin">Admin</span></td>
+              <td>Dashboard · Categories · Shops (verification queue) · Demand</td>
+              <td>Category creation</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Shared widgets in <code>lib/presentation/common/widgets/</code> carry most of the visual weight: <code>NearzyProductCard</code>, <code>NearzyShopCard</code>, <code>NearzySearchBar</code>, <code>NearzyMap</code>, <code>ShimmerLoading</code>, <code>AnimatedBottomNav</code>, <code>NearzyNetworkImage</code>. Paged lists use <code>infinite_scroll_pagination</code>; the dashboard's controller is registered on the repository so a location change can refresh it from anywhere.</p>
+
+      <h4>Tests</h4>
+      <p>Six files under <code>frontend/test/</code>, each written against something that is genuinely hard to check by hand rather than for coverage:</p>
+      <div class="tw">
+        <table>
+          <thead><tr><th>File</th><th>Covers</th></tr></thead>
+          <tbody>
+            <tr><td class="p">auth_session_test.dart</td><td>Parsing a session out of whatever the server sent, and knowing when it has gone stale</td></tr>
+            <tr><td class="p">session_refresh_test.dart</td><td>Refresh and replay, driven against a <strong>live backend</strong> rather than a stub that always says yes. Skips itself when nothing is listening on <code>baseApiUrl</code>, so the suite still passes with no server up</td></tr>
+            <tr><td class="p">location_screens_test.dart</td><td>The location picker and map surfaces — two navigations deep behind a network fetch, and the ones most likely to break on a layout constraint</td></tr>
+            <tr><td class="p">verification_swipe_test.dart</td><td>Direction-to-outcome on the admin swipe. A swipe is the only route to an irreversible decision about a real business, and that mapping silently inverts during refactors</td></tr>
+            <tr><td class="p">cross_fade_test.dart</td><td>The "Duplicate keys found" crash <code>CrossFade</code> exists to prevent — it only appears when phases change faster than the fade, which is what tapping the budget chips does and what nobody does by hand</td></tr>
+            <tr><td class="p">widget_test.dart</td><td>App shell smoke test, via onboarding — the only entry point that renders without hitting the network</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted">There are still no backend tests; the API is exercised against a local database and Swagger UI.</p>
+
+      <h3 id="design">Design system — "Local Premium"</h3>
+      <p>The visual language is documented as a project skill in <code>.claude/skills/nearzy-design/SKILL.md</code> and implemented as tokens in <code>lib/theme/</code>. Screen code is expected to pull from the tokens and never hardcode a hex, style, radius or duration. Three rules govern it: <strong>ink and paper with one accent</strong>; <strong>nothing appears instantly</strong>; <strong>radius is large and consistent</strong> — 20–28 px on cards, pill on chips and buttons.</p>
+
+      <div class="sw">
+        <div class="swatch"><div class="fill" style="background:#0F1A15"></div><div class="lbl"><b>ink</b><span>#0F1A15</span></div></div>
+        <div class="swatch"><div class="fill" style="background:#1B2A23"></div><div class="lbl"><b>inkSoft</b><span>#1B2A23</span></div></div>
+        <div class="swatch"><div class="fill" style="background:#C9F24E"></div><div class="lbl"><b>lime</b><span>#C9F24E</span></div></div>
+        <div class="swatch"><div class="fill" style="background:#A8D62F"></div><div class="lbl"><b>limeDeep</b><span>#A8D62F</span></div></div>
+        <div class="swatch"><div class="fill" style="background:#8FA396"></div><div class="lbl"><b>sage</b><span>#8FA396</span></div></div>
+        <div class="swatch"><div class="fill" style="background:#E4EBE4"></div><div class="lbl"><b>sageSurface</b><span>#E4EBE4</span></div></div>
+        <div class="swatch"><div class="fill" style="background:#F7F6F1"></div><div class="lbl"><b>paper</b><span>#F7F6F1</span></div></div>
+        <div class="swatch"><div class="fill" style="background:#E6E4DC"></div><div class="lbl"><b>line</b><span>#E6E4DC</span></div></div>
+      </div>
+
+      <div class="tw">
+        <table>
+          <thead><tr><th>Token file</th><th>Defines</th></tr></thead>
+          <tbody>
+            <tr><td class="p">app_colors.dart</td><td>The palette above plus semantic colours and exactly two gradients — <code>inkGradient</code> for hero blocks, <code>limeGradient</code> for the one primary CTA on a screen. Contrast law: text on lime is always ink, never white</td></tr>
+            <tr><td class="p">app_text_styles.dart</td><td>Plus Jakarta Sans 700/800 for display and headings with tight tracking; Inter 400/500/600 for body and UI. Scale, by real token name: <code>display 34 / heading1 28 / heading2 22 / heading3 18 / heading4 16 / bodyLarge 16 / bodyMedium 14 / bodySmall 13 / caption 12 / micro 10</code>, plus the <code>label*</code>, <code>price*</code> and <code>input*</code> sets. Prices use tabular figures at weight 700</td></tr>
+            <tr><td class="p">app_spacing.dart</td><td>20 px screen gutter, 14 px grid gaps, 28 px between sections, a bottom-nav inset, and the shadow tokens that stand in for Material elevation</td></tr>
+            <tr><td class="p">app_motion.dart</td><td><code>micro 120ms · quick 220ms · base 340ms · slow 520ms · ambient 2600ms</code>, a 45 ms stagger capped at 10 items (<code>Motion.staggerDelay(i)</code>), and five curves — <code>easeOut</code>, <code>spring</code>, <code>emphasis</code>, <code>gentle</code>, <code>exit</code>. <code>Motion.duration(context, …)</code> returns zero when the viewer has reduced motion enabled</td></tr>
+            <tr><td class="p">theme.dart</td><td>Wires all of the above into one <code>ThemeData</code>, configuring every Material component against the palette so screens rarely need an inline colour</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The signature motion patterns are a staggered fade-and-rise on lists, a 0.97 press scale with light haptics on every tappable card, <code>Hero</code> tags <code>product-&lt;id&gt;</code> / <code>shop-&lt;id&gt;</code> for continuous grid-to-detail transitions, a parallax <code>SliverAppBar</code> on detail screens, and a cross-fade from shimmer skeleton to content — a hard cut counts as a bug. At most one looping animation per screen.</p>
+      <p class="muted">Two helpers do most of that work and should be reached for instead of hand-rolled equivalents: <code>PressableScale</code> for the press response, and <code>CrossFade</code> for every phase change. <code>CrossFade</code> exists because a bare <code>AnimatedSwitcher</code> keys its entries by the child's own key, so keyless children collide and two of them fading out at once throw "Duplicate keys found"; a monotonic revision keeps every entry distinct. Network images go through <code>NearzyNetworkImage</code>, never a raw <code>Image.network</code>.</p>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <section id="running">
+      <p class="eyebrow">Operations</p>
+      <h2 class="head">Running locally</h2>
+
+      <h4>Backend</h4>
+<pre><code>cd backend
+npm install
+cp .env.example .env          <span class="c"># then fill it in — see the table below</span>
+createdb nearzy               <span class="c"># PostgreSQL must be running</span>
+npm run dev                   <span class="c"># nodemon on :8080; sync({alter:true}) builds the schema</span>
+node src/seed.js              <span class="c"># demo catalogue — the DB starts empty</span>
+node src/seed_orders.js       <span class="c"># optional order history</span>
+
+<span class="c"># Alerts only appear once the cron jobs are allowed to run:</span>
+ENABLE_JOBS=true npm run dev
+
+curl -s localhost:8080/health <span class="c"># {"status":"UP", …, "database":{"status":"UP", …}}</span>
+open  localhost:8080/swagger-ui</code></pre>
+
+      <h4>Frontend</h4>
+<pre><code>cd frontend
+fvm install                   <span class="c"># Flutter 3.44.7, pinned in .fvmrc</span>
+fvm flutter pub get
+fvm dart run build_runner build --delete-conflicting-outputs   <span class="c"># regenerate *.g.dart</span>
+fvm flutter run</code></pre>
+      <div class="note">
+        <p class="note-t">Point the app at the right host</p>
+        <p><code>ApiConst.baseApiUrl</code> now defaults to a <strong>reserved ngrok domain</strong>, with the <code>http://localhost:8080</code> line commented out directly beneath it. Uncomment that for web, macOS or an iOS simulator against a local backend; an Android emulator needs <code>http://10.0.2.2:8080</code>; a physical device needs your machine's LAN address or a tunnel (<code>ngrok http 8080</code>). There is no build-time flavour — it is a source edit in <code>lib/constants/rest_api_const.dart</code>.</p>
+      </div>
+
+      <h4>Environment variables</h4>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Variable</th><th>Purpose</th><th>Absent →</th></tr></thead>
+          <tbody>
+            <tr><td class="p">PORT</td><td>Listen port</td><td class="muted">8080</td></tr>
+            <tr><td class="p">NODE_ENV</td><td><code>development</code> logs SQL and includes SMTP error detail in responses</td><td class="muted">quiet</td></tr>
+            <tr><td class="p">HOST_URL</td><td>Prefix for verification links and the Swagger server URL</td><td class="muted">http://localhost:8080/</td></tr>
+            <tr><td class="p">DB_HOST · DB_PORT · DB_NAME · DB_USER · DB_PASS</td><td>PostgreSQL connection</td><td class="muted">boot fails</td></tr>
+            <tr><td class="p">JWT_SECRET_KEY</td><td>HS256 signing key</td><td class="muted">a hardcoded fallback in <code>jwtService.js</code></td></tr>
+            <tr><td class="p">JWT_EXPIRATION_HOURS</td><td>Access-token lifetime</td><td class="muted">48</td></tr>
+            <tr><td class="p">JWT_EXPIRATION_MINUTES</td><td>Overrides the hours when &gt; 0. Set to <code>1</code> to watch the app's refresh path run every minute; leave unset outside testing</td><td class="muted">0 (ignored)</td></tr>
+            <tr><td class="p">JWT_REFRESH_EXPIRATION_DAYS</td><td>Refresh-token lifetime. Since the app rotates on every use, this is how long <em>inactivity</em> can last before a password is needed again</td><td class="muted">30</td></tr>
+            <tr><td class="p">ENABLE_JOBS</td><td><code>true</code> starts the cron schedule</td><td class="muted">jobs disabled — no alerts, no markdown</td></tr>
+            <tr><td class="p">JOBS_TIMEZONE</td><td>Timezone the cron specs are read in</td><td class="muted">Asia/Kolkata</td></tr>
+            <tr><td class="p">ADMIN_EMAIL</td><td>The seeded admin's address</td><td class="muted">admin@nearzy.com</td></tr>
+            <tr><td class="p">ADMIN_PASSWORD</td><td>The <code>secretCode</code> gating admin registration, and the seeded admin's password</td><td class="muted">a hardcoded fallback in <code>adminService.js</code></td></tr>
+            <tr><td class="p">MAIL_HOST · MAIL_PORT · MAIL_USER · MAIL_PASS</td><td>SMTP. <code>MAIL_USER</code> doubles as the From address; AUTH is offered only when <code>MAIL_PASS</code> is set</td><td class="muted">smtp.gmail.com:587</td></tr>
+            <tr><td class="p">RAZORPAY_KEY_ID · RAZORPAY_KEY_SECRET</td><td>Checkout and signature verification</td><td class="muted">payment routes answer 503; the rest of the API is unaffected</td></tr>
+            <tr><td class="p">SEED_FORCE</td><td><code>1</code> lets <code>seed.js</code> run against a non-empty user table</td><td class="muted">seed skips</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted"><code>.env</code> is gitignored — <code>.env.example</code> is the committed list of every variable the server reads. For local mail, <a href="https://mailpit.axllent.org">Mailpit</a> catches everything instead of sending it: point <code>MAIL_HOST=localhost</code> and <code>MAIL_PORT=1025</code> at it (the default is 587, which Mailpit does not listen on) and read the verification links at <code>localhost:8025</code>. SMTP AUTH is only offered when <code>MAIL_PASS</code> is set, so an unauthenticated catcher works as-is. <code>Dockerfile</code> builds a two-stage <code>node:18-alpine</code> image with production dependencies only.</p>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <section id="edges">
+      <p class="eyebrow">Operations</p>
+      <h2 class="head">Sharp edges</h2>
+      <p class="lede">Things a newcomer would otherwise have to discover by debugging. Grouped by the kind of surprise, not by severity.</p>
+
+      <div class="edges">
+
+        <div class="edge sec">
+          <div class="k"><i></i>Authorization</div>
+          <h4>Three writes trust the body, not the token</h4>
+          <p><code>POST /customer/update-cart-items</code> takes <code>customerId</code> from the request body, <code>POST /customer/update</code> uses <code>body.id</code>, and <code>POST /shop/add-product</code> trusts <code>shopId</code>. Any authenticated account with the right role can act on another account's rows. The payment routes and <code>/shop/my-products</code> show the intended pattern — resolve the owner from <code>req.user</code>.</p>
+        </div>
+
+        <div class="edge sec">
+          <div class="k"><i></i>Secrets</div>
+          <h4>Two credentials have committed fallbacks</h4>
+          <p><code>jwtService</code> falls back to a literal JWT secret and <code>adminService</code> to a literal admin secret code when the env vars are missing. Both values are in the repository, so a deploy that forgets its environment is signing tokens with a public key.</p>
+        </div>
+
+        <div class="edge sec">
+          <div class="k"><i></i>Schema</div>
+          <h4>No migrations — <code>sync({ alter: true })</code> on every boot</h4>
+          <p>Convenient locally, hazardous anywhere with real data: the models are the only schema definition, and a column rename becomes a silent drop-and-add. Worth replacing with <code>sequelize-cli</code> migrations before this runs anywhere shared.</p>
+        </div>
+
+        <div class="edge stub">
+          <div class="k"><i></i>Client bug</div>
+          <h4>The uniqueness checks always answer "false"</h4>
+          <p><code>ApiService.emailExists</code> and <code>usernameExists</code> parse the response with <code>bool.fromEnvironment(response.body)</code>, which reads compile-time environment declarations rather than the body. Both return <code>false</code> whatever the server said, so duplicate-email validation only surfaces later as a 400 from <code>/register</code>.</p>
+        </div>
+
+        <div class="edge stub">
+          <div class="k"><i></i>Unfinished</div>
+          <h4>Reviews can be read but never written</h4>
+          <p>The <code>reviews</code> table, its <code>1–5</code> validation and the unique <code>(product_id, customer_id)</code> constraint all exist, and <code>avg_rating</code> / <code>review_count</code> on <code>products</code> drive most of the ordering in the discovery endpoints — but no route creates one. Every rating in the app today came from <code>seed.js</code>.</p>
+        </div>
+
+        <div class="edge cfg">
+          <div class="k"><i></i>Wire format</div>
+          <h4>One endpoint still skips the DTO</h4>
+          <p><code>/customer/location-specialities</code> emits raw Sequelize rows in its <code>AFFORDABLE</code> section while every other product endpoint goes through <code>toProductDto</code> — <code>/customer/affordable-products</code> has since been converted. The client's <code>_unwrap</code> helper is deliberately lenient about it, but the field names differ, so anything new should use the DTO.</p>
+        </div>
+
+        <div class="edge cfg">
+          <div class="k"><i></i>Wire format</div>
+          <h4><code>/me</code> is a <code>POST</code> that still accepts a body token</h4>
+          <p>The four profile endpoints remain <code>POST</code>, and <code>callerIdentity</code> keeps reading a raw JWT out of the request body as a fallback for older clients — a path the auth middleware never validated. New code should rely on <code>req.user</code> and treat the body token as deprecated.</p>
+        </div>
+
+        <div class="edge cfg">
+          <div class="k"><i></i>Config</div>
+          <h4>The API host is compiled in</h4>
+          <p><code>ApiConst.baseApiUrl</code> is a hardcoded literal with a tunnel URL commented above it; the Cloudinary cloud name and API key sit in the same file. Any host change is a source edit and a rebuild.</p>
+        </div>
+
+        <div class="edge stub">
+          <div class="k"><i></i>Config</div>
+          <h4>The dashboard looks broken until the jobs are on</h4>
+          <p><code>ENABLE_JOBS</code> defaults to off, and nothing else writes <code>shop_alerts</code> — so a fresh checkout shows a shop dashboard whose alert list is permanently empty, which reads as a bug rather than a setting. Run <code>ENABLE_JOBS=true npm run dev</code>, or call <code>runReplenishmentScan()</code> / <code>runMarkdownSweep()</code> directly; both are exported from <code>jobs/index.js</code> for exactly that.</p>
+        </div>
+
+        <div class="edge sec">
+          <div class="k"><i></i>Pricing</div>
+          <h4>A cron job rewrites merchant prices</h4>
+          <p>The markdown engine mutates <code>discount_percent</code> on live products between 15:00 and 21:00 and restores it at 00:05. It only ever touches products whose owner set <code>markdownEnabled</code>, and never passes <code>markdownFloorPercent</code> — that opt-in <em>is</em> the safety model. Worth knowing before debugging "why did this product's price change overnight".</p>
+        </div>
+
+      </div>
+
+      <h3 id="resolved">Resolved since the last revision</h3>
+      <p>Five things this page previously listed as sharp edges have been fixed. Kept here so a returning reader can see what moved rather than wondering whether the entry was simply dropped.</p>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Was</th><th>Now</th></tr></thead>
+          <tbody>
+            <tr><td>Order history has no endpoint</td><td><code>GET /customer/orders</code>, <code>/orders/:id</code>, <code>GET /shop/orders</code> and <code>PATCH /shop/orders/:id/status</code> all exist, with a forward-only lifecycle and stock returned on cancellation</td></tr>
+            <tr><td>Shop approval implemented but not routed</td><td><code>GET /admin/shop-verifications</code> and <code>POST /admin/shop-verifications/:shopId/decide</code>, with a swipe UI on the admin <em>Shops</em> tab</td></tr>
+            <tr><td>No refresh token; logout is client-side only</td><td>Rotating refresh tokens in <code>refresh_tokens</code>, family-based reuse detection, <code>POST /user/refresh</code> and <code>/user/logout</code> (optionally all devices)</td></tr>
+            <tr><td>Login returns a quoted string</td><td>All three logins return a session object; <code>normalizeToken</code> survives only for the legacy path</td></tr>
+            <tr><td><code>frontend/README.md</code> describes the old stack</td><td>Rewritten as the Flutter app doc, with a new root <code>README.md</code> covering the monorepo. Neither mentions Spring Boot or AWS any more</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted">Still open, and still worth fixing first: the three writes that trust the request body over the token, and the two committed credential fallbacks.</p>
+    </section>
+
+  </main>
+
+  <footer>
+    <span>Nearzy — engineering reference</span>
+    <span>Revision 2 — generated from the working tree at <code>main</code> · 3 September 2026</span>
+    <span>Live API docs: <code>/swagger-ui</code></span>
+  </footer>
+
+</div>
+
+<script>
+// Scroll-spy for the index rail. Tracks every section and sub-heading that has
+// an id and a matching rail link, highlighting the last one scrolled past.
+(function () {
+  var links = Array.prototype.slice.call(document.querySelectorAll('.rail a'));
+  if (!links.length) return;
+
+  var targets = links
+    .map(function (a) {
+      var el = document.getElementById(a.getAttribute('href').slice(1));
+      return el ? { link: a, el: el } : null;
+    })
+    .filter(Boolean);
+
+  function sync() {
+    var y = window.scrollY + 120;
+    var current = targets[0];
+    for (var i = 0; i < targets.length; i++) {
+      if (targets[i].el.offsetTop <= y) current = targets[i];
+    }
+    for (var j = 0; j < targets.length; j++) {
+      targets[j].link.classList.toggle('active', targets[j] === current);
+    }
+  }
+
+  var queued = false;
+  window.addEventListener('scroll', function () {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(function () { queued = false; sync(); });
+  }, { passive: true });
+
+  sync();
+})();
+</script>
+</body>
+</html>

@@ -10,7 +10,6 @@
 //   cd frontend && fvm flutter test test/session_refresh_test.dart
 
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -53,14 +52,7 @@ Future<String> _login(String url, String email) async {
 /// singleton in the app, so a test has to reset it through its own API.
 Future<void> _clearSessions() async {
   FlutterSecureStorage.setMockInitialValues({});
-  await SecureStorage.deleteData(key: 'nearzy_accounts');
-  await SecureStorage.deleteData(key: 'jwt_token');
-  final manager = SessionManager.instance;
-  await manager.restore();
-  for (final account in manager.accounts) {
-    await manager.forget(account.email);
-  }
-  if (manager.isSignedIn) await manager.signOutActive();
+  await SessionManager.instance.reloadForTesting();
 }
 
 void main() {

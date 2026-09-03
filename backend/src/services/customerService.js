@@ -751,7 +751,8 @@ const customerService = {
    * Returns cheapest-first available products from shops in the given location.
    * Optionally cap by `maxPriceInPaise`.
    */
-  async getAffordableProductsByLocation({ city, state, pincode, latitude, longitude, radiusKm = 10, maxPriceInPaise, page = 1, limit = 20 }) {
+  async getAffordableProductsByLocation({ city, state, pincode, latitude, longitude, radiusKm = 10, maxPriceInPaise, page, limit }) {
+    const paging = this._paging({ page, limit });
     const locationWhere = this._buildLocationWhere({ city, state, pincode, latitude, longitude, radiusKm });
 
     const shops = await Shop.findAll({
@@ -763,39 +764,33 @@ const customerService = {
     });
 
     if (!shops.length) {
-      return { total: 0, page: parseInt(page), limit: parseInt(limit), totalPages: 0, products: [] };
+      return { total: 0, page: paging.page, limit: paging.limit, totalPages: 0, products: [] };
     }
 
-    const shopIds = shops.map((s) => s.id);
-    const productWhere = { shop_id: shopIds, available: true };
-    if (maxPriceInPaise) {
-      productWhere.price_in_paise = { [Op.lte]: parseInt(maxPriceInPaise) };
+    const productWhere = { shop_id: shops.map((s) => s.id), available: true };
+    const cap = Number.parseInt(maxPriceInPaise, 10);
+    if (Number.isFinite(cap) && cap > 0) {
+      productWhere.price_in_paise = { [Op.lte]: cap };
     }
 
-    const offset = (parseInt(page) - 1) * parseInt(limit);
-
-    const { count, rows: products } = await Product.findAndCountAll({
+    const { count, rows } = await Product.findAndCountAll({
       where: productWhere,
-      include: [
-        { association: 'images' },
-        { association: 'colors' },
-        { association: 'category' },
-        {
-          association: 'shop',
-          include: [{ association: 'locationInfo' }],
-        },
-      ],
+      // The shared include tree, not a hand-rolled subset: this endpoint used
+      // to load a narrower one and return the raw rows, so every product it
+      // sent failed to parse client-side and the whole section read as empty.
+      include: this._productIncludes(),
       order: [['price_in_paise', 'ASC']],
-      limit: parseInt(limit),
-      offset,
+      limit: paging.limit,
+      offset: paging.offset,
+      distinct: true,
     });
 
     return {
       total: count,
-      page: parseInt(page),
-      limit: parseInt(limit),
-      totalPages: Math.ceil(count / parseInt(limit)),
-      products,
+      page: paging.page,
+      limit: paging.limit,
+      totalPages: Math.ceil(count / paging.limit),
+      products: rows.map(toProductDto),
     };
   },
 };

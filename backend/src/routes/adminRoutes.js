@@ -186,6 +186,150 @@ router.post('/me', authorize('ADMIN'), async (req, res, next) => {
 
 /**
  * @swagger
+ * /admin/stats:
+ *   get:
+ *     tags: [Admin]
+ *     summary: Platform counters for the admin overview
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Counts }
+ */
+router.get('/stats', authorize('ADMIN'), async (req, res, next) => {
+  try {
+    res.json(await adminService.getStats());
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * @swagger
+ * /admin/demand-heatmap:
+ *   get:
+ *     tags: [Admin]
+ *     summary: Order density by delivery location, grid-binned
+ *     description: >
+ *       Plots where orders were delivered so the admin can see which areas
+ *       justify widening the discovery radius. Orders only — search queries
+ *       are not logged.
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: query
+ *         name: days
+ *         schema: { type: integer, default: 30 }
+ *       - in: query
+ *         name: precision
+ *         schema: { type: integer, default: 2 }
+ *         description: Grid resolution in decimal places (2 ~ 1.1km cells)
+ *     responses:
+ *       200: { description: Weighted points }
+ */
+router.get('/demand-heatmap', authorize('ADMIN'), async (req, res, next) => {
+  try {
+    res.json(await adminService.getDemandHeatmap({
+      days: req.query.days,
+      precision: req.query.precision,
+    }));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Shop verification
+//
+// `adminService.verifyShop` has existed since the shop model landed but was
+// never routed, so applications collected in `shop_verifications` with no way
+// to read or decide them. These two endpoints are that missing surface.
+// ---------------------------------------------------------------------------
+
+/**
+ * @swagger
+ * /admin/shop-verifications:
+ *   get:
+ *     tags: [Admin]
+ *     summary: The shop verification queue, oldest submission first
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema: { type: string, default: PENDING }
+ *         description: PENDING, APPROVED, REJECTED, or ALL
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 20 }
+ *     responses:
+ *       200: { description: Paginated verifications }
+ *       400: { description: Unknown status }
+ */
+router.get('/shop-verifications', authorize('ADMIN'), async (req, res, next) => {
+  try {
+    const result = await adminService.listShopVerifications({
+      page: req.query.page,
+      limit: req.query.limit,
+      status: req.query.status,
+    });
+    if (result.error) {
+      return res.status(result.status || 400).json({ message: result.error });
+    }
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * @swagger
+ * /admin/shop-verifications/{shopId}/decide:
+ *   post:
+ *     tags: [Admin]
+ *     summary: Approve or reject a pending shop application
+ *     description: >
+ *       Records the deciding admin and the decision time. Only a PENDING
+ *       application can be decided; a repeat decision answers 409.
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: shopId
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [APPROVED, REJECTED]
+ *     responses:
+ *       200: { description: Decision recorded }
+ *       400: { description: Unknown status }
+ *       404: { description: No verification record for that shop }
+ *       409: { description: Already decided }
+ */
+router.post('/shop-verifications/:shopId/decide', authorize('ADMIN'), async (req, res, next) => {
+  try {
+    const result = await adminService.verifyShop(
+      req.params.shopId,
+      req.user.id,
+      req.body?.status
+    );
+    if (result.error) {
+      return res.status(result.status || 400).json({ message: result.error });
+    }
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * @swagger
  * /admin/test-get:
  *   get:
  *     tags: [Admin Auth]

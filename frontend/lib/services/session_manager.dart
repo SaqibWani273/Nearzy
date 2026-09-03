@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../constants/bottom_navbar_items.dart';
@@ -142,6 +143,20 @@ class SessionManager {
     } catch (e) {
       log('SessionManager.restore failed: $e');
     }
+  }
+
+  /// Drops everything held in memory and re-reads storage, exactly as a cold
+  /// start would. Tests use it to simulate a restart, and to observe what the
+  /// manager makes of storage they have altered underneath it — there is no
+  /// setter for a token on purpose, since only this class may write one.
+  @visibleForTesting
+  Future<void> reloadForTesting() async {
+    _accounts.clear();
+    _activeEmail = null;
+    _restoring = null;
+    _inFlightRefresh = null;
+    _refreshingEmail = null;
+    await restore();
   }
 
   Future<void> _persist() async {

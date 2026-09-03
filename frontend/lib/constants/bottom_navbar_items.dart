@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../presentation/common/widgets/animated_bottom_nav.dart';
 import '../presentation/features/customer/shops/shops_screen.dart';
+import '../presentation/features/shop/dashboard/shop_dashboard_screen.dart';
 import '../presentation/features/shop/inventory/shop_inventory_screen.dart';
 import '../presentation/features/shop/orders/orders_screen.dart';
 import '../presentation/features/shop/shop_profile/shop_profile_screen.dart';
@@ -52,6 +53,11 @@ List<Widget> customerMainScreens = [
 
 List<NearzyNavItem> shopNavItems = [
   const NearzyNavItem(
+    label: 'Today',
+    selectedIcon: Icons.bolt_rounded,
+    unselectedIcon: Icons.bolt_outlined,
+  ),
+  const NearzyNavItem(
     label: 'Orders',
     selectedIcon: Icons.receipt_long_rounded,
     unselectedIcon: Icons.receipt_long_outlined,
@@ -68,11 +74,15 @@ List<NearzyNavItem> shopNavItems = [
   ),
 ];
 
-List<Widget> shopMainScreens = [
-  OrdersScreen(),
-  ShopInventoryScreen(),
-  ShopProfileScreen(),
-];
+/// Built per-shell rather than held as a constant list, because the dashboard
+/// needs to move the shell to another tab ("open orders") and only the shell
+/// owns the index. A static list had no way to reach it.
+List<Widget> shopMainScreens(void Function(int) goToTab) => [
+      ShopDashboardScreen(onOpenOrders: () => goToTab(1)),
+      OrdersScreen(),
+      const ShopInventoryScreen(),
+      ShopProfileScreen(),
+    ];
 
 // ── Admin nav ─────────────────────────────────────────────────────────
 
@@ -91,6 +101,11 @@ List<NearzyNavItem> adminNavItems = [
     label: 'Shops',
     selectedIcon: Icons.store_rounded,
     unselectedIcon: Icons.store_outlined,
+  ),
+  const NearzyNavItem(
+    label: 'Demand',
+    selectedIcon: Icons.local_fire_department_rounded,
+    unselectedIcon: Icons.local_fire_department_outlined,
   ),
 ];
 

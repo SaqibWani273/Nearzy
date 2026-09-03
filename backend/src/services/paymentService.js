@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const { sequelize, Customer, Product, OrderRecord, OrderItem, Address } = require('../models');
 const razorpay = require('../config/razorpay');
 const { formatAddress } = require('../dto/orderDto');
+const { applyStockDelta } = require('./inventoryService');
 
 const CURRENCY = 'INR';
 
@@ -214,11 +215,22 @@ const paymentService = {
       return { error: 'Payment signature verification failed', status: 400 };
     }
 
-    await order.update({
-      paymentStatus: 'PAID',
-      status: 'CONFIRMED',
-      razorpayPaymentId,
-      razorpaySignature,
+    // Marking the order paid and drawing down the stock it consumed are one
+    // fact, so they commit together. Until this existed, stock was only ever
+    // *read* (the availability check above) and never written — every sale
+    // left the inventory count untouched, so counts drifted from reality the
+    // moment anyone bought anything.
+    await sequelize.transaction(async (transaction) => {
+      await order.update(
+        {
+          paymentStatus: 'PAID',
+          status: 'CONFIRMED',
+          razorpayPaymentId,
+          razorpaySignature,
+        },
+        { transaction }
+      );
+      await applyStockDelta(order.id, -1, transaction);
     });
 
     return {

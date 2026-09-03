@@ -4,8 +4,14 @@ import '../../../constants/bottom_navbar_items.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_spacing.dart';
 import '../../../theme/app_text_styles.dart';
+import '../../../services/api_service.dart';
+import '../../../services/session_manager.dart';
+import '../../common/animations/entrance.dart';
+import '../../common/animations/pressable_scale.dart';
+import '../../common/widgets/shimmer_loading.dart';
 import 'admin_categories_screen.dart';
-import 'admin_shops_screen.dart';
+import 'demand/admin_demand_map_screen.dart';
+import 'verification/admin_verification_screen.dart';
 
 class AdminHomePage extends StatefulWidget {
   const AdminHomePage({super.key});
@@ -17,6 +23,7 @@ class AdminHomePage extends StatefulWidget {
 class _AdminHomePageState extends State<AdminHomePage> {
   int _currentIndex = 0;
   late final PageController _pageController;
+  bool _signingOut = false;
 
   void _changeIndex(int index) {
     setState(() => _currentIndex = index);
@@ -30,13 +37,53 @@ class _AdminHomePageState extends State<AdminHomePage> {
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(initialPage: 0);
+    _pageController = PageController(initialPage: _currentIndex);
   }
 
   @override
   void dispose() {
     _pageController.dispose();
     super.dispose();
+  }
+
+  /// Ends the admin session. No navigation follows on purpose: `signOutActive`
+  /// emits a session event, and the app shell rebuilds itself off the new
+  /// active account — replacing this page with whatever the next identity
+  /// (or none) should see.
+  Future<void> _signOut() async {
+    final sessions = SessionManager.instance;
+    if (sessions.active == null) return;
+
+    final remaining = sessions.otherAccounts;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sign out?'),
+        content: Text(
+          remaining.isEmpty
+              ? 'You will need your password to sign back in.'
+              : 'You will be switched to ${remaining.first.displayName}.',
+          style: AppTextStyles.bodyMedium,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Sign out',
+                style: AppTextStyles.link.copyWith(color: AppColors.error)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _signingOut = true);
+    await sessions.signOutActive();
+    if (!mounted) return;
+    setState(() => _signingOut = false);
   }
 
   @override
@@ -47,9 +94,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
         title: Text('Nearzy Admin', style: AppTextStyles.brand.copyWith(fontSize: 22)),
         actions: [
           IconButton(
-            onPressed: () {
-              // TODO: Admin logout
-            },
+            onPressed: _signingOut ? null : _signOut,
+            tooltip: 'Sign out',
             icon: const Icon(Icons.logout_rounded),
           ),
         ],
@@ -58,9 +104,10 @@ class _AdminHomePageState extends State<AdminHomePage> {
         controller: _pageController,
         physics: const NeverScrollableScrollPhysics(),
         children: [
-          _AdminDashboard(),
-          AdminCategoriesScreen(),
-          AdminShopsScreen(),
+          _AdminDashboard(onGoToTab: _changeIndex),
+          const AdminCategoriesScreen(),
+          const AdminVerificationScreen(),
+          const AdminDemandMapScreen(),
         ],
       ),
       bottomNavigationBar: NearzyBottomNav(
@@ -72,82 +119,126 @@ class _AdminHomePageState extends State<AdminHomePage> {
   }
 }
 
-/// Simple admin dashboard with overview cards.
-class _AdminDashboard extends StatelessWidget {
+/// The admin overview.
+///
+/// Every counter here used to render a literal em dash, and both quick actions
+/// had empty `onTap` bodies — the screen looked finished while telling the
+/// operator nothing and doing nothing.
+class _AdminDashboard extends StatefulWidget {
+  const _AdminDashboard({required this.onGoToTab});
+
+  /// Moves the shell to another tab. The quick actions are shortcuts to tabs
+  /// that already exist, so they change the index rather than pushing a
+  /// duplicate route the bottom bar would then disagree with.
+  final void Function(int) onGoToTab;
+
+  @override
+  State<_AdminDashboard> createState() => _AdminDashboardState();
+}
+
+class _AdminDashboardState extends State<_AdminDashboard> {
+  late Future<Map<String, int>> _stats;
+
+  @override
+  void initState() {
+    super.initState();
+    _stats = ApiService.fetchAdminStats();
+  }
+
+  Future<void> _refresh() async {
+    final next = ApiService.fetchAdminStats();
+    setState(() => _stats = next);
+    await next.catchError((_) => <String, int>{});
+  }
+
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: AppSpacing.pagePadding,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 16),
-          Text('Overview', style: AppTextStyles.heading2),
-          const SizedBox(height: 16),
-          Row(
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      color: AppColors.ink,
+      backgroundColor: AppColors.card,
+      child: FutureBuilder<Map<String, int>>(
+        future: _stats,
+        builder: (context, snapshot) {
+          final loading = snapshot.connectionState == ConnectionState.waiting;
+          final stats = snapshot.data ?? const <String, int>{};
+          final pending = stats['pendingVerifications'] ?? 0;
+
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: AppSpacing.pagePadding,
             children: [
-              Expanded(
-                child: _StatCard(
-                  icon: Icons.storefront_rounded,
-                  label: 'Shops',
-                  value: '—',
-                  color: AppColors.primaryLight,
-                ),
+              const SizedBox(height: AppSpacing.base),
+              Text('Overview', style: AppTextStyles.heading2),
+              const SizedBox(height: AppSpacing.base),
+              Row(
+                children: [
+                  Expanded(
+                    child: _StatCard(
+                      icon: Icons.storefront_rounded,
+                      label: 'Shops',
+                      value: stats['shops'],
+                      loading: loading,
+                      color: AppColors.primaryLight,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: _StatCard(
+                      icon: Icons.inventory_2_rounded,
+                      label: 'Products',
+                      value: stats['products'],
+                      loading: loading,
+                      color: AppColors.accent,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _StatCard(
-                  icon: Icons.inventory_2_rounded,
-                  label: 'Products',
-                  value: '—',
-                  color: AppColors.accent,
-                ),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                children: [
+                  Expanded(
+                    child: _StatCard(
+                      icon: Icons.category_rounded,
+                      label: 'Categories',
+                      value: stats['categories'],
+                      loading: loading,
+                      color: AppColors.success,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: _StatCard(
+                      icon: Icons.pending_actions_rounded,
+                      label: 'Pending',
+                      value: pending,
+                      loading: loading,
+                      color: AppColors.warning,
+                    ),
+                  ),
+                ],
               ),
+              const SizedBox(height: AppSpacing.xxl),
+              Text('Quick Actions', style: AppTextStyles.heading3),
+              const SizedBox(height: AppSpacing.md),
+              _QuickActionTile(
+                icon: Icons.verified_user_outlined,
+                title: 'Review applications',
+                subtitle: pending == 0
+                    ? 'Nothing waiting'
+                    : '$pending awaiting a decision',
+                onTap: () => widget.onGoToTab(2),
+              ).animateEntrance(index: 0),
+              const SizedBox(height: AppSpacing.sm),
+              _QuickActionTile(
+                icon: Icons.add_circle_outline_rounded,
+                title: 'Add category',
+                subtitle: 'Create a new product category',
+                onTap: () => widget.onGoToTab(1),
+              ).animateEntrance(index: 1),
             ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _StatCard(
-                  icon: Icons.category_rounded,
-                  label: 'Categories',
-                  value: '—',
-                  color: AppColors.success,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _StatCard(
-                  icon: Icons.pending_actions_rounded,
-                  label: 'Pending',
-                  value: '—',
-                  color: AppColors.warning,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 32),
-          Text('Quick Actions', style: AppTextStyles.heading3),
-          const SizedBox(height: 12),
-          _QuickActionTile(
-            icon: Icons.add_circle_outline_rounded,
-            title: 'Add Category',
-            subtitle: 'Create a new product category',
-            onTap: () {
-              // Navigate to categories tab
-            },
-          ),
-          const SizedBox(height: 8),
-          _QuickActionTile(
-            icon: Icons.verified_user_outlined,
-            title: 'Verify Shops',
-            subtitle: 'Review pending shop verifications',
-            onTap: () {
-              // Navigate to shops tab
-            },
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -156,7 +247,11 @@ class _AdminDashboard extends StatelessWidget {
 class _StatCard extends StatelessWidget {
   final IconData icon;
   final String label;
-  final String value;
+
+  /// Null while loading or after a failed fetch — rendered as a skeleton
+  /// rather than a zero, which would be a lie the operator might act on.
+  final int? value;
+  final bool loading;
   final Color color;
 
   const _StatCard({
@@ -164,6 +259,7 @@ class _StatCard extends StatelessWidget {
     required this.label,
     required this.value,
     required this.color,
+    this.loading = false,
   });
 
   @override
@@ -187,7 +283,18 @@ class _StatCard extends StatelessWidget {
             child: Icon(icon, size: 22, color: color),
           ),
           const SizedBox(height: 12),
-          Text(value, style: AppTextStyles.heading2),
+          if (loading || value == null)
+            ShimmerLoading.line(width: 44, height: 22)
+          else
+            // Counts settle rather than snapping in, per the design system's
+            // number-transition rule.
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: value!.toDouble()),
+              duration: AppSpacing.durationSlow,
+              curve: AppSpacing.curveDefault,
+              builder: (context, v, _) =>
+                  Text('${v.round()}', style: AppTextStyles.heading2),
+            ),
           const SizedBox(height: 4),
           Text(label, style: AppTextStyles.bodySmall),
         ],
@@ -211,9 +318,8 @@ class _QuickActionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return PressableScale(
       onTap: onTap,
-      borderRadius: AppSpacing.borderRadiusMd,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(

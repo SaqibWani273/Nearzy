@@ -16,7 +16,7 @@ class ShopHomePage extends StatefulWidget {
 }
 
 class _ShopHomePageState extends State<ShopHomePage> {
-  int _currentIndex = 1; // Start on Inventory
+  int _currentIndex = 0; // Start on the triage dashboard
   late final PageController _pageController;
 
   void _changeIndex(int index) {
@@ -55,7 +55,7 @@ class _ShopHomePageState extends State<ShopHomePage> {
           return PageView(
             controller: _pageController,
             physics: const NeverScrollableScrollPhysics(),
-            children: shopMainScreens,
+            children: shopMainScreens(_changeIndex),
           );
         },
       ),

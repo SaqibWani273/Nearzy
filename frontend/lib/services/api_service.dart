@@ -17,6 +17,11 @@ import '../data/models/product.dart';
 import 'package:http/http.dart' as http;
 
 import '../data/models/auth_session.dart';
+import '../data/models/bulk_stock.dart';
+import '../data/models/demand_heatmap.dart';
+import '../data/models/shop_dashboard.dart';
+import '../data/models/shop_product.dart';
+import '../data/models/shop_verification.dart';
 import 'api_client.dart';
 import 'session_manager.dart';
 
@@ -33,6 +38,14 @@ class ApiService {
   static Future<UserModel?> getUserModel() async {
     try {
       if (!await SessionManager.instance.hasSession()) {
+        return null;
+      }
+
+      // `/user/me` only authorizes customers and shops, so asking it for an
+      // admin earns a 403 ROLE_MISMATCH on every start and every account
+      // switch. Admins have no profile model to fetch — main.dart routes them
+      // off the session's own role — so skip the round-trip entirely.
+      if (SessionManager.instance.active?.role == Roles.ROLE_ADMIN) {
         return null;
       }
 
@@ -561,27 +574,26 @@ class ApiService {
     }
   }
 
+  /// Cheapest-first available products from shops nearby, optionally capped
+  /// at [maxPriceInPaise] — which is what the dashboard's budget chips drive.
   static Future<List<Product>> fetchAffordableProducts(
-      LocationInfo? location) async {
-    try {
-      final response = await NearzyHttp.get(
-        Uri.parse(ApiConst.affordableProductsUrl)
-            .replace(queryParameters: _locationQuery(location)),
-        headers: _json,
+    LocationInfo? location, {
+    double radiusKm = 15,
+    int? maxPriceInPaise,
+    int page = 1,
+    int limit = 20,
+  }) =>
+      _fetchProductPage(
+        Uri.parse(ApiConst.affordableProductsUrl).replace(
+          queryParameters: {
+            ..._locationQuery(location, radiusKm: radiusKm),
+            if (maxPriceInPaise != null) 'maxPriceInPaise': '$maxPriceInPaise',
+            'page': '$page',
+            'limit': '$limit',
+          },
+        ),
+        label: 'fetchAffordableProducts',
       );
-      if (response.statusCode != 200) {
-        log("fetchAffordableProducts -> ${response.statusCode}");
-        return [];
-      }
-      return _unwrap(jsonDecode(response.body), 'products')
-          .whereType<Map<String, dynamic>>()
-          .map(Product.fromJson)
-          .toList();
-    } catch (e) {
-      log("fetchAffordableProducts error: $e");
-      return [];
-    }
-  }
 
   /// Shared fetch for the paginated product endpoints, all of which answer
   /// with a `{total, page, products}` envelope.
@@ -716,5 +728,224 @@ class ApiService {
       throw CustomException(
           errorType: ErrorType.unknown, message: 'Failed to add category');
     }
+  }
+
+  // ── Shop dashboard & alerts ───────────────────────────────────────────
+
+  /// The shop's triage payload: orders awaiting dispatch, open alerts,
+  /// inventory counts. The shop is resolved from the bearer token.
+  static Future<ShopDashboard> fetchShopDashboard() async {
+    await _requireSession();
+    final response = await NearzyHttp.get(
+      Uri.parse(ApiConst.shopDashboardUrl),
+      auth: true,
+    );
+    if (response.statusCode != 200) {
+      _throwFor(response, 'Could not load your dashboard.');
+    }
+    return ShopDashboard.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  /// Open alerts by default; pass `status: 'ALL'` for the full history.
+  static Future<List<ShopAlert>> fetchShopAlerts({String? status}) async {
+    await _requireSession();
+    final response = await NearzyHttp.get(
+      Uri.parse(ApiConst.shopAlertsUrl).replace(
+        queryParameters: {'status': ?status},
+      ),
+      auth: true,
+    );
+    if (response.statusCode != 200) {
+      _throwFor(response, 'Could not load your alerts.');
+    }
+    return _unwrap(jsonDecode(response.body), 'alerts')
+        .map((e) => ShopAlert.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Marks an alert READ or RESOLVED.
+  static Future<void> setAlertStatus(int alertId, String status) async {
+    await _requireSession();
+    final response = await NearzyHttp.patch(
+      Uri.parse(ApiConst.shopAlertUrl(alertId)),
+      auth: true,
+      headers: _json,
+      body: jsonEncode({'status': status}),
+    );
+    if (response.statusCode != 200) {
+      _throwFor(response, 'Could not update that alert.');
+    }
+  }
+
+  // ── Shop inventory writes ─────────────────────────────────────────────
+
+  /// The shop's own inventory in the owner's view — including hidden items and
+  /// the markdown fields the customer feed does not carry.
+  ///
+  /// Distinct from [fetchMyUploadedProducts], which returns the customer-facing
+  /// [Product] shape that the older upload flow still parses.
+  static Future<List<ShopProduct>> fetchMyShopProducts({
+    String? query,
+    int page = 1,
+    int limit = 100,
+  }) async {
+    await _requireSession();
+    final response = await NearzyHttp.get(
+      Uri.parse(ApiConst.shopMyProductsUrl).replace(
+        queryParameters: {
+          if (query != null && query.trim().length >= 2) 'q': query.trim(),
+          'page': '$page',
+          'limit': '$limit',
+        },
+      ),
+      auth: true,
+    );
+    if (response.statusCode != 200) {
+      _throwFor(response, 'Could not load your inventory.');
+    }
+    return _unwrap(jsonDecode(response.body), 'products')
+        .map((e) => ShopProduct.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// One product from the signed-in shop's own inventory, including items it
+  /// has hidden. Callers that hold only an id — a low-stock alert, a scanned
+  /// barcode — start here.
+  static Future<ShopProduct> fetchMyProduct(int productId) async {
+    await _requireSession();
+    final response = await NearzyHttp.get(
+      Uri.parse(ApiConst.shopProductUrl(productId)),
+      auth: true,
+    );
+    if (response.statusCode != 200) {
+      _throwFor(response, 'Could not load that product.');
+    }
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    return ShopProduct.fromJson(decoded['product'] as Map<String, dynamic>);
+  }
+
+  /// Updates price, stock, availability or markdown settings on one product.
+  ///
+  /// Only the fields passed are sent, so a sheet that edits stock alone cannot
+  /// accidentally reset a discount to its default.
+  static Future<ShopProduct> updateProduct(
+    int productId, {
+    int? priceInPaise,
+    double? discountPercent,
+    int? stockQuantity,
+    bool? available,
+    bool? markdownEnabled,
+    double? markdownFloorPercent,
+  }) async {
+    await _requireSession();
+    final response = await NearzyHttp.patch(
+      Uri.parse(ApiConst.shopProductUrl(productId)),
+      auth: true,
+      headers: _json,
+      body: jsonEncode({
+        'priceInPaise': ?priceInPaise,
+        'discountPercent': ?discountPercent,
+        'stockQuantity': ?stockQuantity,
+        'available': ?available,
+        'markdownEnabled': ?markdownEnabled,
+        'markdownFloorPercent': ?markdownFloorPercent,
+      }),
+    );
+    if (response.statusCode != 200) {
+      _throwFor(response, 'Could not update that product.');
+    }
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    return ShopProduct.fromJson(decoded['product'] as Map<String, dynamic>);
+  }
+
+  /// Applies a batch of scanned stock adjustments. Unknown SKUs come back in
+  /// the result rather than failing the batch.
+  static Future<BulkStockResult> bulkAdjustStock(
+    List<BulkStockEntry> entries,
+  ) async {
+    await _requireSession();
+    final response = await NearzyHttp.postJson(
+      Uri.parse(ApiConst.shopBulkStockUrl),
+      auth: true,
+      json: {'entries': entries.map((e) => e.toJson()).toList()},
+    );
+    if (response.statusCode != 200) {
+      _throwFor(response, 'Could not apply those stock changes.');
+    }
+    return BulkStockResult.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  // ── Admin ─────────────────────────────────────────────────────────────
+
+  /// Platform counters for the admin overview.
+  static Future<Map<String, int>> fetchAdminStats() async {
+    await _requireSession();
+    final response = await NearzyHttp.get(
+      Uri.parse(ApiConst.adminStatsUrl),
+      auth: true,
+    );
+    if (response.statusCode != 200) {
+      _throwFor(response, 'Could not load platform stats.');
+    }
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    return decoded.map((k, v) => MapEntry(k, (v as num?)?.toInt() ?? 0));
+  }
+
+  /// The shop verification queue, oldest submission first.
+  static Future<List<ShopVerification>> fetchShopVerifications({
+    String status = 'PENDING',
+    int page = 1,
+    int limit = 20,
+  }) async {
+    await _requireSession();
+    final response = await NearzyHttp.get(
+      Uri.parse(ApiConst.adminShopVerificationsUrl).replace(
+        queryParameters: {
+          'status': status,
+          'page': '$page',
+          'limit': '$limit',
+        },
+      ),
+      auth: true,
+    );
+    if (response.statusCode != 200) {
+      _throwFor(response, 'Could not load the verification queue.');
+    }
+    return _unwrap(jsonDecode(response.body), 'verifications')
+        .map((e) => ShopVerification.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Approves or rejects one application. `status` is APPROVED or REJECTED.
+  static Future<void> decideShopVerification(int shopId, String status) async {
+    await _requireSession();
+    final response = await NearzyHttp.postJson(
+      Uri.parse(ApiConst.adminVerificationDecideUrl(shopId)),
+      auth: true,
+      json: {'status': status},
+    );
+    if (response.statusCode != 200) {
+      _throwFor(response, 'Could not record that decision.');
+    }
+  }
+
+  /// Weighted order-density points for the admin demand map.
+  static Future<DemandHeatmap> fetchDemandHeatmap({int days = 30}) async {
+    await _requireSession();
+    final response = await NearzyHttp.get(
+      Uri.parse(ApiConst.adminDemandHeatmapUrl)
+          .replace(queryParameters: {'days': '$days'}),
+      auth: true,
+    );
+    if (response.statusCode != 200) {
+      _throwFor(response, 'Could not load demand data.');
+    }
+    return DemandHeatmap.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
 }

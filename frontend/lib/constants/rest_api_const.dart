@@ -1,6 +1,7 @@
 class ApiConst {
-  // static final String baseApiUrl = 'https://clarinet-playlist-wharf.ngrok-free.dev';
-  static final String baseApiUrl = 'http://localhost:8080';
+  static final String baseApiUrl =
+      'https://clarinet-playlist-wharf.ngrok-free.dev';
+  // static final String baseApiUrl = 'http://localhost:8080';
   static final String baseCustomerUrl = '$baseApiUrl/customer';
   static final String baseShopUrl = '$baseApiUrl/shop';
   static final String baseAdminUrl = '$baseApiUrl/admin';
@@ -80,6 +81,17 @@ class ApiConst {
   static final String uploadProductUrl = '$baseShopUrl/add-product';
   static final String shopMyProductsUrl = '$baseShopUrl/my-products';
 
+  static String shopProductUrl(int productId) =>
+      '$baseShopUrl/products/$productId';
+
+  static final String shopBulkStockUrl = '$baseShopUrl/products/bulk-stock';
+
+  // ── Shop Dashboard & Alerts ─────────────────────────────────────────
+  static final String shopDashboardUrl = '$baseShopUrl/dashboard';
+  static final String shopAlertsUrl = '$baseShopUrl/alerts';
+
+  static String shopAlertUrl(int alertId) => '$baseShopUrl/alerts/$alertId';
+
   // ── Admin Auth ──────────────────────────────────────────────────────
   static final String adminRegisterUrl = '$baseAdminUrl/register';
   static final String adminLoginUrl = '$baseAdminUrl/login';
@@ -88,6 +100,15 @@ class ApiConst {
 
   // ── Admin Actions ───────────────────────────────────────────────────
   static final String adminAddCategoryUrl = '$baseAdminUrl/add-category';
+  static final String adminStatsUrl = '$baseAdminUrl/stats';
+  static final String adminDemandHeatmapUrl = '$baseAdminUrl/demand-heatmap';
+
+  // ── Admin Shop Verification ─────────────────────────────────────────
+  static final String adminShopVerificationsUrl =
+      '$baseAdminUrl/shop-verifications';
+
+  static String adminVerificationDecideUrl(int shopId) =>
+      '$baseAdminUrl/shop-verifications/$shopId/decide';
 
   // ── Session ─────────────────────────────────────────────────────────
   /// Exchanges a refresh token for a new access token. The refresh token is

@@ -43,7 +43,14 @@ Defined in `lib/theme/app_colors.dart`. Never hardcode a hex in screen code.
 | `success` / `warning` / `error` | `#2E9E6B` / `#E0A03C` / `#D5533D` | Semantic only |
 
 **Contrast law:** text on `lime` is always `ink`, never white. Text on `ink` is
-always `paper` or `lime`, never pure `#FFF`.
+always `paper` or `lime`, never pure `#FFF`. There are tokens for exactly this —
+`textOnInk` and `textOnLime` — prefer them at those call sites.
+
+Also present and fair game: `sageDeep` `#4C6357`, `paperDim` `#EFEDE5` (input
+fills, dimmed backgrounds), `info` `#3C7D8C`, a `*Surface` tint beside each
+semantic colour, and `shimmerBase`/`shimmerHighlight`. The `primary`/`accent`/
+`surface` names at the bottom of `AppColors` are aliases onto the tokens above,
+kept for Material's `ThemeData` — write screen code against the real names.
 
 **Gradients** — only two exist, both in `AppColors`: `inkGradient` (for hero blocks)
 and `limeGradient` (for the single primary CTA on a screen). Do not invent more.
@@ -57,8 +64,12 @@ and `limeGradient` (for the single primary CTA on a screen). Do not invent more.
   confident: a screen title is 28–34px, not 20px.
 - **Body / UI — `GoogleFonts.inter`**, weights 400/500/600.
 
-Sizes: `display 34 / h1 28 / h2 22 / h3 18 / bodyLg 16 / body 14 / caption 12 /
-micro 10`. Prices use `AppTextStyles.price*` — tabular figures, weight 700.
+The scale, by its real token name: `display 34 / heading1 28 / heading2 22 /
+heading3 18 / heading4 16 / bodyLarge 16 / bodyMedium 14 / bodySmall 13 /
+caption 12 / micro 10`, plus `labelLarge|Medium|Small`, `buttonText`,
+`navLabel`, `badge`, `overline`, `sectionTitle`/`sectionSubtitle` and the
+`input*` set. Prices use `priceLarge|Medium|Small` and `priceStrikethrough` —
+tabular figures, weight 700. `brand` (26/w800) is the wordmark only.
 
 Never centre body copy. Screen titles are left-aligned, hugging a 20px gutter.
 
@@ -78,8 +89,11 @@ Never centre body copy. Screen titles are left-aligned, hugging a 20px gutter.
 Reusable widgets live in `lib/presentation/common/widgets/`. **Check there first —
 do not build a second version of an existing component.**
 
-- **`GlassCard` / `NearzyCard`** — white, radius 24, `AppSpacing.shadowSoft`, no
-  border. Elevation comes from shadow, never from Material `elevation:`.
+- **Card surface** — there is no wrapper widget; cards are a `Container` with
+  `color: AppColors.card`, `borderRadius: AppSpacing.borderRadiusXl` (28) or
+  `borderRadiusLg` (20), `boxShadow: AppSpacing.shadowSoft`, and no border.
+  Elevation comes from that shadow, never from Material `elevation:`. Add
+  `clipBehavior: Clip.antiAlias` whenever an image reaches an edge.
 - **Product card** (`NearzyProductCard`) — image fills the top with radius 20, a
   floating heart button top-right, name (2 lines max), shop name + distance in
   caption, price row with strikethrough original. Tap = scale-down 0.97.
@@ -102,14 +116,16 @@ All timing/curve tokens live in `lib/theme/app_motion.dart` as `Motion`. Use the
 helpers in `lib/presentation/common/animations/` rather than hand-rolling.
 
 **Durations:** `micro 120ms` (taps, toggles) · `quick 220ms` (chips, badges) ·
-`base 340ms` (entrances, sheets) · `slow 520ms` (hero, page) · `ambient 900ms+`
-(looping decorative motion).
+`base 340ms` (entrances, sheets) · `slow 520ms` (hero, page) · `ambient 2600ms`
+(looping decorative motion). Stagger step is `stagger 45ms`, capped at
+`maxStaggerIndex 10` — use `Motion.staggerDelay(index)`.
 
 **Curves:** `Motion.easeOut` = `Curves.easeOutCubic` (default for anything
 entering) · `Motion.spring` = `Curves.easeOutBack` (things that should feel
 snappy/physical: badges, FABs, selection) · `Motion.emphasis` =
 `Curves.easeOutQuint` (page + sheet transitions) · `Motion.gentle` =
-`Curves.easeInOutSine` (looping ambient motion).
+`Curves.easeInOutSine` (looping ambient motion) · `Motion.exit` =
+`Curves.easeInCubic` (anything leaving).
 
 **Patterns — use these, they are the app's signature:**
 
@@ -126,8 +142,12 @@ snappy/physical: badges, FABs, selection) · `Motion.emphasis` =
   into the collapsed bar.
 - **Number transitions.** Prices, counts, quantities animate with
   `AnimatedFlipCounter`-style `TweenAnimationBuilder`, never a hard swap.
-- **Skeleton → content.** Always cross-fade (`AnimatedSwitcher`, `base`,
-  `FadeThrough`). A hard cut from shimmer to content is a bug.
+- **Skeleton → content.** Always cross-fade, via `CrossFade` from
+  `common/animations/cross_fade.dart` — pass the thing that distinguishes one
+  phase from the next as `state`. Use it rather than a bare `AnimatedSwitcher`,
+  which keys entries by the child's own key and throws "Duplicate keys found"
+  when phases change faster than the fade. A hard cut from shimmer to content
+  is a bug.
 - **Map markers.** Drop in with `spring` + a scale from 0.4, staggered by index.
   The selected marker scales to 1.25 and raises its z-order.
 - **Page routes.** Use `NearzyPageRoute` (shared-axis: incoming slides 24px + fades
@@ -154,8 +174,9 @@ interaction, and none may exceed `slow` for anything the user is waiting on.
 - [ ] No hardcoded colours, text styles, radii, or durations — all from tokens.
 - [ ] Loading, empty, and error states all exist and are styled.
 - [ ] Content enters with a stagger; taps respond with scale + haptics.
-- [ ] Images are `CachedNetworkImage` with a shimmer placeholder and a styled
-      error fallback (never a raw broken-image icon).
+- [ ] Images go through `NearzyNetworkImage` — the app's only network image
+      widget. It already handles the disk cache, shimmer placeholder and styled
+      fallback; a raw `Image.network` or bare `CachedNetworkImage` is a bug.
 - [ ] Bottom padding clears the nav bar; nothing is hidden behind it.
 - [ ] Works at 320px width and at 1.3× text scale.
 - [ ] Reads as the same product as the Explore screen.

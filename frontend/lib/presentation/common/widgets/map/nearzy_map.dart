@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' hide Path;
@@ -279,4 +282,115 @@ mixin AnimatedMapMixin<T extends StatefulWidget> on State<T>
     _cameraController = null;
     super.dispose();
   }
+}
+
+/// A density overlay for weighted points, drawn straight onto the map canvas.
+///
+/// `flutter_map` has no heatmap primitive, so this is a custom layer. It sits
+/// inside a `FlutterMap`'s `children` like any other layer and reprojects on
+/// every camera change, which is what keeps the blobs pinned to the ground
+/// rather than to the screen.
+///
+/// The muted tile filter in [NearzyMapTiles] is what makes this legible —
+/// additive warm blobs over full-colour OSM tiles read as mud, so leave
+/// `muted: true` under it.
+class DemandHeatLayer extends StatelessWidget {
+  const DemandHeatLayer({
+    super.key,
+    required this.points,
+    required this.maxWeight,
+    this.radius = 44,
+  });
+
+  /// `(position, weight)` pairs. Weight is in the same unit as [maxWeight].
+  final List<({LatLng point, int weight})> points;
+
+  /// The busiest cell, so intensity is relative to the real peak rather than
+  /// to whatever happens to be on screen.
+  final int maxWeight;
+
+  /// Blob radius in logical pixels at the current zoom.
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    final camera = MapCamera.of(context);
+
+    // Project once per frame, in the layer, rather than per blob in the
+    // painter — the painter then only has to draw.
+    final projected = <({Offset offset, double intensity})>[];
+    for (final entry in points) {
+      final screen = camera.latLngToScreenOffset(entry.point);
+      projected.add((
+        offset: screen,
+        intensity: maxWeight <= 0 ? 0 : (entry.weight / maxWeight).clamp(0.0, 1.0),
+      ));
+    }
+
+    return IgnorePointer(
+      child: CustomPaint(
+        size: Size.infinite,
+        painter: _HeatPainter(blobs: projected, radius: radius),
+      ),
+    );
+  }
+}
+
+class _HeatPainter extends CustomPainter {
+  const _HeatPainter({required this.blobs, required this.radius});
+
+  final List<({Offset offset, double intensity})> blobs;
+  final double radius;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (blobs.isEmpty) return;
+
+    // A saveLayer with `plus` blending inside it: overlapping blobs add up, so
+    // two nearby cells read hotter than either alone — which is the whole
+    // point of a heat map — without the addition leaking onto the tiles below.
+    canvas.saveLayer(Offset.zero & size, Paint());
+
+    for (final blob in blobs) {
+      // Cheap cull: a blob whose disc cannot touch the viewport costs nothing.
+      if (blob.offset.dx < -radius ||
+          blob.offset.dy < -radius ||
+          blob.offset.dx > size.width + radius ||
+          blob.offset.dy > size.height + radius) {
+        continue;
+      }
+
+      // Scaled so a single order is still visible while the peak is not a
+      // solid disc. sqrt keeps the mid-range from collapsing toward zero.
+      final strength = 0.28 + 0.62 * math.sqrt(blob.intensity);
+      final blobRadius = radius * (0.55 + 0.45 * blob.intensity);
+
+      final paint = Paint()
+        ..blendMode = BlendMode.plus
+        ..shader = ui.Gradient.radial(
+          blob.offset,
+          blobRadius,
+          [
+            _hot.withValues(alpha: strength),
+            _warm.withValues(alpha: strength * 0.45),
+            _warm.withValues(alpha: 0),
+          ],
+          const [0, 0.55, 1],
+        );
+
+      canvas.drawCircle(blob.offset, blobRadius, paint);
+    }
+
+    canvas.restore();
+  }
+
+  /// Lime at the peak and sage at the fringe: the same two colours the rest of
+  /// the map already uses, rather than importing a rainbow ramp that would
+  /// belong to no other screen.
+  static const Color _hot = AppColors.lime;
+  static const Color _warm = AppColors.sageDeep;
+
+  @override
+  bool shouldRepaint(_HeatPainter old) =>
+      old.radius != radius || old.blobs != blobs;
 }

@@ -177,6 +177,215 @@ router.get('/my-products', authorize('SHOP'), async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /shop/products/{id}:
+ *   patch:
+ *     tags: [Shop]
+ *     summary: Update price, stock, availability or markdown settings
+ *     description: >
+ *       Only whitelisted fields are accepted. The product must belong to the
+ *       shop behind the bearer token; anything else answers 404.
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               priceInPaise: { type: integer }
+ *               discountPercent: { type: number }
+ *               stockQuantity: { type: integer }
+ *               available: { type: boolean }
+ *               markdownEnabled: { type: boolean }
+ *               markdownFloorPercent: { type: number }
+ *     responses:
+ *       200: { description: Updated product }
+ *       400: { description: Invalid field value }
+ *       404: { description: Product not found in this shop }
+ */
+/**
+ * @swagger
+ * /shop/products/{id}:
+ *   get:
+ *     tags: [Shop]
+ *     summary: One product from this shop's inventory
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200: { description: Product }
+ *       404: { description: Product not found in this shop }
+ */
+router.get('/products/:id', authorize('SHOP'), async (req, res, next) => {
+  try {
+    const result = await shopService.getMyProduct(req.user.id, req.params.id);
+    if (result.error) {
+      return res.status(result.status || 400).json({ message: result.error });
+    }
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/products/:id', authorize('SHOP'), async (req, res, next) => {
+  try {
+    const result = await shopService.updateProduct(req.user.id, req.params.id, req.body);
+    if (result.error) {
+      return res.status(result.status || 400).json({ message: result.error });
+    }
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * @swagger
+ * /shop/products/bulk-stock:
+ *   post:
+ *     tags: [Shop]
+ *     summary: Apply a batch of stock adjustments by SKU
+ *     description: >
+ *       Backs the barcode scanner. Each entry carries a `sku` plus either a
+ *       relative `delta` or an absolute `stockQuantity`. Unknown SKUs are
+ *       reported per row rather than failing the whole batch.
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               entries:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     sku: { type: string }
+ *                     delta: { type: integer }
+ *                     stockQuantity: { type: integer }
+ *     responses:
+ *       200: { description: Per-SKU results }
+ *       400: { description: Empty or oversized batch }
+ */
+router.post('/products/bulk-stock', authorize('SHOP'), async (req, res, next) => {
+  try {
+    const entries = Array.isArray(req.body) ? req.body : req.body?.entries;
+    const result = await shopService.bulkAdjustStock(req.user.id, entries);
+    if (result.error) {
+      return res.status(result.status || 400).json({ message: result.error });
+    }
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Dashboard & alerts
+// ---------------------------------------------------------------------------
+
+/**
+ * @swagger
+ * /shop/dashboard:
+ *   get:
+ *     tags: [Shop]
+ *     summary: Triage payload for the shop home screen
+ *     description: >
+ *       Counts and open alerts the owner can act on — orders awaiting
+ *       dispatch, low or sold-out stock, verification state.
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Dashboard payload }
+ *       404: { description: No shop profile for this account }
+ */
+router.get('/dashboard', authorize('SHOP'), async (req, res, next) => {
+  try {
+    const result = await shopService.getDashboard(req.user.id);
+    if (result.error) {
+      return res.status(result.status || 400).json({ message: result.error });
+    }
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * @swagger
+ * /shop/alerts:
+ *   get:
+ *     tags: [Shop]
+ *     summary: This shop's alerts, most urgent first
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema: { type: string, default: OPEN }
+ *         description: OPEN (default), ALL, or one of UNREAD/READ/RESOLVED
+ *     responses:
+ *       200: { description: Alert list }
+ */
+router.get('/alerts', authorize('SHOP'), async (req, res, next) => {
+  try {
+    const result = await shopService.listAlerts(req.user.id, { status: req.query.status });
+    if (result.error) {
+      return res.status(result.status || 400).json({ message: result.error });
+    }
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * @swagger
+ * /shop/alerts/{id}:
+ *   patch:
+ *     tags: [Shop]
+ *     summary: Mark an alert read or resolved
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               status: { type: string, enum: [UNREAD, READ, RESOLVED] }
+ *     responses:
+ *       200: { description: Updated alert }
+ *       404: { description: Alert not found in this shop }
+ */
+router.patch('/alerts/:id', authorize('SHOP'), async (req, res, next) => {
+  try {
+    const result = await shopService.setAlertStatus(req.user.id, req.params.id, req.body?.status);
+    if (result.error) {
+      return res.status(result.status || 400).json({ message: result.error });
+    }
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Orders
 // ---------------------------------------------------------------------------
