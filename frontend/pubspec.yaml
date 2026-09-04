@@ -1,4 +1,4 @@
-name: mca_project
+name: nearzy
 description: "Nearzy - Hyperlocal Marketplace"
 
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -68,19 +68,33 @@ flutter:
 flutter_native_splash:
   color: "#0F1A15"
   image: assets/images/splash_logo.png
+  # The app name. Android 12+ masks the splash icon to a circle, so the
+  # wordmark cannot sit under the pin there — it goes in the branding slot at
+  # the foot of the screen, which every platform honours identically.
+  branding: assets/images/splash_branding.png
+  branding_mode: bottom
+  branding_bottom_padding: 32
   fullscreen: true
   android_12:
     image: assets/images/splash_logo_android12.png
-    icon_background_color: "#0F1A15"
+    # Deliberately no icon_background_color. It renders as a *background*, and
+    # OEM shells mask it with the launcher's icon shape — on HyperOS with
+    # square icons the lime came out a square. The disc is baked into the image
+    # instead, so it is a circle on every device.
     color: "#0F1A15"
+    branding: assets/images/splash_branding.png
 
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
   image_path: "assets/images/icon.png"
   remove_alpha_ios: true
-  adaptive_icon_background: "#0F1A15"
-  adaptive_icon_foreground: "assets/images/splash_logo_android12.png"
+  adaptive_icon_background: "#C9F24E"
+  # A foreground authored for the 108dp adaptive canvas, so the inset that
+  # flutter_launcher_icons applies by default (16%) has to come off — see
+  # tool/brand_assets.py for how the sizing is derived.
+  adaptive_icon_foreground: "assets/images/icon_foreground.png"
+  adaptive_icon_foreground_inset: 0
   min_sdk_android: 21 # android min sdk min:16, default 21
   web:
     generate: true

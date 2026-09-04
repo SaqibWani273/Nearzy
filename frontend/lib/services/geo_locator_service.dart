@@ -1,7 +1,7 @@
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:geocoding/geocoding.dart' as geocoding;
 import 'package:geolocator/geolocator.dart';
-import 'package:mca_project/data/models/shop_model/shop_model1.dart';
+import 'package:nearzy/data/models/shop_model/shop_model1.dart';
 
 import '../utils/exceptions/custom_exception.dart';
 
@@ -50,7 +50,8 @@ class GeoLocatorService {
   }
 
   static Future<LocationInfo> fetchLocationInfo(
-      String? userEnteredLocation) async {
+    String? userEnteredLocation,
+  ) async {
     try {
       late List<geocoding.Placemark> placemarks;
       late double latitude;
@@ -65,13 +66,15 @@ class GeoLocatorService {
           );
         }
         placemarks = await _geocoding.placemarkFromCoordinates(
-            position.latitude, position.longitude);
+          position.latitude,
+          position.longitude,
+        );
         latitude = position.latitude;
         longtitude = position.longitude;
       } else {
         //positon from the user entered address
-        final List<geocoding.Location> locations =
-            await _geocoding.locationFromAddress(userEnteredLocation);
+        final List<geocoding.Location> locations = await _geocoding
+            .locationFromAddress(userEnteredLocation);
         if (locations.isEmpty) {
           throw CustomException(
             errorType: ErrorType.noLocationFound,
@@ -82,7 +85,9 @@ class GeoLocatorService {
         //placemarkFromCoordinates to get all the placemarks
         //and let user choose the one he wants
         placemarks = await _geocoding.placemarkFromCoordinates(
-            locations[0].latitude, locations[0].longitude);
+          locations[0].latitude,
+          locations[0].longitude,
+        );
         longtitude = locations[0].longitude;
         latitude = locations[0].latitude;
       }
@@ -99,11 +104,12 @@ class GeoLocatorService {
       final shortAddress =
           '${placemarks[0].street},${placemarks[0].locality},${placemarks[0].postalCode} ${placemarks[0].country}';
       return LocationInfo(
-          completeAddress:
-              '${placemarks[0].name}, ${placemarks[0].street}, ${placemarks[0].subLocality}, ${placemarks[0].locality}, ${placemarks[0].administrativeArea}, ${placemarks[0].postalCode}, ${placemarks[0].country}',
-          shortAddress: shortAddress,
-          latitude: latitude,
-          longtitude: longtitude);
+        completeAddress:
+            '${placemarks[0].name}, ${placemarks[0].street}, ${placemarks[0].subLocality}, ${placemarks[0].locality}, ${placemarks[0].administrativeArea}, ${placemarks[0].postalCode}, ${placemarks[0].country}',
+        shortAddress: shortAddress,
+        latitude: latitude,
+        longtitude: longtitude,
+      );
     } on PlatformException {
       throw CustomException(
         errorType: ErrorType.noLocationFound,

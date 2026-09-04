@@ -1,4 +1,4 @@
-package com.example.mca_project
+package com.example.nearzy
 
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.android.FlutterFragmentActivity

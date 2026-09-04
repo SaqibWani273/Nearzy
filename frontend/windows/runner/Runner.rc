@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "mca_project" "\0"
+            VALUE "FileDescription", "nearzy" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "mca_project" "\0"
+            VALUE "InternalName", "nearzy" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2024 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "mca_project.exe" "\0"
-            VALUE "ProductName", "mca_project" "\0"
+            VALUE "OriginalFilename", "nearzy.exe" "\0"
+            VALUE "ProductName", "nearzy" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

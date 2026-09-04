@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:developer';
 
-import 'package:mca_project/data/models/order.dart';
-import 'package:mca_project/data/models/category/product_category/product_category.dart';
+import 'package:nearzy/data/models/order.dart';
+import 'package:nearzy/data/models/category/product_category/product_category.dart';
 
 import '/data/models/shop_model/shop_api_parser.dart';
 import '/data/models/shop_model/shop_model1.dart';
@@ -96,17 +96,20 @@ class ApiService {
   static Future<void> registerShop(ShopModel1 shopModel) async {
     try {
       final response = await NearzyHttp.postJson(
-          Uri.parse(ApiConst.shopRegistrationUrl),
-          json: shopModel.toJson());
+        Uri.parse(ApiConst.shopRegistrationUrl),
+        json: shopModel.toJson(),
+      );
       if (response.statusCode == 200) {
         log(response.body);
       } else {
-        final String errorMessage =
-            jsonDecode(response.body)["message"].toString();
+        final String errorMessage = jsonDecode(
+          response.body,
+        )["message"].toString();
         throw CustomException(
-            errorType: ErrorType.internetConnection,
-            message:
-                'Data Integrity Error! ${response.statusCode} -> ${errorMessage.length > 40 ? errorMessage.substring(0, 40) : errorMessage}');
+          errorType: ErrorType.internetConnection,
+          message:
+              'Data Integrity Error! ${response.statusCode} -> ${errorMessage.length > 40 ? errorMessage.substring(0, 40) : errorMessage}',
+        );
       }
     } catch (e) {
       rethrow;
@@ -130,11 +133,14 @@ class ApiService {
         );
       } else if (response.statusCode == 400) {
         throw CustomException(
-            errorType: ErrorType.unknown, message: response.body);
+          errorType: ErrorType.unknown,
+          message: response.body,
+        );
       } else {
         throw CustomException(
-            errorType: ErrorType.internetConnection,
-            message: "Something went wrong!,${response.statusCode}");
+          errorType: ErrorType.internetConnection,
+          message: "Something went wrong!,${response.statusCode}",
+        );
       }
     } catch (e) {
       rethrow;
@@ -170,8 +176,9 @@ class ApiService {
         return categoriesData;
       } else {
         throw CustomException(
-            errorType: ErrorType.internetConnection,
-            message: "Something went wrong!,${response.statusCode}");
+          errorType: ErrorType.internetConnection,
+          message: "Something went wrong!,${response.statusCode}",
+        );
       }
     } catch (e) {
       rethrow;
@@ -181,16 +188,19 @@ class ApiService {
   static Future<void> uploadProduct(Product product) async {
     try {
       final response = await NearzyHttp.postJson(
-          Uri.parse(ApiConst.uploadProductUrl),
-          auth: true,
-          json: product.toCreateJson());
+        Uri.parse(ApiConst.uploadProductUrl),
+        auth: true,
+        json: product.toCreateJson(),
+      );
       if (response.statusCode != 200) {
-        final String errorMessage =
-            jsonDecode(response.body)["message"].toString();
+        final String errorMessage = jsonDecode(
+          response.body,
+        )["message"].toString();
         throw CustomException(
-            errorType: ErrorType.internetConnection,
-            message:
-                "Server Error ->  ${response.statusCode} -> ${errorMessage.length > 40 ? errorMessage.substring(0, 40) : errorMessage}");
+          errorType: ErrorType.internetConnection,
+          message:
+              "Server Error ->  ${response.statusCode} -> ${errorMessage.length > 40 ? errorMessage.substring(0, 40) : errorMessage}",
+        );
       }
     } catch (e) {
       rethrow;
@@ -212,10 +222,7 @@ class ApiService {
       final response = await NearzyHttp.postJson(
         Uri.parse(ApiConst.draftProductUrl),
         auth: true,
-        json: {
-          'imageBase64': base64Encode(imageBytes),
-          'mimeType': mimeType,
-        },
+        json: {'imageBase64': base64Encode(imageBytes), 'mimeType': mimeType},
       );
       if (response.statusCode != 200) {
         // The manual form still works, so this is a degraded feature rather
@@ -235,18 +242,22 @@ class ApiService {
         );
       }
       return ListingDraft.fromJson(
-          jsonDecode(response.body) as Map<String, dynamic>);
+        jsonDecode(response.body) as Map<String, dynamic>,
+      );
     } catch (e) {
       rethrow;
     }
   }
 
   static Future<List<Product>> fetchProducts(
-      LocationInfo? locationInfo, int currentPageKey) async {
+    LocationInfo? locationInfo,
+    int currentPageKey,
+  ) async {
     try {
       final response = await NearzyHttp.get(
         Uri.parse(
-            "${ApiConst.fetchAllProductsUrl}?page=$currentPageKey&pageSize=${ApiConst.pageSize}"),
+          "${ApiConst.fetchAllProductsUrl}?page=$currentPageKey&pageSize=${ApiConst.pageSize}",
+        ),
         headers: _json,
       );
       if (response.statusCode == 200) {
@@ -256,7 +267,9 @@ class ApiService {
         }
         return products;
       } else {
-        log("server error in fetchProducts,response-> ${response.body} ${response.statusCode}");
+        log(
+          "server error in fetchProducts,response-> ${response.body} ${response.statusCode}",
+        );
         return [];
       }
     } catch (e) {
@@ -277,7 +290,9 @@ class ApiService {
   static Future<bool?> emailExists(String email) async {
     try {
       final response = await NearzyHttp.postJson(
-          Uri.parse(ApiConst.emailExistsUrl), json: {'email': email});
+        Uri.parse(ApiConst.emailExistsUrl),
+        json: {'email': email},
+      );
       if (response.statusCode == 200) {
         return bool.fromEnvironment(response.body);
       }
@@ -290,7 +305,9 @@ class ApiService {
   static Future<bool?> usernameExists(String username) async {
     try {
       final response = await NearzyHttp.postJson(
-          Uri.parse(ApiConst.usernameExistsUrl), json: {'username': username});
+        Uri.parse(ApiConst.usernameExistsUrl),
+        json: {'username': username},
+      );
       if (response.statusCode == 200) {
         return bool.fromEnvironment(response.body);
       }
@@ -307,18 +324,17 @@ class ApiService {
     String? query,
     int page = 1,
     int limit = 100,
-  }) =>
-      _fetchProductPage(
-        Uri.parse(ApiConst.shopMyProductsUrl).replace(
-          queryParameters: {
-            if (query != null && query.trim().length >= 2) 'q': query.trim(),
-            'page': '$page',
-            'limit': '$limit',
-          },
-        ),
-        label: 'fetchMyUploadedProducts',
-        authorized: true,
-      );
+  }) => _fetchProductPage(
+    Uri.parse(ApiConst.shopMyProductsUrl).replace(
+      queryParameters: {
+        if (query != null && query.trim().length >= 2) 'q': query.trim(),
+        'page': '$page',
+        'limit': '$limit',
+      },
+    ),
+    label: 'fetchMyUploadedProducts',
+    authorized: true,
+  );
 
   // ── Orders ────────────────────────────────────────────────────────────
 
@@ -374,10 +390,10 @@ class ApiService {
     if (response.statusCode != 200) {
       _throwFor(response, 'Could not load your orders.');
     }
-    return _unwrap(jsonDecode(response.body), 'orders')
-        .whereType<Map<String, dynamic>>()
-        .map(Order.fromJson)
-        .toList();
+    return _unwrap(
+      jsonDecode(response.body),
+      'orders',
+    ).whereType<Map<String, dynamic>>().map(Order.fromJson).toList();
   }
 
   /// One order in full. Used by the detail screen so it always shows current
@@ -393,7 +409,8 @@ class ApiService {
       _throwFor(response, 'Could not load that order.');
     }
     return Order.fromJson(
-        Map<String, dynamic>.from(jsonDecode(response.body) as Map));
+      Map<String, dynamic>.from(jsonDecode(response.body) as Map),
+    );
   }
 
   /// Orders containing this shop's items. The server resolves the shop from
@@ -415,10 +432,10 @@ class ApiService {
     if (response.statusCode != 200) {
       _throwFor(response, 'Could not load your orders.');
     }
-    return _unwrap(jsonDecode(response.body), 'orders')
-        .whereType<Map<String, dynamic>>()
-        .map(Order.fromJson)
-        .toList();
+    return _unwrap(
+      jsonDecode(response.body),
+      'orders',
+    ).whereType<Map<String, dynamic>>().map(Order.fromJson).toList();
   }
 
   /// Advances one order. The backend accepts only the immediate next step
@@ -439,7 +456,8 @@ class ApiService {
       _throwFor(response, 'Could not update that order.');
     }
     return Order.fromJson(
-        Map<String, dynamic>.from(jsonDecode(response.body) as Map));
+      Map<String, dynamic>.from(jsonDecode(response.body) as Map),
+    );
   }
 
   // ── Delivery addresses ────────────────────────────────────────────────
@@ -454,14 +472,16 @@ class ApiService {
     if (response.statusCode != 200) {
       _throwFor(response, 'Could not load your addresses.');
     }
-    return _unwrap(jsonDecode(response.body), 'addresses')
-        .whereType<Map<String, dynamic>>()
-        .map(Address.fromJson)
-        .toList();
+    return _unwrap(
+      jsonDecode(response.body),
+      'addresses',
+    ).whereType<Map<String, dynamic>>().map(Address.fromJson).toList();
   }
 
-  static Future<Address> createAddress(Address address,
-      {bool? asDefault}) async {
+  static Future<Address> createAddress(
+    Address address, {
+    bool? asDefault,
+  }) async {
     await _requireSession();
     final response = await NearzyHttp.post(
       Uri.parse(ApiConst.customerAddressesUrl),
@@ -473,11 +493,14 @@ class ApiService {
       _throwFor(response, 'Could not save that address.');
     }
     return Address.fromJson(
-        Map<String, dynamic>.from(jsonDecode(response.body) as Map));
+      Map<String, dynamic>.from(jsonDecode(response.body) as Map),
+    );
   }
 
-  static Future<Address> updateAddress(Address address,
-      {bool? asDefault}) async {
+  static Future<Address> updateAddress(
+    Address address, {
+    bool? asDefault,
+  }) async {
     final id = address.id;
     if (id == null) {
       throw CustomException(
@@ -496,7 +519,8 @@ class ApiService {
       _throwFor(response, 'Could not update that address.');
     }
     return Address.fromJson(
-        Map<String, dynamic>.from(jsonDecode(response.body) as Map));
+      Map<String, dynamic>.from(jsonDecode(response.body) as Map),
+    );
   }
 
   static Future<Address> setDefaultAddress(int addressId) async {
@@ -510,7 +534,8 @@ class ApiService {
       _throwFor(response, 'Could not change your default address.');
     }
     return Address.fromJson(
-        Map<String, dynamic>.from(jsonDecode(response.body) as Map));
+      Map<String, dynamic>.from(jsonDecode(response.body) as Map),
+    );
   }
 
   /// The backend answers 409 for an address referenced by a past order, so
@@ -569,8 +594,9 @@ class ApiService {
         'limit': '$limit',
       };
       final response = await NearzyHttp.get(
-        Uri.parse(ApiConst.shopsNearLocationUrl)
-            .replace(queryParameters: query),
+        Uri.parse(
+          ApiConst.shopsNearLocationUrl,
+        ).replace(queryParameters: query),
         headers: _json,
       );
 
@@ -588,9 +614,11 @@ class ApiService {
       );
       // Nearest first, so the list agrees with the map even when the server
       // ordered alphabetically.
-      shops.sort((a, b) =>
-          (a.distanceKm ?? double.infinity)
-              .compareTo(b.distanceKm ?? double.infinity));
+      shops.sort(
+        (a, b) => (a.distanceKm ?? double.infinity).compareTo(
+          b.distanceKm ?? double.infinity,
+        ),
+      );
       return shops;
     } catch (e) {
       log("fetchNearbyShops error: $e");
@@ -599,21 +627,23 @@ class ApiService {
   }
 
   static Future<List<Product>> fetchLocationSpecialities(
-      LocationInfo? location) async {
+    LocationInfo? location,
+  ) async {
     try {
       final response = await NearzyHttp.get(
-        Uri.parse(ApiConst.locationSpecialitiesUrl)
-            .replace(queryParameters: _locationQuery(location)),
+        Uri.parse(
+          ApiConst.locationSpecialitiesUrl,
+        ).replace(queryParameters: _locationQuery(location)),
         headers: _json,
       );
       if (response.statusCode != 200) {
         log("fetchLocationSpecialities -> ${response.statusCode}");
         return [];
       }
-      return _unwrap(jsonDecode(response.body), 'products')
-          .whereType<Map<String, dynamic>>()
-          .map(Product.fromJson)
-          .toList();
+      return _unwrap(
+        jsonDecode(response.body),
+        'products',
+      ).whereType<Map<String, dynamic>>().map(Product.fromJson).toList();
     } catch (e) {
       log("fetchLocationSpecialities error: $e");
       return [];
@@ -628,18 +658,17 @@ class ApiService {
     int? maxPriceInPaise,
     int page = 1,
     int limit = 20,
-  }) =>
-      _fetchProductPage(
-        Uri.parse(ApiConst.affordableProductsUrl).replace(
-          queryParameters: {
-            ..._locationQuery(location, radiusKm: radiusKm),
-            if (maxPriceInPaise != null) 'maxPriceInPaise': '$maxPriceInPaise',
-            'page': '$page',
-            'limit': '$limit',
-          },
-        ),
-        label: 'fetchAffordableProducts',
-      );
+  }) => _fetchProductPage(
+    Uri.parse(ApiConst.affordableProductsUrl).replace(
+      queryParameters: {
+        ..._locationQuery(location, radiusKm: radiusKm),
+        if (maxPriceInPaise != null) 'maxPriceInPaise': '$maxPriceInPaise',
+        'page': '$page',
+        'limit': '$limit',
+      },
+    ),
+    label: 'fetchAffordableProducts',
+  );
 
   /// Shared fetch for the paginated product endpoints, all of which answer
   /// with a `{total, page, products}` envelope.
@@ -649,17 +678,20 @@ class ApiService {
     bool authorized = false,
   }) async {
     try {
-      final response =
-          await NearzyHttp.get(uri, auth: authorized, headers: _json);
+      final response = await NearzyHttp.get(
+        uri,
+        auth: authorized,
+        headers: _json,
+      );
       if (response.statusCode != 200) {
         log("$label -> ${response.statusCode} ${response.body}");
         return [];
       }
 
-      return _unwrap(jsonDecode(response.body), 'products')
-          .whereType<Map<String, dynamic>>()
-          .map(Product.fromJson)
-          .toList();
+      return _unwrap(
+        jsonDecode(response.body),
+        'products',
+      ).whereType<Map<String, dynamic>>().map(Product.fromJson).toList();
     } catch (e) {
       log("$label error: $e");
       return [];
@@ -672,28 +704,27 @@ class ApiService {
     double radiusKm = 15,
     int page = 1,
     int limit = 40,
-  }) =>
-      _fetchProductPage(
-        Uri.parse(ApiConst.discountedProductsUrl).replace(
-          queryParameters: {
-            ..._locationQuery(location, radiusKm: radiusKm),
-            'page': '$page',
-            'limit': '$limit',
-          },
-        ),
-        label: 'fetchDiscountedProducts',
-      );
+  }) => _fetchProductPage(
+    Uri.parse(ApiConst.discountedProductsUrl).replace(
+      queryParameters: {
+        ..._locationQuery(location, radiusKm: radiusKm),
+        'page': '$page',
+        'limit': '$limit',
+      },
+    ),
+    label: 'fetchDiscountedProducts',
+  );
 
   static Future<List<Product>> fetchProductsByShopId(
     int id, {
     int page = 1,
     int limit = 40,
-  }) =>
-      _fetchProductPage(
-        Uri.parse(ApiConst.shopProductsUrl(id))
-            .replace(queryParameters: {'page': '$page', 'limit': '$limit'}),
-        label: 'fetchProductsByShopId',
-      );
+  }) => _fetchProductPage(
+    Uri.parse(
+      ApiConst.shopProductsUrl(id),
+    ).replace(queryParameters: {'page': '$page', 'limit': '$limit'}),
+    label: 'fetchProductsByShopId',
+  );
 
   static Future<List<Product>> fetchProductsByCategoryId(
     int id, {
@@ -701,17 +732,16 @@ class ApiService {
     double radiusKm = 15,
     int page = 1,
     int limit = 40,
-  }) =>
-      _fetchProductPage(
-        Uri.parse(ApiConst.categoryProductsUrl(id)).replace(
-          queryParameters: {
-            ..._locationQuery(location, radiusKm: radiusKm),
-            'page': '$page',
-            'limit': '$limit',
-          },
-        ),
-        label: 'fetchProductsByCategoryId',
-      );
+  }) => _fetchProductPage(
+    Uri.parse(ApiConst.categoryProductsUrl(id)).replace(
+      queryParameters: {
+        ..._locationQuery(location, radiusKm: radiusKm),
+        'page': '$page',
+        'limit': '$limit',
+      },
+    ),
+    label: 'fetchProductsByCategoryId',
+  );
 
   static Future<List<Product>> searchProducts(
     String searchText, {
@@ -750,7 +780,9 @@ class ApiService {
       );
     } else {
       throw CustomException(
-          errorType: ErrorType.unknown, message: 'Invalid admin credentials');
+        errorType: ErrorType.unknown,
+        message: 'Invalid admin credentials',
+      );
     }
   }
 
@@ -772,7 +804,9 @@ class ApiService {
     );
     if (response.statusCode != 200) {
       throw CustomException(
-          errorType: ErrorType.unknown, message: 'Failed to add category');
+        errorType: ErrorType.unknown,
+        message: 'Failed to add category',
+      );
     }
   }
 
@@ -798,17 +832,18 @@ class ApiService {
   static Future<List<ShopAlert>> fetchShopAlerts({String? status}) async {
     await _requireSession();
     final response = await NearzyHttp.get(
-      Uri.parse(ApiConst.shopAlertsUrl).replace(
-        queryParameters: {'status': ?status},
-      ),
+      Uri.parse(
+        ApiConst.shopAlertsUrl,
+      ).replace(queryParameters: {'status': ?status}),
       auth: true,
     );
     if (response.statusCode != 200) {
       _throwFor(response, 'Could not load your alerts.');
     }
-    return _unwrap(jsonDecode(response.body), 'alerts')
-        .map((e) => ShopAlert.fromJson(e as Map<String, dynamic>))
-        .toList();
+    return _unwrap(
+      jsonDecode(response.body),
+      'alerts',
+    ).map((e) => ShopAlert.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   /// Marks an alert READ or RESOLVED.
@@ -851,9 +886,10 @@ class ApiService {
     if (response.statusCode != 200) {
       _throwFor(response, 'Could not load your inventory.');
     }
-    return _unwrap(jsonDecode(response.body), 'products')
-        .map((e) => ShopProduct.fromJson(e as Map<String, dynamic>))
-        .toList();
+    return _unwrap(
+      jsonDecode(response.body),
+      'products',
+    ).map((e) => ShopProduct.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   /// One product from the signed-in shop's own inventory, including items it
@@ -950,20 +986,17 @@ class ApiService {
     await _requireSession();
     final response = await NearzyHttp.get(
       Uri.parse(ApiConst.adminShopVerificationsUrl).replace(
-        queryParameters: {
-          'status': status,
-          'page': '$page',
-          'limit': '$limit',
-        },
+        queryParameters: {'status': status, 'page': '$page', 'limit': '$limit'},
       ),
       auth: true,
     );
     if (response.statusCode != 200) {
       _throwFor(response, 'Could not load the verification queue.');
     }
-    return _unwrap(jsonDecode(response.body), 'verifications')
-        .map((e) => ShopVerification.fromJson(e as Map<String, dynamic>))
-        .toList();
+    return _unwrap(
+      jsonDecode(response.body),
+      'verifications',
+    ).map((e) => ShopVerification.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   /// Approves or rejects one application. `status` is APPROVED or REJECTED.
@@ -983,8 +1016,9 @@ class ApiService {
   static Future<DemandHeatmap> fetchDemandHeatmap({int days = 30}) async {
     await _requireSession();
     final response = await NearzyHttp.get(
-      Uri.parse(ApiConst.adminDemandHeatmapUrl)
-          .replace(queryParameters: {'days': '$days'}),
+      Uri.parse(
+        ApiConst.adminDemandHeatmapUrl,
+      ).replace(queryParameters: {'days': '$days'}),
       auth: true,
     );
     if (response.statusCode != 200) {

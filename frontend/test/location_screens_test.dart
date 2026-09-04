@@ -8,15 +8,15 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mca_project/data/models/basic_user_model/basic_user_model.dart';
-import 'package:mca_project/data/models/shop_model/shop_api_parser.dart';
-import 'package:mca_project/data/models/shop_model/shop_model1.dart';
-import 'package:mca_project/presentation/common/widgets/map/nearzy_map.dart';
-import 'package:mca_project/presentation/common/widgets/nearzy_logo.dart';
-import 'package:mca_project/presentation/common/widgets/nearzy_shop_card.dart';
-import 'package:mca_project/presentation/features/customer/location/location_picker_screen.dart';
-import 'package:mca_project/presentation/features/customer/location/nearby_shops_map_screen.dart';
-import 'package:mca_project/theme/theme.dart';
+import 'package:nearzy/data/models/basic_user_model/basic_user_model.dart';
+import 'package:nearzy/data/models/shop_model/shop_api_parser.dart';
+import 'package:nearzy/data/models/shop_model/shop_model1.dart';
+import 'package:nearzy/presentation/common/widgets/map/nearzy_map.dart';
+import 'package:nearzy/presentation/common/widgets/nearzy_logo.dart';
+import 'package:nearzy/presentation/common/widgets/nearzy_shop_card.dart';
+import 'package:nearzy/presentation/features/customer/location/location_picker_screen.dart';
+import 'package:nearzy/presentation/features/customer/location/nearby_shops_map_screen.dart';
+import 'package:nearzy/theme/theme.dart';
 
 ShopModel1 _shop({
   int id = 1,
@@ -60,8 +60,9 @@ Future<void> _settleAmbient(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('LocationPickerScreen builds with its search and confirm card',
-      (tester) async {
+  testWidgets('LocationPickerScreen builds with its search and confirm card', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       _host(LocationPickerScreen(initial: LocationInfo.defaultValue())),
     );
@@ -74,16 +75,19 @@ void main() {
     expect(find.byType(ShopMapMarker), findsWidgets);
   });
 
-  testWidgets('NearbyShopsMapScreen plots shops and shows their cards',
-      (tester) async {
+  testWidgets('NearbyShopsMapScreen plots shops and shows their cards', (
+    tester,
+  ) async {
     await tester.pumpWidget(
-      _host(NearbyShopsMapScreen(
-        shops: [
-          _shop(),
-          _shop(id: 2, name: 'Saffron Garden', lat: 34.09, lng: 74.80),
-        ],
-        origin: LocationInfo.defaultValue(),
-      )),
+      _host(
+        NearbyShopsMapScreen(
+          shops: [
+            _shop(),
+            _shop(id: 2, name: 'Saffron Garden', lat: 34.09, lng: 74.80),
+          ],
+          origin: LocationInfo.defaultValue(),
+        ),
+      ),
     );
     await _settleAmbient(tester);
 
@@ -92,39 +96,46 @@ void main() {
     expect(find.text('Directions'), findsWidgets);
   });
 
-  testWidgets('NearbyShopsMapScreen explains an empty map instead of blanking',
-      (tester) async {
-    await tester.pumpWidget(
-      _host(NearbyShopsMapScreen(
-        // A shop with no coordinates must not be plotted at (0, 0).
-        shops: [_shop(lat: 0, lng: 0)],
-        origin: LocationInfo.defaultValue(),
-      )),
-    );
-    await _settleAmbient(tester);
+  testWidgets(
+    'NearbyShopsMapScreen explains an empty map instead of blanking',
+    (tester) async {
+      await tester.pumpWidget(
+        _host(
+          NearbyShopsMapScreen(
+            // A shop with no coordinates must not be plotted at (0, 0).
+            shops: [_shop(lat: 0, lng: 0)],
+            origin: LocationInfo.defaultValue(),
+          ),
+        ),
+      );
+      await _settleAmbient(tester);
 
-    expect(find.text('Nothing to plot here'), findsOneWidget);
-  });
+      expect(find.text('Nothing to plot here'), findsOneWidget);
+    },
+  );
 
-  testWidgets('NearzyShopCard renders name, distance and categories',
-      (tester) async {
+  testWidgets('NearzyShopCard renders name, distance and categories', (
+    tester,
+  ) async {
     await tester.pumpWidget(
-      _host(const Scaffold(
-        body: Center(
-          child: SizedBox(
-            width: 180,
-            height: 244,
-            child: NearzyShopCard(
-              name: 'Kashmir Shawl House',
-              imageUrl: '',
-              address: 'Lal Chowk',
-              categories: ['Shawls & Wraps'],
-              isVerified: true,
-              distanceLabel: '1.2 km',
+      _host(
+        const Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 180,
+              height: 244,
+              child: NearzyShopCard(
+                name: 'Kashmir Shawl House',
+                imageUrl: '',
+                address: 'Lal Chowk',
+                categories: ['Shawls & Wraps'],
+                isVerified: true,
+                distanceLabel: '1.2 km',
+              ),
             ),
           ),
         ),
-      )),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -216,7 +227,10 @@ void main() {
 
     test('drops an unparseable row instead of failing the whole page', () {
       final shops = ShopApiParser.parseList([
-        {'name': 'Good Shop', 'locationInfo': {'latitude': 34.0, 'longitude': 74.0}},
+        {
+          'name': 'Good Shop',
+          'locationInfo': {'latitude': 34.0, 'longitude': 74.0},
+        },
         'not a map',
         42,
       ]);

@@ -46,14 +46,14 @@ class NearzyMapTiles extends StatelessWidget {
       urlTemplate: _urlTemplate,
       // Required by the OSM tile usage policy: identify the app so they can
       // reach the operator rather than silently blocking it.
-      userAgentPackageName: 'app.nearzy.mca_project',
+      userAgentPackageName: 'app.nearzy.nearzy',
       // OSM serves up to z19; asking for 20 returns 404s.
       maxNativeZoom: 19,
       maxZoom: 19,
       tileProvider: NetworkTileProvider(),
       tileBuilder: muted
           ? (context, tileWidget, tile) =>
-              ColorFiltered(colorFilter: _tint, child: tileWidget)
+                ColorFiltered(colorFilter: _tint, child: tileWidget)
           : null,
     );
   }
@@ -61,16 +61,16 @@ class NearzyMapTiles extends StatelessWidget {
 
 /// Attribution required by the OSM/CARTO tile licences. Not optional.
 Widget nearzyMapAttribution() => RichAttributionWidget(
-      alignment: AttributionAlignment.bottomLeft,
-      showFlutterMapAttribution: false,
-      attributions: [
-        TextSourceAttribution(
-          '© OpenStreetMap contributors',
-          textStyle: AppTextStyles.micro,
-          onTap: null,
-        ),
-      ],
-    );
+  alignment: AttributionAlignment.bottomLeft,
+  showFlutterMapAttribution: false,
+  attributions: [
+    TextSourceAttribution(
+      '© OpenStreetMap contributors',
+      textStyle: AppTextStyles.micro,
+      onTap: null,
+    ),
+  ],
+);
 
 /// The shop pin: a rounded lime-on-ink teardrop that scales up and gains a
 /// halo when selected.
@@ -246,11 +246,18 @@ mixin AnimatedMapMixin<T extends StatefulWidget> on State<T>
     Curve curve = Curves.easeOutQuint,
   }) {
     final camera = controller.camera;
-    final latTween =
-        Tween<double>(begin: camera.center.latitude, end: destination.latitude);
+    final latTween = Tween<double>(
+      begin: camera.center.latitude,
+      end: destination.latitude,
+    );
     final lngTween = Tween<double>(
-        begin: camera.center.longitude, end: destination.longitude);
-    final zoomTween = Tween<double>(begin: camera.zoom, end: zoom ?? camera.zoom);
+      begin: camera.center.longitude,
+      end: destination.longitude,
+    );
+    final zoomTween = Tween<double>(
+      begin: camera.zoom,
+      end: zoom ?? camera.zoom,
+    );
 
     _cameraController?.dispose();
     final animation = AnimationController(vsync: this, duration: duration);
@@ -258,9 +265,9 @@ mixin AnimatedMapMixin<T extends StatefulWidget> on State<T>
 
     final curved = CurvedAnimation(parent: animation, curve: curve);
     void tick() => controller.move(
-          LatLng(latTween.evaluate(curved), lngTween.evaluate(curved)),
-          zoomTween.evaluate(curved),
-        );
+      LatLng(latTween.evaluate(curved), lngTween.evaluate(curved)),
+      zoomTween.evaluate(curved),
+    );
 
     animation
       ..addListener(tick)
@@ -323,7 +330,9 @@ class DemandHeatLayer extends StatelessWidget {
       final screen = camera.latLngToScreenOffset(entry.point);
       projected.add((
         offset: screen,
-        intensity: maxWeight <= 0 ? 0 : (entry.weight / maxWeight).clamp(0.0, 1.0),
+        intensity: maxWeight <= 0
+            ? 0
+            : (entry.weight / maxWeight).clamp(0.0, 1.0),
       ));
     }
 

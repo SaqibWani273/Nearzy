@@ -4,19 +4,21 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mca_project/constants/bottom_navbar_items.dart';
-import 'package:mca_project/data/models/auth_session.dart';
+import 'package:nearzy/constants/bottom_navbar_items.dart';
+import 'package:nearzy/data/models/auth_session.dart';
 
 void main() {
   group('AuthSession.tryParse', () {
     test('reads the current login shape', () {
-      final session = AuthSession.tryParse(jsonEncode({
-        'token': 'access-jwt',
-        'accessToken': 'access-jwt',
-        'refreshToken': 'refresh-opaque',
-        'expiresIn': 3600,
-        'role': 'ROLE_CUSTOMER',
-      }))!;
+      final session = AuthSession.tryParse(
+        jsonEncode({
+          'token': 'access-jwt',
+          'accessToken': 'access-jwt',
+          'refreshToken': 'refresh-opaque',
+          'expiresIn': 3600,
+          'role': 'ROLE_CUSTOMER',
+        }),
+      )!;
 
       expect(session.accessToken, 'access-jwt');
       expect(session.refreshToken, 'refresh-opaque');
@@ -30,11 +32,13 @@ void main() {
 
     test('falls back to expiresAt when expiresIn is absent', () {
       final at = DateTime.now().add(const Duration(hours: 5));
-      final session = AuthSession.tryParse(jsonEncode({
-        'accessToken': 'a',
-        'refreshToken': 'r',
-        'expiresAt': at.toIso8601String(),
-      }))!;
+      final session = AuthSession.tryParse(
+        jsonEncode({
+          'accessToken': 'a',
+          'refreshToken': 'r',
+          'expiresAt': at.toIso8601String(),
+        }),
+      )!;
       expect(session.expiresAt.difference(at).inSeconds.abs(), lessThan(2));
     });
 
@@ -104,12 +108,12 @@ void main() {
 
   group('StoredAccount', () {
     StoredAccount account({required AuthSession session}) => StoredAccount(
-          email: 'kashmir.shawls@nearzy.com',
-          displayName: 'Kashmir Shawl House',
-          role: Roles.ROLE_SHOP,
-          session: session,
-          lastUsedAt: DateTime.now(),
-        );
+      email: 'kashmir.shawls@nearzy.com',
+      displayName: 'Kashmir Shawl House',
+      role: Roles.ROLE_SHOP,
+      session: session,
+      lastUsedAt: DateTime.now(),
+    );
 
     test('needs re-auth only when it is both expired and unrenewable', () {
       final dead = account(
@@ -138,8 +142,9 @@ void main() {
           expiresAt: DateTime.now().add(const Duration(hours: 1)),
         ),
       );
-      final restored =
-          StoredAccount.tryFromJson(jsonDecode(jsonEncode(original.toJson())))!;
+      final restored = StoredAccount.tryFromJson(
+        jsonDecode(jsonEncode(original.toJson())),
+      )!;
 
       expect(restored.email, original.email);
       expect(restored.displayName, original.displayName);
@@ -148,9 +153,16 @@ void main() {
     });
 
     test('builds initials for the fallback avatar', () {
-      expect(account(session: AuthSession(
-        accessToken: 'a', refreshToken: 'r', expiresAt: DateTime.now(),
-      )).initials, 'KS');
+      expect(
+        account(
+          session: AuthSession(
+            accessToken: 'a',
+            refreshToken: 'r',
+            expiresAt: DateTime.now(),
+          ),
+        ).initials,
+        'KS',
+      );
     });
   });
 }

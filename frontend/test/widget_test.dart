@@ -5,13 +5,14 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mca_project/main.dart';
-import 'package:mca_project/presentation/features/onboarding/view/onboarding_screen.dart';
-import 'package:mca_project/theme/theme.dart';
+import 'package:nearzy/main.dart';
+import 'package:nearzy/presentation/features/onboarding/view/onboarding_screen.dart';
+import 'package:nearzy/theme/theme.dart';
 
 void main() {
-  testWidgets('MyApp builds the onboarding flow for a first-time visitor',
-      (WidgetTester tester) async {
+  testWidgets('MyApp builds the onboarding flow for a first-time visitor', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(
       const MyApp(userModel: null, hasSeenOnboarding: false),
     );

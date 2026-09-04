@@ -6,8 +6,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mca_project/data/models/shop_verification.dart';
-import 'package:mca_project/presentation/features/admin/verification/widgets/verification_card_stack.dart';
+import 'package:nearzy/data/models/shop_verification.dart';
+import 'package:nearzy/presentation/features/admin/verification/widgets/verification_card_stack.dart';
 
 ShopVerification _application(int shopId, {String owner = 'Test Owner'}) =>
     ShopVerification.fromJson({
@@ -64,7 +64,10 @@ Future<List<(int, SwipeDecision)>> _mount(
 void main() {
   group('VerificationCardStack', () {
     testWidgets('a swipe right approves the top application', (tester) async {
-      final decisions = await _mount(tester, [_application(1), _application(2)]);
+      final decisions = await _mount(tester, [
+        _application(1),
+        _application(2),
+      ]);
 
       await tester.drag(
         find.byType(VerificationCardStack),
@@ -76,7 +79,10 @@ void main() {
     });
 
     testWidgets('a swipe left rejects the top application', (tester) async {
-      final decisions = await _mount(tester, [_application(1), _application(2)]);
+      final decisions = await _mount(tester, [
+        _application(1),
+        _application(2),
+      ]);
 
       await tester.drag(
         find.byType(VerificationCardStack),
@@ -87,19 +93,25 @@ void main() {
       expect(decisions, [(1, SwipeDecision.reject)]);
     });
 
-    testWidgets('a short drag springs back and decides nothing', (tester) async {
+    testWidgets('a short drag springs back and decides nothing', (
+      tester,
+    ) async {
       final decisions = await _mount(tester, [_application(1)]);
 
       // Well under the commit threshold: an accidental brush must not reject
       // a real business.
-      await tester.drag(find.byType(VerificationCardStack), const Offset(30, 0));
+      await tester.drag(
+        find.byType(VerificationCardStack),
+        const Offset(30, 0),
+      );
       await _settle(tester);
 
       expect(decisions, isEmpty);
     });
 
-    testWidgets('a fast flick commits even when the drag is short',
-        (tester) async {
+    testWidgets('a fast flick commits even when the drag is short', (
+      tester,
+    ) async {
       final decisions = await _mount(tester, [_application(1)]);
 
       await tester.fling(
@@ -112,8 +124,9 @@ void main() {
       expect(decisions, [(1, SwipeDecision.approve)]);
     });
 
-    testWidgets('the buttons produce the same outcome as a swipe',
-        (tester) async {
+    testWidgets('the buttons produce the same outcome as a swipe', (
+      tester,
+    ) async {
       final key = GlobalKey<VerificationCardStackState>();
       final decisions = await _mount(tester, [_application(1)], key: key);
 
@@ -125,8 +138,9 @@ void main() {
       expect(decisions, [(1, SwipeDecision.reject)]);
     });
 
-    testWidgets('an empty queue renders nothing rather than throwing',
-        (tester) async {
+    testWidgets('an empty queue renders nothing rather than throwing', (
+      tester,
+    ) async {
       final decisions = await _mount(tester, []);
       await _settle(tester);
 

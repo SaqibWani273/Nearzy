@@ -7,34 +7,34 @@
 // confident wrong value in front of a shopkeeper.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mca_project/data/models/listing_draft.dart';
+import 'package:nearzy/data/models/listing_draft.dart';
 
 /// The shape the server actually returns, from POST /shop/products/draft.
 Map<String, dynamic> _serverResponse({
   Object? categoryId = 11,
   Map<String, String>? confidence,
   List<String>? needsAttention,
-}) =>
-    {
-      'draft': {
-        'name': 'Pure Kashmiri Saffron 5 g',
-        'brand': 'Himalayan Harvest',
-        'size': '5 g',
-        'categoryId': categoryId,
-        'shortDescription': 'Grade A1 Mongra threads from Pampore.',
-        'completeDescription': 'A 5 g pack of Grade A1 Mongra saffron threads.',
-        'priceInPaise': null,
+}) => {
+  'draft': {
+    'name': 'Pure Kashmiri Saffron 5 g',
+    'brand': 'Himalayan Harvest',
+    'size': '5 g',
+    'categoryId': categoryId,
+    'shortDescription': 'Grade A1 Mongra threads from Pampore.',
+    'completeDescription': 'A 5 g pack of Grade A1 Mongra saffron threads.',
+    'priceInPaise': null,
+  },
+  'confidence':
+      confidence ??
+      const {
+        'name': 'high',
+        'brand': 'high',
+        'size': 'high',
+        'categoryId': 'high',
       },
-      'confidence': confidence ??
-          const {
-            'name': 'high',
-            'brand': 'high',
-            'size': 'high',
-            'categoryId': 'high',
-          },
-      'needsAttention': needsAttention ?? const <String>[],
-      'model': 'gemini-3.8-flash',
-    };
+  'needsAttention': needsAttention ?? const <String>[],
+  'model': 'gemini-3.8-flash',
+};
 
 void main() {
   group('ListingDraft.fromJson', () {
@@ -63,15 +63,17 @@ void main() {
     });
 
     test('surfaces low-confidence fields as needing a check', () {
-      final draft = ListingDraft.fromJson(_serverResponse(
-        confidence: const {
-          'name': 'high',
-          'brand': 'low',
-          'size': 'low',
-          'categoryId': 'medium',
-        },
-        needsAttention: const ['brand', 'size'],
-      ));
+      final draft = ListingDraft.fromJson(
+        _serverResponse(
+          confidence: const {
+            'name': 'high',
+            'brand': 'low',
+            'size': 'low',
+            'categoryId': 'medium',
+          },
+          needsAttention: const ['brand', 'size'],
+        ),
+      );
 
       expect(draft.needsChecking('brand'), isTrue);
       expect(draft.needsChecking('size'), isTrue);

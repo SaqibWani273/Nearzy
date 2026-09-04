@@ -591,6 +591,7 @@ html { scroll-behavior: smooth; }
       <li><a href="#state" class="sub">State &amp; data flow</a></li>
       <li><a href="#screens" class="sub">Screens &amp; navigation</a></li>
       <li><a href="#design" class="sub">Design system</a></li>
+      <li><a href="#brand" class="sub">Launcher icon &amp; splash</a></li>
       <li><a href="#running">Running locally</a></li>
       <li><a href="#edges">Sharp edges</a></li>
       <li><a href="#resolved" class="sub">Resolved since v1</a></li>
@@ -656,8 +657,11 @@ html { scroll-behavior: smooth; }
 │       ├── seed.js             <span class="c"># demo catalogue, shops, customers, reviews</span>
 │       └── seed_orders.js      <span class="c"># sample order history</span>
 │
-└── frontend/                   <span class="c"># Flutter app — pubspec name: mca_project</span>
+└── frontend/                   <span class="c"># Flutter app</span>
     ├── .fvmrc                  <span class="c"># pins Flutter 3.44.7</span>
+    ├── assets/images/          <span class="c"># icon + splash sources, generated — see below</span>
+    ├── tool/
+    │   └── brand_assets.py     <span class="c"># redraws the mark into those bitmaps</span>
     └── lib/
         ├── main.dart           <span class="c"># splash → session restore → role routing</span>
         ├── constants/          <span class="c"># rest_api_const.dart holds every URL</span>
@@ -671,7 +675,7 @@ html { scroll-behavior: smooth; }
         │   └── features/       <span class="c"># customer / shop / admin / onboarding</span>
         ├── theme/              <span class="c"># colours, type, spacing, motion tokens</span>
         └── utils/              <span class="c"># secure storage, validation, exceptions</span></code></pre>
-      <p class="muted">The Flutter package is named <code>mca_project</code>, so internal imports read <code>package:mca_project/…</code> rather than <code>package:nearzy/…</code>.</p>
+      <p class="muted">One leftover from the project's first name: the Kotlin source still sits under <code>android/app/src/main/kotlin/com/example/mca_project/</code>, though the file itself declares <code>package com.example.nearzy</code> — matching the Gradle <code>namespace</code> and <code>applicationId</code>. The directory name is inert; only the declaration is compiled. Dart imports read <code>package:nearzy/…</code>.</p>
     </section>
 
     <!-- ═══════════════════════════════════════════════════════ -->
@@ -1177,6 +1181,43 @@ html { scroll-behavior: smooth; }
         </table>
       </div>
       <p>The signature motion patterns are a staggered fade-and-rise on lists, a 0.97 press scale with light haptics on every tappable card, <code>Hero</code> tags <code>product-&lt;id&gt;</code> / <code>shop-&lt;id&gt;</code> for continuous grid-to-detail transitions, a parallax <code>SliverAppBar</code> on detail screens, and a cross-fade from shimmer skeleton to content — a hard cut counts as a bug. At most one looping animation per screen.</p>
+      <h3 id="brand">Launcher icon &amp; splash</h3>
+      <p>Both are generated, not drawn by hand. <code>NearzyMark</code> in <code>lib/presentation/common/widgets/nearzy_logo.dart</code> is the master: a <code>CustomPainter</code> authoring the pin, scalloped awning and knocked-out doorway on a 100×100 grid. <code>frontend/tool/brand_assets.py</code> ports that geometry and renders the five bitmaps under <code>assets/images/</code>; <code>flutter_launcher_icons</code> and <code>flutter_native_splash</code> then fan them out per platform.</p>
+<pre><code>python3 tool/brand_assets.py                   <span class="c"># assets/images/*</span>
+fvm dart run flutter_launcher_icons            <span class="c"># android/ ios/ web/ windows/ macos/</span>
+fvm dart run flutter_native_splash:create      <span class="c"># drawables, styles.xml, LaunchScreen.storyboard</span></code></pre>
+      <p>The icon is an ink pin on a <strong>lime</strong> ground — the one place the accent is used as a full background, since a launcher tile has to win against an arbitrary wallpaper. The splash keeps the ink ground and shows the same lockup as a lime disc, with the wordmark beneath it.</p>
+
+      <div class="tw">
+        <table>
+          <thead><tr><th>Asset</th><th>Canvas</th><th>Mark</th><th>Consumed by</th></tr></thead>
+          <tbody>
+            <tr><td class="p">icon.png</td><td>1024, opaque lime</td><td>62% of canvas</td><td>iOS, macOS, Windows, web, and the legacy <code>mipmap-*/launcher_icon.png</code></td></tr>
+            <tr><td class="p">icon_foreground.png</td><td>1024, transparent</td><td>41.3% of canvas</td><td>Android adaptive foreground, with <code>adaptive_icon_background: "#C9F24E"</code></td></tr>
+            <tr><td class="p">splash_logo.png</td><td>1024 = 256 dp</td><td>64% of a 160 dp disc</td><td>Android 11 and below, iOS <code>LaunchImage</code></td></tr>
+            <tr><td class="p">splash_logo_android12.png</td><td>1152 = 288 dp</td><td>64% of a 720 px disc</td><td><code>windowSplashScreenAnimatedIcon</code></td></tr>
+            <tr><td class="p">splash_branding.png</td><td>glyphs plus 64 px of clearance below</td><td>wordmark only</td><td><code>windowSplashScreenBrandingImage</code>, iOS <code>BrandingImage</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note">
+        <p class="note-t">Why the sizes look arbitrary</p>
+        <p>Adaptive icons draw on a 108 dp canvas but launchers only ever show the central 72 dp, so a mark that should read at 62% of the <em>visible</em> icon has to be authored at 62% × 72/108 = 41.3% of the canvas. On top of that <code>flutter_launcher_icons</code> insets the foreground by 16% unless told otherwise, which is why <code>adaptive_icon_foreground_inset: 0</code> is set. Getting both wrong at once is what made the old icon look like a small pin floating in a large dark square.</p>
+        <p><code>flutter_native_splash</code> treats every source as 4×, so 1152 px = 288 dp, the Android 12 splash-icon canvas. With no icon background colour set, AOSP masks that canvas to a 192 dp circle — 768 px here — which is what the baked disc's 720 px sits inside. Conveniently this mark's circumscribed circle diameter equals its bounding-box height, so one number budgets against both.</p>
+      </div>
+
+      <div class="note">
+        <p class="note-t">Two OEM deviations the assets are shaped around</p>
+        <p>Both were found on HyperOS and both are the reason the sources look the way they do. First, <code>windowSplashScreenIconBackgroundColor</code> is a <em>background</em>, and the shell masks it with the launcher's own icon shape — on a device set to square icons the lime disc rendered as a lime <strong>square</strong>. Hence no background colour at all: the disc lives inside <code>splash_logo_android12.png</code>, where nothing can reshape it.</p>
+        <p>Second, the branding image is drawn at <strong>raw pixel size</strong>, ignoring density: the xxxhdpi asset's 117 px of glyphs measured 117 device px on a 2× screen, where the density-correct answer is 234. So the wordmark's on-screen size tracks the source's pixel dimensions rather than its dp size, and it renders roughly twice as large there as on a compliant device. Both are worth re-checking against a screenshot after any change to these two assets — a spec-correct source is not evidence of a correct result.</p>
+      </div>
+
+      <div class="note">
+        <p class="note-t">The wordmark cannot sit under the pin</p>
+        <p>Android 12+ masks the splash icon to a circle, so "Nearzy" goes in the OS branding slot at the foot of the screen rather than into the icon. Older Android gets the same treatment through a bottom-gravity layer in <code>launch_background.xml</code>, and iOS through a bottom-constrained image view in <code>LaunchScreen.storyboard</code> — identical on every platform. <code>NearzySplashLogo</code> in <code>nearzy_logo.dart</code> renders a richer animated version of the lockup, but nothing uses it: <code>main.dart</code> finishes its async work before <code>runApp</code> and drops the native splash immediately after, so there is no window for a Flutter-drawn one.</p>
+      </div>
+
       <p class="muted">Two helpers do most of that work and should be reached for instead of hand-rolled equivalents: <code>PressableScale</code> for the press response, and <code>CrossFade</code> for every phase change. <code>CrossFade</code> exists because a bare <code>AnimatedSwitcher</code> keys its entries by the child's own key, so keyless children collide and two of them fading out at once throw "Duplicate keys found"; a monotonic revision keeps every entry distinct. Network images go through <code>NearzyNetworkImage</code>, never a raw <code>Image.network</code>.</p>
     </section>
 
@@ -1334,7 +1375,7 @@ fvm flutter run</code></pre>
 
   <footer>
     <span>Nearzy — engineering reference</span>
-    <span>Revision 4 — generated from the working tree at <code>main</code> · 3 September 2026</span>
+    <span>Revision 4 — generated from the working tree at <code>main</code> · 4 September 2026</span>
     <span>Live API docs: <code>/swagger-ui</code></span>
   </footer>
 

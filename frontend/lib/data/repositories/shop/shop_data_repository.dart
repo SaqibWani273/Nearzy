@@ -1,6 +1,6 @@
 import 'dart:developer';
 
-import 'package:mca_project/data/models/order.dart';
+import 'package:nearzy/data/models/order.dart';
 import '/data/models/shop_model/shop_model1.dart';
 
 import '../../../services/geo_locator_service.dart';
@@ -27,11 +27,13 @@ class ShopDataRepository {
   Future<void> registerShop(ShopModel1 shopModel) async {
     try {
       final newShopModel = shopModel.copyWith(
-        ownerIdPicUrl:
-            await CloudinaryService.uploadImage(shopModel.ownerIdPicUrl),
+        ownerIdPicUrl: await CloudinaryService.uploadImage(
+          shopModel.ownerIdPicUrl,
+        ),
         shopPicUrl: await CloudinaryService.uploadImage(shopModel.shopPicUrl),
-        pancardPicUrl:
-            await CloudinaryService.uploadImage(shopModel.pancardPicUrl),
+        pancardPicUrl: await CloudinaryService.uploadImage(
+          shopModel.pancardPicUrl,
+        ),
         ownerPicUrl: await CloudinaryService.uploadImage(shopModel.ownerPicUrl),
       );
       await ApiService.registerShop(newShopModel);
@@ -46,8 +48,9 @@ class ShopDataRepository {
       final shModel = await ApiService.getUserModel() as ShopModel1?;
       if (shModel == null) {
         throw CustomException(
-            errorType: ErrorType.unknown,
-            message: "Error Fetching Shop Data.Please try again!");
+          errorType: ErrorType.unknown,
+          message: "Error Fetching Shop Data.Please try again!",
+        );
       }
       shopModel = shModel;
     } catch (e) {
@@ -70,9 +73,10 @@ class ShopDataRepository {
               as List<CategoryData>?;
       if (response == null) {
         throw CustomException(
-            errorType: ErrorType.internetConnection,
-            message:
-                'Something went wrong! Please check your internet connection.');
+          errorType: ErrorType.internetConnection,
+          message:
+              'Something went wrong! Please check your internet connection.',
+        );
       }
 
       categoriesData = response;
@@ -103,8 +107,9 @@ class ShopDataRepository {
 
   Future<String> getLocationAddress(String? userEnteredLocation) async {
     try {
-      locationInfo =
-          await GeoLocatorService.fetchLocationInfo(userEnteredLocation);
+      locationInfo = await GeoLocatorService.fetchLocationInfo(
+        userEnteredLocation,
+      );
       return locationInfo!.shortAddress;
     } catch (e) {
       rethrow;
@@ -113,8 +118,9 @@ class ShopDataRepository {
 
   Future<void> fetchMyUploadedProducts() async {
     try {
-      myUploadedProducts =
-          await ApiService.fetchMyUploadedProducts(shopModel!.id!);
+      myUploadedProducts = await ApiService.fetchMyUploadedProducts(
+        shopModel!.id!,
+      );
     } catch (e) {
       rethrow;
     }
@@ -148,8 +154,10 @@ class ShopDataRepository {
   /// so its version is the only one worth trusting.
   Future<void> updateOrderStatus(int orderId, OrderStatus status) async {
     try {
-      final updated =
-          await ApiService.updateOrderStatus(orderId: orderId, status: status);
+      final updated = await ApiService.updateOrderStatus(
+        orderId: orderId,
+        status: status,
+      );
       final index = myOrders.indexWhere((o) => o.id == orderId);
       if (index != -1) myOrders[index] = updated;
     } catch (e) {

@@ -1,7 +1,7 @@
 // import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:mca_project/data/models/shop_model/shop_model1.dart';
-import 'package:mca_project/presentation/features/shop/shop_authentication/view_model/shop_auth_bloc.dart';
+import 'package:nearzy/data/models/shop_model/shop_model1.dart';
+import 'package:nearzy/presentation/features/shop/shop_authentication/view_model/shop_auth_bloc.dart';
 
 import '../../../../data/repositories/shop/shop_data_repository.dart';
 import '../../../common/widgets/account_switcher_sheet.dart';
@@ -64,7 +64,8 @@ class ShopHeader extends StatelessWidget {
 
   final String shopName;
 
-  const ShopHeader({super.key, 
+  const ShopHeader({
+    super.key,
     required this.shopPicUrl,
     required this.ownerPicUrl,
     required this.ownerName,
@@ -80,8 +81,12 @@ class ShopHeader extends StatelessWidget {
       children: <Widget>[
         ClipRRect(
           borderRadius: BorderRadius.circular(8.0),
-          child: Image.network(shopPicUrl,
-              height: 200, width: double.infinity, fit: BoxFit.cover),
+          child: Image.network(
+            shopPicUrl,
+            height: 200,
+            width: double.infinity,
+            fit: BoxFit.cover,
+          ),
         ),
         Center(
           child: Text(
@@ -105,7 +110,9 @@ class ShopHeader extends StatelessWidget {
                         Text(
                           ownerName!,
                           style: TextStyle(
-                              fontSize: 20, fontWeight: FontWeight.bold),
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ],
                     ),
@@ -118,25 +125,26 @@ class ShopHeader extends StatelessWidget {
                       onTap: () => AccountSwitcherSheet.show(context),
                       child: Container(
                         decoration: BoxDecoration(
-                            color: Colors.grey.shade200,
-                            borderRadius: BorderRadius.circular(15.0),
-                            border: Border.all(
-                                color: Colors.grey.shade300, width: 2)),
+                          color: Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(15.0),
+                          border: Border.all(
+                            color: Colors.grey.shade300,
+                            width: 2,
+                          ),
+                        ),
                         child: Column(
                           children: [
                             Text("Switch account"),
-                            SizedBox(
-                              height: 20,
-                            ),
-                            Icon(Icons.swap_horiz_rounded)
+                            SizedBox(height: 20),
+                            Icon(Icons.swap_horiz_rounded),
                           ],
                         ),
                       ),
                     ),
-                  )
+                  ),
                 ],
               )
-            : Container()
+            : Container(),
       ],
     );
   }
@@ -151,9 +159,7 @@ class ShopDescription extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       elevation: 4.0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8.0),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Text(
@@ -175,7 +181,8 @@ class ShopDetails extends StatelessWidget {
   final String? pancardPicUrl;
   final String? ownerIdPicUrl;
 
-  const ShopDetails({super.key, 
+  const ShopDetails({
+    super.key,
     required this.categories,
     required this.address,
     required this.phoneNumber,
@@ -187,21 +194,22 @@ class ShopDetails extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isShopProfile = businessLicense != null &&
+    final bool isShopProfile =
+        businessLicense != null &&
         pancardPicUrl != null &&
         ownerIdPicUrl != null;
     return Card(
       elevation: 4.0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8.0),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text('Categories:',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            Text(
+              'Categories:',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
             SizedBox(height: 4.0),
             Wrap(
               spacing: 8.0,
@@ -210,37 +218,46 @@ class ShopDetails extends StatelessWidget {
                   .toList(),
             ),
             SizedBox(height: 8.0),
-            Text('Address:',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            Text(
+              'Address:',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
             Text(address, style: TextStyle(fontSize: 16)),
             SizedBox(height: 8.0),
-            Text('Phone:',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            Text(
+              'Phone:',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
             Text(phoneNumber, style: TextStyle(fontSize: 16)),
             SizedBox(height: 8.0),
-            Text('Email:',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            Text(
+              'Email:',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
             Text(email, style: TextStyle(fontSize: 16)),
             SizedBox(height: 8.0),
             if (isShopProfile)
               Column(
                 children: [
-                  Text('Business License:',
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text(
+                    'Business License:',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
                   Text(businessLicense!, style: TextStyle(fontSize: 16)),
                   SizedBox(height: 8.0),
-                  Text('Pan Card:',
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text(
+                    'Pan Card:',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
                   Image.network(pancardPicUrl!, height: 100, fit: BoxFit.cover),
                   SizedBox(height: 8.0),
-                  Text('Owner ID:',
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text(
+                    'Owner ID:',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
                   Image.network(ownerIdPicUrl!, height: 100, fit: BoxFit.cover),
                 ],
-              )
+              ),
           ],
         ),
       ),

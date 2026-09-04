@@ -7,8 +7,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mca_project/presentation/common/animations/cross_fade.dart';
-import 'package:mca_project/theme/app_motion.dart';
+import 'package:nearzy/presentation/common/animations/cross_fade.dart';
+import 'package:nearzy/theme/app_motion.dart';
 
 /// The sequence that crashed the budget rail: shimmer, empty, shimmer again,
 /// then the loaded list — each step landing before the previous cross-fade
@@ -26,14 +26,15 @@ const Duration _betweenPhases = Duration(milliseconds: 60);
 /// Widget.canUpdate matches them, so the switcher swaps them in place without
 /// ever creating a second entry.
 Widget _phaseChild(String phase) => switch (phase) {
-      'shimmer' => const SizedBox(width: 40, child: Text('shimmer')),
-      'empty' => const Padding(padding: EdgeInsets.zero, child: Text('empty')),
-      _ => const Card(key: ValueKey('list'), child: Text('list')),
-    };
+  'shimmer' => const SizedBox(width: 40, child: Text('shimmer')),
+  'empty' => const Padding(padding: EdgeInsets.zero, child: Text('empty')),
+  _ => const Card(key: ValueKey('list'), child: Text('list')),
+};
 
 void main() {
-  testWidgets('survives phases changing faster than the cross-fade',
-      (tester) async {
+  testWidgets('survives phases changing faster than the cross-fade', (
+    tester,
+  ) async {
     for (var i = 0; i < _phases.length; i++) {
       await tester.pumpWidget(
         MaterialApp(
@@ -67,13 +68,14 @@ void main() {
     expect(find.text('empty'), findsNothing);
   });
 
-  testWidgets('rebuilding with an unchanged state updates in place',
-      (tester) async {
+  testWidgets('rebuilding with an unchanged state updates in place', (
+    tester,
+  ) async {
     Future<void> pumpLabel(String label) => tester.pumpWidget(
-          MaterialApp(
-            home: CrossFade(state: 'loaded', child: Text(label)),
-          ),
-        );
+      MaterialApp(
+        home: CrossFade(state: 'loaded', child: Text(label)),
+      ),
+    );
 
     await pumpLabel('12 shops');
     await pumpLabel('13 shops');
@@ -86,10 +88,10 @@ void main() {
 
   testWidgets('a changed state does cross-fade', (tester) async {
     Future<void> pumpPhase(Object state, String label) => tester.pumpWidget(
-          MaterialApp(
-            home: CrossFade(state: state, child: Text(label)),
-          ),
-        );
+      MaterialApp(
+        home: CrossFade(state: state, child: Text(label)),
+      ),
+    );
 
     await pumpPhase('waiting', 'Looking around you…');
     await pumpPhase('loaded', '12 shops');

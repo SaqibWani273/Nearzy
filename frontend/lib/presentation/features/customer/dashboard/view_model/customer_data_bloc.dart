@@ -1,5 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:mca_project/data/models/shop_model/shop_model1.dart';
+import 'package:nearzy/data/models/shop_model/shop_model1.dart';
 import '/utils/exceptions/custom_exception.dart';
 import '../../../../../data/models/cart.dart';
 import '../../../../../data/models/product.dart';
@@ -11,7 +11,7 @@ part 'customer_data_state.dart';
 class CustomerDataBloc extends Bloc<CustomerDataEvent, CustomerDataState> {
   final CustomerDataRepository customerDataRepository;
   CustomerDataBloc({required this.customerDataRepository})
-      : super(CustomerDataInitialState()) {
+    : super(CustomerDataInitialState()) {
     on<LoadCustomerDataEvent>(_loadCustomerData);
     on<ChangeCustomerCurrentLocationEvent>(_changeCustomerCurrentLocation);
     on<CustomerDataAddProductToCartEvent>(_addToCart);
@@ -39,19 +39,20 @@ class CustomerDataBloc extends Bloc<CustomerDataEvent, CustomerDataState> {
     List<Product>? searchProducts,
     List<ShopModel1>? shops,
     bool? loadedCategories,
-  }) =>
-      CustomerDataLoadedState(
-        isChangingLocation: isChangingLocation,
-        loadingProducts: loadingProducts,
-        canAddToCart: canAddToCart,
-        searchProducts: searchProducts,
-        shops: shops,
-        loadedCategories: loadedCategories,
-        favouritesRevision: _favouritesRevision,
-      );
+  }) => CustomerDataLoadedState(
+    isChangingLocation: isChangingLocation,
+    loadingProducts: loadingProducts,
+    canAddToCart: canAddToCart,
+    searchProducts: searchProducts,
+    shops: shops,
+    loadedCategories: loadedCategories,
+    favouritesRevision: _favouritesRevision,
+  );
 
   Future<void> _handleEvent(
-      CustomerDataEvent event, Emitter<CustomerDataState> emit) async {
+    CustomerDataEvent event,
+    Emitter<CustomerDataState> emit,
+  ) async {
     try {
       if (event is ChangeCustomerCurrentLocationEvent) {
         emit(_loaded(isChangingLocation: true));
@@ -89,8 +90,9 @@ class CustomerDataBloc extends Bloc<CustomerDataEvent, CustomerDataState> {
           emit(_loaded());
           break;
         case CustomerDataAddProductToCartEvent _:
-          final isAddable =
-              await customerDataRepository.addToCart(event.product);
+          final isAddable = await customerDataRepository.addToCart(
+            event.product,
+          );
           emit(_loaded(canAddToCart: isAddable));
 
           break;
@@ -107,15 +109,17 @@ class CustomerDataBloc extends Bloc<CustomerDataEvent, CustomerDataState> {
           emit(_loaded());
           break;
         case CustomerDataFetchCartItemDetailsEvent _:
-          await customerDataRepository
-              .fetchMultipleCartItemDetails(event.cartItems);
+          await customerDataRepository.fetchMultipleCartItemDetails(
+            event.cartItems,
+          );
           // emit(CustomerDataCartFetchedCartItemDetailsState());
           emit(_loaded());
           break;
         case CustomerDataSearchProductEvent _:
           emit(_loaded(loadingProducts: true));
-          final products =
-              await customerDataRepository.searchProduct(event.keyword);
+          final products = await customerDataRepository.searchProduct(
+            event.keyword,
+          );
           await customerDataRepository.rememberSearch(event.keyword);
           emit(_loaded(searchProducts: products));
           break;
@@ -167,46 +171,53 @@ class CustomerDataBloc extends Bloc<CustomerDataEvent, CustomerDataState> {
   }
 
   Future<void> _loadCustomerData(
-          LoadCustomerDataEvent event, Emitter<CustomerDataState> emit) async =>
-      await _handleEvent(event, emit);
+    LoadCustomerDataEvent event,
+    Emitter<CustomerDataState> emit,
+  ) async => await _handleEvent(event, emit);
 
   Future<void> _changeCustomerCurrentLocation(
-          ChangeCustomerCurrentLocationEvent event,
-          Emitter<CustomerDataState> emit) async =>
-      await _handleEvent(event, emit);
-  Future<void> _addToCart(CustomerDataAddProductToCartEvent event,
-          Emitter<CustomerDataState> emit) async =>
-      await _handleEvent(event, emit);
+    ChangeCustomerCurrentLocationEvent event,
+    Emitter<CustomerDataState> emit,
+  ) async => await _handleEvent(event, emit);
+  Future<void> _addToCart(
+    CustomerDataAddProductToCartEvent event,
+    Emitter<CustomerDataState> emit,
+  ) async => await _handleEvent(event, emit);
 
-  Future<void> _removeFromCart(CustomerDataRemoveProductFromCartEvent event,
-          Emitter<CustomerDataState> emit) async =>
-      await _handleEvent(event, emit);
+  Future<void> _removeFromCart(
+    CustomerDataRemoveProductFromCartEvent event,
+    Emitter<CustomerDataState> emit,
+  ) async => await _handleEvent(event, emit);
 
   Future<void> _increaseQuantityByOne(
-          CustomerDataIncreaseQuantityByOneEvent event,
-          Emitter<CustomerDataState> emit) async =>
-      await _handleEvent(event, emit);
+    CustomerDataIncreaseQuantityByOneEvent event,
+    Emitter<CustomerDataState> emit,
+  ) async => await _handleEvent(event, emit);
   Future<void> _decreaseQuantityByOne(
-          CustomerDataDecreaseQuantityByOneEvent event,
-          Emitter<CustomerDataState> emit) async =>
-      await _handleEvent(event, emit);
+    CustomerDataDecreaseQuantityByOneEvent event,
+    Emitter<CustomerDataState> emit,
+  ) async => await _handleEvent(event, emit);
 
   Future<void> _fetchMultipleCartItemDetails(
-          CustomerDataFetchCartItemDetailsEvent event,
-          Emitter<CustomerDataState> emit) async =>
-      await _handleEvent(event, emit);
+    CustomerDataFetchCartItemDetailsEvent event,
+    Emitter<CustomerDataState> emit,
+  ) async => await _handleEvent(event, emit);
 
-  Future<void> _searchProduct(CustomerDataSearchProductEvent event,
-          Emitter<CustomerDataState> emit) async =>
-      await _handleEvent(event, emit);
+  Future<void> _searchProduct(
+    CustomerDataSearchProductEvent event,
+    Emitter<CustomerDataState> emit,
+  ) async => await _handleEvent(event, emit);
 
-  Future<void> _loadProducts(CustomerDataLoadProductsEvent event,
-          Emitter<CustomerDataState> emit) async =>
-      await _handleEvent(event, emit);
-  Future<void> _fetchNearbyShops(CustomerDataFetchNearbyShopsEvent event,
-          Emitter<CustomerDataState> emit) async =>
-      await _handleEvent(event, emit);
-  Future<void> _fetchCategories(CustomerDataFetchCategoriesEvent event,
-          Emitter<CustomerDataState> emit) async =>
-      await _handleEvent(event, emit);
+  Future<void> _loadProducts(
+    CustomerDataLoadProductsEvent event,
+    Emitter<CustomerDataState> emit,
+  ) async => await _handleEvent(event, emit);
+  Future<void> _fetchNearbyShops(
+    CustomerDataFetchNearbyShopsEvent event,
+    Emitter<CustomerDataState> emit,
+  ) async => await _handleEvent(event, emit);
+  Future<void> _fetchCategories(
+    CustomerDataFetchCategoriesEvent event,
+    Emitter<CustomerDataState> emit,
+  ) async => await _handleEvent(event, emit);
 }

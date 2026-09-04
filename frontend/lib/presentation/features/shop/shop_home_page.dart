@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:mca_project/constants/bottom_navbar_items.dart';
+import 'package:nearzy/constants/bottom_navbar_items.dart';
 import '../../common/widgets/animated_bottom_nav.dart';
 import '../../common/widgets/shimmer_loading.dart';
 import '../../../theme/app_colors.dart';
