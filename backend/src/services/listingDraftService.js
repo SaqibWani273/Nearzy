@@ -78,7 +78,7 @@ function draftSchema(categoryIds) {
       },
       shortDescription: {
         type: 'string',
-        description: 'One plain sentence a shopper would see in a list',
+        description: 'One plain sentence a customer would see in a list',
       },
       completeDescription: {
         type: 'string',
@@ -231,7 +231,7 @@ const listingDraftService = {
 
     const text = (value) => (typeof value === 'string' ? value.trim() : '');
 
-    // The size belongs in the name a shopper reads — "Butter 500 g" is what is
+    // The size belongs in the name a customer reads — "Butter 500 g" is what is
     // on the shelf — but only when the packet actually stated one.
     const name = text(parsed.name);
     const size = text(parsed.size);

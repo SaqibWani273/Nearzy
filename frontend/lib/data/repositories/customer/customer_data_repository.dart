@@ -20,6 +20,12 @@ import '/data/models/product.dart';
 class CustomerDataRepository {
   List<Product> products = [];
   List<ProductCategory>? categories;
+
+  /// Whether [categories] has been fetched, and how that went.
+  CategoriesStatus categoriesStatus = CategoriesStatus.idle;
+
+  /// The in-flight fetch, so concurrent callers share one request.
+  Future<void>? _categoriesRequest;
   LocationInfo? currentSelectedLocation = LocationInfo.defaultValue();
   List<ShopModel1>? shops = [];
   List<ProductCategory> productCategories = [];
@@ -379,13 +385,46 @@ class CustomerDataRepository {
     }
   }
 
-  Future<void> loadCategories() async {
+  /// Fetches the category list, at most once unless [force]d.
+  ///
+  /// Deliberately does not throw. Two screens want categories — the Browse
+  /// tab and the home feed's filter rail — and a failure on either used to
+  /// surface as the bloc's generic error state, which replaced the whole feed
+  /// with an error page over a decorative rail. The outcome is recorded in
+  /// [categoriesStatus] instead and each screen decides what to show.
+  Future<void> loadCategories({bool force = false}) {
+    if (!force && categoriesStatus == CategoriesStatus.ready) {
+      return Future.value();
+    }
+    // Both screens ask on mount. Without this they raced, and the loser's
+    // response overwrote the winner's.
+    final inFlight = _categoriesRequest;
+    if (inFlight != null) return inFlight;
+
+    final request = _fetchCategories();
+    _categoriesRequest = request;
+    return request;
+  }
+
+  Future<void> _fetchCategories() async {
+    categoriesStatus = CategoriesStatus.loading;
     try {
       final response = await ApiService.loadAllCategories(Roles.ROLE_CUSTOMER)
           as List<ProductCategory>?;
       categories = response ?? [];
+      categoriesStatus = CategoriesStatus.ready;
     } catch (e) {
-      rethrow;
+      log('loading categories failed: $e');
+      categoriesStatus = CategoriesStatus.failed;
+    } finally {
+      _categoriesRequest = null;
     }
   }
 }
+
+/// Where the category list stands.
+///
+/// A nullable list conflated three different situations — never asked, in
+/// flight, and failed — so the Browse tab could not tell "still loading" from
+/// "the request came back empty" and sat on its skeleton either way.
+enum CategoriesStatus { idle, loading, ready, failed }

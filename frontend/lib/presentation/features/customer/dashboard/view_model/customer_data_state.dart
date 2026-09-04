@@ -14,6 +14,12 @@ class CustomerDataLoadedState extends CustomerDataState {
   bool? canAddToCart;
   List<Product>? searchProducts;
   List<ShopModel1>? shops;
+
+  /// True once a category load has settled. It is *not* what the Browse grid
+  /// renders from — that reads `CustomerDataRepository.categoriesStatus`,
+  /// which distinguishes loading from failed from loaded-and-empty. This flag
+  /// exists so the emit carrying that outcome reaches the BlocBuilder, and so
+  /// the outcome survives the next unrelated event (see `_loaded`).
   bool? loadedCategories;
 
   /// Bumped on every favourite toggle so BlocBuilders rebuild — the

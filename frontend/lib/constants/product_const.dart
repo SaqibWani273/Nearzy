@@ -55,7 +55,7 @@ class ProductConstants {
       'shortDescription',
       'Short description',
       required: true,
-      hint: 'One line shoppers see in the listing',
+      hint: 'One line customers see in the listing',
     ),
     ProductFormField('brand', 'Brand'),
     ProductFormField(

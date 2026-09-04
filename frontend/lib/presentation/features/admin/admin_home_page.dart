@@ -26,7 +26,9 @@ class _AdminHomePageState extends State<AdminHomePage> {
   bool _signingOut = false;
 
   void _changeIndex(int index) {
+    if (index == _currentIndex) return;
     setState(() => _currentIndex = index);
+    if (!_pageController.hasClients) return;
     _pageController.animateToPage(
       index,
       duration: AppSpacing.durationNormal,
@@ -88,32 +90,42 @@ class _AdminHomePageState extends State<AdminHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.surface,
-      appBar: AppBar(
-        title: Text('Nearzy Admin', style: AppTextStyles.brand.copyWith(fontSize: 22)),
-        actions: [
-          IconButton(
-            onPressed: _signingOut ? null : _signOut,
-            tooltip: 'Sign out',
-            icon: const Icon(Icons.logout_rounded),
-          ),
-        ],
-      ),
-      body: PageView(
-        controller: _pageController,
-        physics: const NeverScrollableScrollPhysics(),
-        children: [
-          _AdminDashboard(onGoToTab: _changeIndex),
-          const AdminCategoriesScreen(),
-          const AdminVerificationScreen(),
-          const AdminDemandMapScreen(),
-        ],
-      ),
-      bottomNavigationBar: NearzyBottomNav(
-        currentIndex: _currentIndex,
-        onTap: _changeIndex,
-        items: adminNavItems,
+    // Back returns to the overview rather than closing the console. Only the
+    // overview itself lets the gesture through.
+    return PopScope(
+      canPop: _currentIndex == 0,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _changeIndex(0);
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.surface,
+        appBar: AppBar(
+          title: Text('Nearzy Admin',
+              style: AppTextStyles.brand.copyWith(fontSize: 22)),
+          actions: [
+            IconButton(
+              onPressed: _signingOut ? null : _signOut,
+              tooltip: 'Sign out',
+              icon: const Icon(Icons.logout_rounded),
+            ),
+          ],
+        ),
+        body: PageView(
+          controller: _pageController,
+          physics: const NeverScrollableScrollPhysics(),
+          children: [
+            _AdminDashboard(onGoToTab: _changeIndex),
+            const AdminCategoriesScreen(),
+            const AdminVerificationScreen(),
+            const AdminDemandMapScreen(),
+          ],
+        ),
+        bottomNavigationBar: NearzyBottomNav(
+          currentIndex: _currentIndex,
+          onTap: _changeIndex,
+          items: adminNavItems,
+        ),
       ),
     );
   }

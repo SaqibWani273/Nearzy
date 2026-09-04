@@ -730,6 +730,7 @@ html { scroll-behavior: smooth; }
             <tr><td>Rotation</td><td>Single-use. Every refresh issues a new pair and revokes the old row with <code>revoked_reason: 'rotated'</code></td></tr>
             <tr><td>Reuse detection</td><td>Rotations of one sign-in share a <code>family_id</code>. Presenting an already-spent token revokes the <em>whole family</em> and answers <code>401 REFRESH_TOKEN_REUSED</code></td></tr>
             <tr><td>Verified-email gate</td><td>Enforced on customer and shop login; admin login skips it</td></tr>
+            <tr><td>Failure shape</td><td><code>res.status(400).json(&lt;string&gt;)</code> &mdash; a JSON-quoted phrase written for a log: <code>"Email Not Registered"</code>, <code>"Invalid credentials"</code>, <code>"Not a shop user"</code>. The client must not render it: <code>utils/auth_error.dart</code> is the single place that maps a status and body onto copy a person can act on, and every login path goes through it</td></tr>
           </tbody>
         </table>
       </div>
@@ -1050,6 +1051,7 @@ html { scroll-behavior: smooth; }
       <p class="eyebrow">Flutter client</p>
       <h2 class="head">The app</h2>
       <p class="lede">A single Flutter app serving all three roles, structured feature-first with BLoC for state. There is no router package: navigation is <code>Navigator.push</code> with a custom shared-axis route, and the root widget picks a shell based on the restored session.</p>
+      <p><strong>The app shell sits under a nested <code>Navigator</code></strong>, keyed per identity, so an account switch throws the whole navigation stack away rather than handing the next account the previous one&rsquo;s routes. The system back gesture, though, is delivered to the <em>root</em> navigator &mdash; which holds a single route &mdash; so that nested stack has to be wired to it explicitly. <code>NavigatorPopHandler</code> does that: it mirrors the nested stack&rsquo;s depth onto a <code>PopScope</code> above it and forwards the gesture down via <code>maybePop</code>. Without it, back closed the app from every screen in the app.</p>
 
       <h4>Startup — <code>lib/main.dart</code></h4>
       <ol class="steps">
@@ -1112,6 +1114,8 @@ html { scroll-behavior: smooth; }
 
       <h3 id="screens">Screens &amp; navigation</h3>
       <p>Each role gets its own shell with an animated bottom nav. The customer shell starts on <em>Home</em> (index 2) and exposes <code>HomeTabScope</code> so the drawer can move the existing tab instead of pushing a duplicate screen.</p>
+      <p><strong>Back inside a shell moves tabs, it does not exit.</strong> Tabs are a <code>PageView</code>, not routes, so nothing would otherwise catch the gesture. Each of the three shells carries a <code>PopScope</code> whose <code>canPop</code> is true only on its first tab &mdash; <em>Home</em> for the customer, <em>Today</em> for the shop, <em>Dashboard</em> for the admin &mdash; and otherwise returns there. Only from that first tab does the gesture fall through to the platform, which is where Android&rsquo;s own leave-the-app behaviour belongs. <code>test/back_button_test.dart</code> drives the real <code>handlePopRoute</code> path and covers the nested-stack, modal-sheet and nothing-to-pop cases.</p>
+      <p><strong>The drawer is built from the session, not from a constant.</strong> <code>drawerItemsFor(signedIn:)</code> in <code>constants/drawer_data.dart</code> drops the three account-only rows &mdash; orders, delivery addresses, profile, all of which call authenticated endpoints &mdash; when nobody is signed in, and offers a sign-in row in their place. Every row&rsquo;s label matches where <code>handleDrawerItemTap</code> actually sends it; the selected row is derived from the live tab index rather than a field that never changed.</p>
       <div class="tw">
         <table>
           <thead><tr><th>Shell</th><th>Tabs</th><th>Pushed screens</th></tr></thead>
@@ -1129,7 +1133,7 @@ html { scroll-behavior: smooth; }
             <tr>
               <td><span class="badge badge-admin">Admin</span></td>
               <td>Dashboard · Categories · Shops (verification queue) · Demand</td>
-              <td>Category creation</td>
+              <td>Category creation, admin sign-in</td>
             </tr>
           </tbody>
         </table>
@@ -1352,7 +1356,7 @@ fvm flutter run</code></pre>
       </div>
 
       <h3 id="resolved">Resolved since the last revision</h3>
-      <p>Five things this page previously listed as sharp edges have been fixed. Kept here so a returning reader can see what moved rather than wondering whether the entry was simply dropped.</p>
+      <p>Everything this page previously listed as a sharp edge and has since fixed. Kept here so a returning reader can see what moved rather than wondering whether the entry was simply dropped.</p>
       <div class="tw">
         <table>
           <thead><tr><th>Was</th><th>Now</th></tr></thead>
@@ -1365,6 +1369,12 @@ fvm flutter run</code></pre>
             <tr><td>The upload form priced everything at 1/100th</td><td>The form collected "price in Rupees" and the server assigned it straight to <code>priceInPaise</code>. Conversion now happens once at the client boundary (<code>FormHandler.rupeesToPaise</code>), matching the inventory edit sheet, and the server's <code>price</code> alias is removed so only paise crosses the wire</td></tr>
             <tr><td>The refresh test suite failed to load</td><td><code>session_refresh_test.dart</code> probed the backend in <code>setUpAll</code> but read the result in each test's <code>skip:</code> expression — evaluated earlier, at registration — so the file died with a <code>LateInitializationError</code> instead of skipping politely. The probe now runs before the tests are registered</td></tr>
             <tr><td><code>frontend/README.md</code> describes the old stack</td><td>Rewritten as the Flutter app doc, with a new root <code>README.md</code> covering the monorepo. Neither mentions Spring Boot or AWS any more</td></tr>
+            <tr><td>The device back button closed the app from every screen</td><td>The app shell&rsquo;s nested <code>Navigator</code> was invisible to the root navigator the platform delivers the gesture to, so <code>handlePopRoute</code> always fell through to &ldquo;nothing to pop&rdquo;. A <code>NavigatorPopHandler</code> now bridges the two, and each shell adds a <code>PopScope</code> that returns to its first tab instead of exiting. Covered by <code>test/back_button_test.dart</code></td></tr>
+            <tr><td>Categories and the shop list dropped out at random</td><td><code>CustomerDataLoadedState</code> carries fields describing repository-held data, but every <code>emit</code> that did not name them reset them to null &mdash; so one add-to-cart claimed there were no shops and no categories, and Browse sat on its skeleton while Explore said &ldquo;no shops nearby&rdquo;, permanently. Those fields are now carried forward from the last loaded state (tracked in <code>onChange</code>, because several handlers emit a non-loaded state in between), the category fetch no longer emits the global loading state, and the Browse grid reads a three-way <code>CategoriesStatus</code> off the repository so a failure renders a retry rather than an endless shimmer. Covered by <code>test/customer_data_state_test.dart</code></td></tr>
+            <tr><td>A failed sign-in showed the server&rsquo;s log line</td><td>All three logins rendered the raw response body &mdash; <code>"Email Not Registered"</code>, quotes included &mdash; and the customer bloc&rsquo;s fallback emitted <code>"$error!!! "</code>. <code>utils/auth_error.dart</code> now maps status and body onto one actionable sentence, and a shared <code>AuthErrorBanner</code> states it above the fields. The shop screen no longer replaces the whole form with an error page on a wrong password, which used to discard eight uploaded images</td></tr>
+            <tr><td>Admin login had no screen</td><td><code>POST /admin/login</code> and <code>ApiService.adminLogin</code> both existed with no caller, so <code>AdminHomePage</code> was unreachable from inside the app. <code>AdminLoginScreen</code> fills the gap, reached from the account switcher&rsquo;s role picker. Sign-in only &mdash; <code>/admin/register</code> needs a secret code and is not self-serve</td></tr>
+            <tr><td>&ldquo;Confirm Password&rdquo; overwrote the password it was confirming</td><td>Its <code>onSaved</code> assigned to the same field as the password box and the two were never compared, so a mismatched pair silently registered whatever was typed second. Both fields now have controllers and the confirmation validates against the first</td></tr>
+            <tr><td>Drawer rows went somewhere else, or nowhere</td><td>&ldquo;Your Orders&rdquo; opened the profile tab and stopped, &ldquo;Shop&rdquo; opened Explore, and signed out three rows led to endpoints that answer 401. Every row now matches its destination, <code>drawerItemsFor</code> hides what the current session cannot use, and the highlight follows the live tab</td></tr>
           </tbody>
         </table>
       </div>

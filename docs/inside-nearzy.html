@@ -55,7 +55,7 @@ img { max-width: 100%; }
   --text-3: #8B978F;
 
   /* The three sides of the marketplace. Roles, not decoration. */
-  --shopper: #4C6357;
+  --customer: #4C6357;
   --keeper: #B37C1F;
   --platform: #0F1A15;
 
@@ -82,7 +82,7 @@ img { max-width: 100%; }
     --text-2: #A3B1A7;
     --text-3: #79877E;
     --lime-wash: #26331A;
-    --shopper: #9BB3A3;
+    --customer: #9BB3A3;
     --keeper: #E0A03C;
     --platform: #C9F24E;
   }
@@ -101,7 +101,7 @@ img { max-width: 100%; }
   --text-2: #A3B1A7;
   --text-3: #79877E;
   --lime-wash: #26331A;
-  --shopper: #9BB3A3;
+  --customer: #9BB3A3;
   --keeper: #E0A03C;
   --platform: #C9F24E;
 }
@@ -249,7 +249,7 @@ strong { font-weight: 600; }
 @media (min-width: 900px) { .sides { grid-template-columns: repeat(3, 1fr); } }
 
 .side { border-top: 3px solid var(--accent, var(--rule)); padding-top: 20px; }
-.side.shopper { --accent: var(--shopper); }
+.side.customer { --accent: var(--customer); }
 .side.keeper { --accent: var(--keeper); }
 .side.platform { --accent: var(--platform); }
 
@@ -408,7 +408,7 @@ a:focus-visible { outline: 2px solid var(--lime-deep); outline-offset: 3px; bord
     <div class="status">
       <span class="tag live">Working build</span>
       <span class="tag">iOS &amp; Android</span>
-      <span class="tag">Shoppers, shopkeepers &amp; platform team in one app</span>
+      <span class="tag">Customers, shopkeepers &amp; platform team in one app</span>
       <span class="tag">Pre-launch</span>
     </div>
   </header>
@@ -438,8 +438,8 @@ a:focus-visible { outline: 2px solid var(--lime-deep); outline-offset: 3px; bord
 
       <div class="sides">
 
-        <div class="side shopper">
-          <p class="who">Shoppers</p>
+        <div class="side customer">
+          <p class="who">Customers</p>
           <h3>Browse what's genuinely nearby</h3>
           <p>Set your spot on a map — home, office, the place you're headed — and the catalogue
             rebuilds around it.</p>
@@ -500,11 +500,11 @@ a:focus-visible { outline: 2px solid var(--lime-deep); outline-offset: 3px; bord
     <section>
       <p class="eyebrow">How an order works</p>
       <h2>From tap to doorstep.</h2>
-      <p class="lead">Six steps, and two of them exist purely to make sure nobody — shopper,
+      <p class="lead">Six steps, and two of them exist purely to make sure nobody — customer,
         shopkeeper or platform — has to take the others on trust.</p>
 
       <ol class="flow">
-        <li><b>A shopper picks their spot</b>
+        <li><b>A customer picks their spot</b>
           <span>Current location, or any point on the map. Everything they see from here on is
             filtered to what's reachable from it.</span></li>
         <li><b>They fill a cart from nearby shelves</b>
@@ -513,7 +513,7 @@ a:focus-visible { outline: 2px solid var(--lime-deep); outline-offset: 3px; bord
         <li><b>Nearzy prices the order, not the phone</b>
           <span>The app sends a list of items and quantities; the total is calculated on Nearzy's
             side from its own price list. A modified app can't invent a cheaper price.</span></li>
-        <li><b>The shopper pays</b>
+        <li><b>The customer pays</b>
           <span>Razorpay handles the card, UPI, netbanking or wallet. Nearzy then re-checks the
             payment's signature with Razorpay before treating it as real.</span></li>
         <li><b>The shopkeeper packs and dispatches</b>
@@ -571,7 +571,7 @@ a:focus-visible { outline: 2px solid var(--lime-deep); outline-offset: 3px; bord
             <text x="566" y="124" text-anchor="middle" font-weight="600">Reset</text>
           </g>
         </svg>
-        <figcaption>The discount only ever deepens as the day closes — a shopper who saw 30% off
+        <figcaption>The discount only ever deepens as the day closes — a customer who saw 30% off
           at six never comes back at eight to find 20%. Just after midnight the shop's own pricing
           returns. Every product is opted in individually, and the shopkeeper sets the floor the
           discount can never pass.</figcaption>
@@ -648,7 +648,7 @@ a:focus-visible { outline: 2px solid var(--lime-deep); outline-offset: 3px; bord
     <section>
       <p class="eyebrow">Where it stands</p>
       <h2>What's built, and what's deliberately still open.</h2>
-      <p class="lead">Nearzy works end to end today: a shopper can sign up, find a nearby shop, pay
+      <p class="lead">Nearzy works end to end today: a customer can sign up, find a nearby shop, pay
         for something and watch it arrive, while the shopkeeper packs it and the platform team
         approves who's allowed to sell. What follows is an honest ledger, not a roadmap pitch.</p>
 
@@ -657,7 +657,7 @@ a:focus-visible { outline: 2px solid var(--lime-deep); outline-offset: 3px; bord
           <h3>Working now <i>shipped</i></h3>
           <ul class="ticks done">
             <li><b>All three sides, end to end</b>
-              <span>Shopper, shopkeeper and platform team, from sign-up to delivery</span></li>
+              <span>Customer, shopkeeper and platform team, from sign-up to delivery</span></li>
             <li><b>Listing by photograph</b>
               <span>Point the camera at the packet and the name, brand, size,
                 category and description fill themselves in. The shopkeeper
@@ -671,13 +671,19 @@ a:focus-visible { outline: 2px solid var(--lime-deep); outline-offset: 3px; bord
             <li><b>The automation</b>
               <span>Restock warnings and the end-of-day discount clock</span></li>
             <li><b>Operator tooling</b>
-              <span>Shop approvals, category curation and the demand map</span></li>
+              <span>Shop approvals, category curation and the demand map — and, as of this
+                revision, a sign-in for the platform team, who previously had the console
+                but no way into it from the app</span></li>
+            <li><b>Back, and staying signed in</b>
+              <span>The device back button steps back through the app rather than closing
+                it, and a mistyped password says which detail to fix instead of showing
+                the server's own error text</span></li>
           </ul>
         </div>
         <div>
           <h3>Not yet <i>known gaps</i></h3>
           <ul class="ticks todo">
-            <li><b>Shoppers can't write reviews</b>
+            <li><b>Customers can't write reviews</b>
               <span>Ratings are shown and already order the listings, but there's no way yet for a
                 customer to leave one</span></li>
             <li><b>Automation is switched off by default</b>
@@ -706,7 +712,7 @@ a:focus-visible { outline: 2px solid var(--lime-deep); outline-offset: 3px; bord
   <footer>
     <span>Nearzy — product overview</span>
     <span>For investors, collaborators and commercial partners</span>
-    <span>Revised 3 September 2026</span>
+    <span>Revised 4 September 2026</span>
   </footer>
 
 </div>

@@ -1,5 +1,8 @@
+import 'dart:developer';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '/data/repositories/customer/customer_data_repository.dart';
+import '/utils/auth_error.dart';
 import '/utils/exceptions/customer_exception.dart';
 
 part 'customer_auth_event.dart';
@@ -52,9 +55,13 @@ class CustomerAuthBloc extends Bloc<CustomerAuthEvent, CustomerAuthState> {
           break;
       }
     } on CustomerException catch (e) {
+      // Already written for a person — see utils/auth_error.dart.
       emit(CustomerAuthErrorState(e.message));
     } catch (error) {
-      emit(CustomerAuthErrorState("$error!!! "));
+      // A dropped connection or an unreadable response. The raw object names
+      // hosts and socket errors, so it goes to the log, not the screen.
+      log('CustomerAuthBloc: $error');
+      emit(CustomerAuthErrorState(authErrorFromException(error)));
     }
   }
 

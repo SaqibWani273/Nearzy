@@ -67,12 +67,25 @@ class _MyAppState extends State<MyApp> {
 
   /// Bumped on every identity change. It keys the whole app below
   /// [MaterialApp], which is what tears down the previous account's
-  /// repositories, blocs and navigation stack — none of a shopper's cart may
+  /// repositories, blocs and navigation stack — none of a customer's cart may
   /// survive into the shop account that replaces it.
   int _generation = 0;
 
   bool _switching = false;
   StreamSubscription<SessionEvent>? _sessionEvents;
+
+  /// Identity of the app-shell Navigator below [MaterialApp].
+  ///
+  /// A [GlobalKey] rather than the [ValueKey] this used to carry: it still
+  /// replaces the Navigator whenever the generation or the switching flag
+  /// changes (see [_replaceNavigator]), and it additionally lets
+  /// [NavigatorPopHandler] reach the [NavigatorState] to pop it.
+  GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+
+  /// Throws the current navigation stack away. Called on an identity change,
+  /// because the pushed routes belonged to the account being left.
+  void _replaceNavigator() =>
+      _navigatorKey = GlobalKey<NavigatorState>();
 
   @override
   void initState() {
@@ -97,7 +110,10 @@ class _MyAppState extends State<MyApp> {
         ..showSnackBar(SnackBar(content: Text(event.message!)));
     }
 
-    setState(() => _switching = true);
+    setState(() {
+      _switching = true;
+      _replaceNavigator();
+    });
     // Re-read the profile as whoever is now active; null simply means nobody
     // is, and the app falls back to browsing as a guest.
     final model = await ApiService.getUserModel();
@@ -106,6 +122,7 @@ class _MyAppState extends State<MyApp> {
       _userModel = model;
       _switching = false;
       _generation++;
+      _replaceNavigator();
     });
   }
 
@@ -188,14 +205,26 @@ class _MyAppState extends State<MyApp> {
           ],
           // A Navigator per generation: pushed routes belonged to the account
           // being left, so they must not outlive it.
-          child: Navigator(
-            // The switching flag is part of the key on purpose: a Navigator
-            // does not rebuild an already-pushed route, so the shimmer only
-            // appears if the Navigator itself is replaced.
-            key: ValueKey('nav-$_generation-$_switching'),
-            onGenerateRoute: (settings) => MaterialPageRoute(
-              settings: settings,
-              builder: (_) => homeScreen,
+          //
+          // Wrapped in NavigatorPopHandler because the device back button is
+          // delivered to the *root* navigator, which holds a single route —
+          // so every screen pushed into this nested Navigator was invisible
+          // to it and back closed the app instead of going back one screen.
+          // The handler mirrors this Navigator's stack depth onto a PopScope
+          // above it, and forwards the gesture down.
+          child: NavigatorPopHandler<Object?>(
+            // maybePop, not pop: on the shell route there is nothing to pop,
+            // and the shells answer with a PopScope of their own that moves
+            // to the first tab instead.
+            onPopWithResult: (Object? _) {
+              _navigatorKey.currentState?.maybePop();
+            },
+            child: Navigator(
+              key: _navigatorKey,
+              onGenerateRoute: (settings) => MaterialPageRoute(
+                settings: settings,
+                builder: (_) => homeScreen,
+              ),
             ),
           ),
         ),

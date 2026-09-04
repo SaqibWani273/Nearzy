@@ -8,6 +8,7 @@ import 'package:nearzy/data/models/category/product_category/product_category.da
 import '/data/models/shop_model/shop_api_parser.dart';
 import '/data/models/shop_model/shop_model1.dart';
 import '/constants/rest_api_const.dart';
+import '/utils/auth_error.dart';
 import '/utils/exceptions/custom_exception.dart';
 
 import '../constants/bottom_navbar_items.dart';
@@ -102,13 +103,14 @@ class ApiService {
       if (response.statusCode == 200) {
         log(response.body);
       } else {
-        final String errorMessage = jsonDecode(
-          response.body,
-        )["message"].toString();
+        log('shop registration failed ${response.statusCode} -> ${response.body}');
         throw CustomException(
-          errorType: ErrorType.internetConnection,
-          message:
-              'Data Integrity Error! ${response.statusCode} -> ${errorMessage.length > 40 ? errorMessage.substring(0, 40) : errorMessage}',
+          errorType: ErrorType.unknown,
+          message: signUpErrorMessage(
+            statusCode: response.statusCode,
+            body: response.body,
+            role: Roles.ROLE_SHOP,
+          ),
         );
       }
     } catch (e) {
@@ -131,15 +133,17 @@ class ApiService {
           fallbackRole: Roles.ROLE_SHOP,
           email: email,
         );
-      } else if (response.statusCode == 400) {
-        throw CustomException(
-          errorType: ErrorType.unknown,
-          message: response.body,
-        );
       } else {
+        log('shop login failed ${response.statusCode} -> ${response.body}');
         throw CustomException(
-          errorType: ErrorType.internetConnection,
-          message: "Something went wrong!,${response.statusCode}",
+          errorType: response.statusCode >= 500
+              ? ErrorType.internetConnection
+              : ErrorType.unknown,
+          message: authErrorMessage(
+            statusCode: response.statusCode,
+            body: response.body,
+            role: Roles.ROLE_SHOP,
+          ),
         );
       }
     } catch (e) {
@@ -175,9 +179,11 @@ class ApiService {
         }
         return categoriesData;
       } else {
+        log('loading categories failed ${response.statusCode} -> ${response.body}');
         throw CustomException(
           errorType: ErrorType.internetConnection,
-          message: "Something went wrong!,${response.statusCode}",
+          message: 'Could not load categories. Check your connection and '
+              'try again.',
         );
       }
     } catch (e) {
@@ -779,9 +785,16 @@ class ApiService {
         email: email,
       );
     } else {
+      log('admin login failed ${response.statusCode} -> ${response.body}');
       throw CustomException(
-        errorType: ErrorType.unknown,
-        message: 'Invalid admin credentials',
+        errorType: response.statusCode >= 500
+            ? ErrorType.internetConnection
+            : ErrorType.unknown,
+        message: authErrorMessage(
+          statusCode: response.statusCode,
+          body: response.body,
+          role: Roles.ROLE_ADMIN,
+        ),
       );
     }
   }

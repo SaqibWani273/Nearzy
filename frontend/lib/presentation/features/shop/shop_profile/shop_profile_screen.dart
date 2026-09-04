@@ -120,7 +120,7 @@ class ShopHeader extends StatelessWidget {
                   Expanded(
                     child: InkWell(
                       // Opens the account switcher rather than signing out
-                      // outright: hopping to a shopper account or another shop
+                      // outright: hopping to a customer account or another shop
                       // is the common case, and signing out lives in there too.
                       onTap: () => AccountSwitcherSheet.show(context),
                       child: Container(

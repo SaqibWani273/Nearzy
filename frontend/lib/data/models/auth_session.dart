@@ -135,7 +135,7 @@ class StoredAccount {
   bool get needsReauth => session.isExpired && !session.canRefresh;
 
   String get roleLabel => switch (role) {
-        Roles.ROLE_CUSTOMER => 'Shopper',
+        Roles.ROLE_CUSTOMER => 'Customer',
         Roles.ROLE_SHOP => 'Shop',
         Roles.ROLE_ADMIN => 'Admin',
       };

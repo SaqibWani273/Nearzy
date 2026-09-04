@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../constants/bottom_navbar_items.dart';
 import '../../../constants/drawer_data.dart';
 import '../../../data/repositories/customer/customer_data_repository.dart';
 import '../../../theme/app_colors.dart';
@@ -13,21 +14,45 @@ import '../animations/entrance.dart';
 import '../animations/pressable_scale.dart';
 import 'account_switcher_sheet.dart';
 import 'nearzy_logo.dart';
+import '../../features/customer/customer_home_page.dart';
 
 class DrawerWidget extends StatelessWidget {
   const DrawerWidget({
     super.key,
-    required this.currentIndex,
+    required this.currentTab,
     required this.homePageContext,
   });
 
-  final int currentIndex;
+  /// Which bottom-nav tab is open, so the matching row reads as selected.
+  /// This used to be a field on the shell that never changed, which left
+  /// "Home" lit whatever was actually on screen.
+  final int currentTab;
+
   final BuildContext homePageContext;
+
+  /// The drawer row, if any, that stands for [currentTab].
+  DrawerItemsEnum? get _selectedItem => switch (currentTab) {
+        HomeTabScope.explore => DrawerItemsEnum.exploreShops,
+        HomeTabScope.categories => DrawerItemsEnum.categories,
+        HomeTabScope.home => DrawerItemsEnum.home,
+        HomeTabScope.cart => DrawerItemsEnum.cart,
+        HomeTabScope.profile => DrawerItemsEnum.profile,
+        _ => null,
+      };
 
   @override
   Widget build(BuildContext context) {
     final repository = context.read<CustomerDataRepository>();
     final customer = repository.customer;
+    // Signed out, the account-only rows are left out rather than offered and
+    // then failing — see `drawerItemsFor`.
+    //
+    // The role matters, not merely that some account is live: this shell also
+    // renders when a session exists but its profile fetch failed, and the
+    // orders and address endpoints would answer 401 for anyone else.
+    final items = drawerItemsFor(
+      signedIn: SessionManager.instance.active?.role == Roles.ROLE_CUSTOMER,
+    );
 
     return Drawer(
       backgroundColor: AppColors.paper,
@@ -114,12 +139,12 @@ class DrawerWidget extends StatelessWidget {
                 horizontal: 12,
                 vertical: 16,
               ),
-              itemCount: menuItems.length,
+              itemCount: items.length,
               itemBuilder: (context, index) {
-                final item = menuItems[index];
+                final item = items[index];
                 return _DrawerRow(
                   item: item,
-                  selected: currentIndex == index,
+                  selected: item.enumValue == _selectedItem,
                   onTap: () {
                     Navigator.pop(context);
                     handleDrawerItemTap(

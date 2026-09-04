@@ -244,7 +244,7 @@ Future<void> main() async {
       expect(manager.active!.email, _shopEmail);
       expect(manager.active!.role, Roles.ROLE_SHOP);
 
-      // Back to the shopper, with no credentials involved.
+      // Back to the customer, with no credentials involved.
       expect(await manager.switchTo(_customerEmail), isTrue);
       expect(manager.active!.email, _customerEmail);
       expect(manager.active!.role, Roles.ROLE_CUSTOMER);

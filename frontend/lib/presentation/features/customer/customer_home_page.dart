@@ -44,7 +44,6 @@ class CustomerHomePage extends StatefulWidget {
 
 class _CustomerHomePageState extends State<CustomerHomePage> {
   int _currentIndex = 2; // Start on Home
-  final int _currentDrawerItemIndex = 0;
   Customer? customer;
   late final PageController _pageController;
 
@@ -92,31 +91,45 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
       builder: (context, state) {
         return HomeTabScope(
           goToTab: _changeIndex,
-          child: Scaffold(
-            backgroundColor: AppColors.paper,
-            // The nav bar floats over the content, so the body has to extend
-            // behind it. Screens reserve AppSpacing.bottomNavInset at their tail.
-            extendBody: true,
-            appBar: const PreferredSize(
-              preferredSize: Size.fromHeight(64),
-              child: AppBarWidget(),
-            ),
-            drawer: DrawerWidget(
-              currentIndex: _currentDrawerItemIndex,
-              homePageContext: context,
-            ),
-            body: SafeArea(
-              bottom: false,
-              child: PageView(
-                controller: _pageController,
-                physics: const NeverScrollableScrollPhysics(),
-                children: customerMainScreens,
+          // Back from a tab returns to Home rather than closing the app. The
+          // tabs are a PageView, not routes, so nothing else would have
+          // caught the gesture — three taps into Categories, back quit.
+          //
+          // On Home itself the pop is allowed through, which is where
+          // Android's own "back leaves the app" behaviour belongs.
+          child: PopScope(
+            canPop: _currentIndex == HomeTabScope.home,
+            onPopInvokedWithResult: (didPop, _) {
+              if (didPop) return;
+              _changeIndex(HomeTabScope.home);
+            },
+            child: Scaffold(
+              backgroundColor: AppColors.paper,
+              // The nav bar floats over the content, so the body has to
+              // extend behind it. Screens reserve AppSpacing.bottomNavInset
+              // at their tail.
+              extendBody: true,
+              appBar: const PreferredSize(
+                preferredSize: Size.fromHeight(64),
+                child: AppBarWidget(),
               ),
-            ),
-            bottomNavigationBar: NearzyBottomNav(
-              currentIndex: _currentIndex,
-              onTap: _changeIndex,
-              items: _navItems(context),
+              drawer: DrawerWidget(
+                currentTab: _currentIndex,
+                homePageContext: context,
+              ),
+              body: SafeArea(
+                bottom: false,
+                child: PageView(
+                  controller: _pageController,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: customerMainScreens,
+                ),
+              ),
+              bottomNavigationBar: NearzyBottomNav(
+                currentIndex: _currentIndex,
+                onTap: _changeIndex,
+                items: _navItems(context),
+              ),
             ),
           ),
         );

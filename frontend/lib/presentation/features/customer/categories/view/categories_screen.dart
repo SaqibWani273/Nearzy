@@ -28,8 +28,14 @@ class _CategoriesScreenState extends State<CategoriesScreen>
   @override
   void initState() {
     super.initState();
-    context.read<CustomerDataBloc>().add(CustomerDataFetchCategoriesEvent());
+    _load();
   }
+
+  /// The repository skips a fetch it has already made, so this is safe to
+  /// call on every mount and from the retry button alike.
+  void _load({bool force = false}) => context
+      .read<CustomerDataBloc>()
+      .add(CustomerDataFetchCategoriesEvent(force: force));
 
   @override
   Widget build(BuildContext context) {
@@ -37,15 +43,26 @@ class _CategoriesScreenState extends State<CategoriesScreen>
 
     return BlocBuilder<CustomerDataBloc, CustomerDataState>(
       builder: (context, state) {
-        final categories = context.read<CustomerDataRepository>().categories;
-        final loaded =
-            state is CustomerDataLoadedState && state.loadedCategories == true;
+        final repository = context.read<CustomerDataRepository>();
+        final categories = repository.categories;
 
-        if (!loaded) {
-          return const Padding(
-            padding: EdgeInsets.only(top: 90),
-            child: _CategoriesSkeleton(),
-          );
+        // Read from the repository, not from the bloc state. The state's flag
+        // only survives until the next unrelated event — a cart change, a
+        // favourite toggle — and this grid used to drop back to its skeleton
+        // and stay there whenever one arrived.
+        switch (repository.categoriesStatus) {
+          case CategoriesStatus.idle:
+          case CategoriesStatus.loading:
+            return const Padding(
+              padding: EdgeInsets.only(top: 90),
+              child: _CategoriesSkeleton(),
+            );
+          case CategoriesStatus.failed:
+            // A failure used to leave the skeleton shimmering forever, with
+            // no way to ask again.
+            return _CategoriesErrorState(onRetry: () => _load(force: true));
+          case CategoriesStatus.ready:
+            break;
         }
 
         if (categories == null || categories.isEmpty) {
@@ -173,6 +190,52 @@ class _CategoriesSkeleton extends StatelessWidget {
         count: 4,
         height: 150,
       );
+}
+
+/// Categories could not be fetched. Same silhouette as the empty state, with
+/// the one action that can change the outcome.
+class _CategoriesErrorState extends StatelessWidget {
+  const _CategoriesErrorState({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.gutter),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.line, width: 1.5),
+              ),
+              child: const Icon(Icons.cloud_off_rounded,
+                  size: 34, color: AppColors.sage),
+            ).animateEntrance(),
+            const SizedBox(height: 20),
+            Text("Couldn't load categories", style: AppTextStyles.heading3)
+                .animateEntrance(index: 1),
+            const SizedBox(height: 6),
+            Text(
+              'Check your connection and try again.',
+              style: AppTextStyles.bodySmall,
+              textAlign: TextAlign.center,
+            ).animateEntrance(index: 2),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: onRetry,
+              child: Text('Try again', style: AppTextStyles.link),
+            ).animateEntrance(index: 3),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _EmptyCategoriesState extends StatelessWidget {

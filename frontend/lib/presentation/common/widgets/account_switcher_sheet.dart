@@ -8,6 +8,7 @@ import '../../../theme/app_colors.dart';
 import '../../../theme/app_motion.dart';
 import '../../../theme/app_spacing.dart';
 import '../../../theme/app_text_styles.dart';
+import '../../features/admin/admin_login_screen.dart';
 import '../../features/customer/authentication/view/customer_login.dart';
 import '../../features/shop/shop_authentication/view/shop_auth_screen.dart';
 import '../animations/entrance.dart';
@@ -22,7 +23,7 @@ enum AccountSwitchResult { switched, addedAccount, signedOut, none }
 /// Every account signed in on this device, one tap apart.
 ///
 /// Sign-out used to be the only way to reach another account, which meant
-/// retyping a password for every hop between a shopper and a shop. Sessions
+/// retyping a password for every hop between a customer and a shop. Sessions
 /// are kept per account instead, so this sheet just repoints the app.
 class AccountSwitcherSheet extends StatefulWidget {
   const AccountSwitcherSheet({super.key});
@@ -84,15 +85,21 @@ class _AccountSwitcherSheetState extends State<AccountSwitcherSheet> {
     Navigator.pop(context, AccountSwitchResult.addedAccount);
     await navigator.push(
       NearzyPageRoute(
-        builder: (_) => chosen == Roles.ROLE_SHOP
-            ? const ShopAuthScreen()
-            : const CustomerLogin(),
+        builder: (_) => switch (chosen) {
+          Roles.ROLE_SHOP => const ShopAuthScreen(),
+          Roles.ROLE_ADMIN => const AdminLoginScreen(),
+          Roles.ROLE_CUSTOMER => const CustomerLogin(),
+        },
       ),
     );
   }
 
-  /// Shoppers and shops sign in through different screens, so adding an
-  /// account has to ask which kind first.
+  /// Each role signs in through its own screen against its own endpoint, so
+  /// adding an account has to ask which kind first.
+  ///
+  /// Admin is listed here because it is the only way into the platform
+  /// console: `/admin/login` had no screen at all, which left AdminHomePage
+  /// unreachable from inside the app.
   Future<Roles?> _pickRole() => showModalBottomSheet<Roles>(
         context: context,
         backgroundColor: Colors.transparent,
@@ -102,7 +109,7 @@ class _AccountSwitcherSheetState extends State<AccountSwitcherSheet> {
           children: [
             _ChoiceRow(
               icon: Icons.person_outline_rounded,
-              title: 'Shopper',
+              title: 'Customer',
               subtitle: 'Browse and order from local shops',
               onTap: () => Navigator.pop(context, Roles.ROLE_CUSTOMER),
             ),
@@ -112,6 +119,13 @@ class _AccountSwitcherSheetState extends State<AccountSwitcherSheet> {
               title: 'Shop',
               subtitle: 'Manage your inventory and orders',
               onTap: () => Navigator.pop(context, Roles.ROLE_SHOP),
+            ),
+            const SizedBox(height: 10),
+            _ChoiceRow(
+              icon: Icons.admin_panel_settings_outlined,
+              title: 'Nearzy admin',
+              subtitle: 'Verify shops and manage categories',
+              onTap: () => Navigator.pop(context, Roles.ROLE_ADMIN),
             ),
           ],
         ),
@@ -218,7 +232,7 @@ class _AccountSwitcherSheetState extends State<AccountSwitcherSheet> {
         _ChoiceRow(
           icon: Icons.add_rounded,
           title: active == null ? 'Sign in' : 'Add another account',
-          subtitle: 'Shopper or shop',
+          subtitle: 'Customer, shop or admin',
           onTap: _addAccount,
         ).animateEntrance(index: others.length + 1),
 

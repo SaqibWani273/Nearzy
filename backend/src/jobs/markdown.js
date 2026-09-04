@@ -37,7 +37,7 @@ function rampProgress(now = new Date()) {
 /**
  * Escalates the discount on every enrolled product toward its floor.
  *
- * Discounts only ever move *up* within a day. A shopper who saw 30% off at
+ * Discounts only ever move *up* within a day. A customer who saw 30% off at
  * 19:00 should not find 20% at 19:30 because velocity ticked up; the reset
  * job is the only thing that walks a price back, and it does so overnight.
  */

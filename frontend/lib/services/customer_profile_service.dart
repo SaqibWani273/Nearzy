@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import '/constants/bottom_navbar_items.dart';
 import '/constants/rest_api_const.dart';
+import '/utils/auth_error.dart';
 import '/utils/exceptions/custom_exception.dart';
 import '../data/models/cart.dart';
 import '../data/models/product.dart';
@@ -21,14 +22,13 @@ class CustomerProfileService {
       final response = await NearzyHttp.postJson(
           Uri.parse(ApiConst.customerRegisterUrl),
           json: {'username': name, 'email': email, 'password': password});
-      if (response.statusCode == 400) {
-        log(response.body);
-        throw CustomerException("Status Code 400: ${response.body}");
-      }
       if (response.statusCode != 200) {
-        log(response.body);
-        throw CustomerException(
-            'Something went wrong!,Error code: ${response.statusCode}');
+        log("registration failed ${response.statusCode} -> ${response.body}");
+        throw CustomerException(signUpErrorMessage(
+          statusCode: response.statusCode,
+          body: response.body,
+          role: Roles.ROLE_CUSTOMER,
+        ));
       }
     } catch (e) {
       log(e.toString());
@@ -41,14 +41,15 @@ class CustomerProfileService {
       final response = await NearzyHttp.postJson(
           Uri.parse(ApiConst.customerLoginUrl),
           json: {'email': email, 'password': password});
-      if (response.statusCode == 400) {
-        log(response.body);
-        throw CustomerException(response.body);
-      }
       if (response.statusCode != 200) {
-        log("${response.statusCode} -> ${response.body}");
-        throw CustomerException(
-            'Something went wrong! Please check your internet connection.');
+        // The status line and body go to the log; the person sees one
+        // sentence they can act on.
+        log("login failed ${response.statusCode} -> ${response.body}");
+        throw CustomerException(authErrorMessage(
+          statusCode: response.statusCode,
+          body: response.body,
+          role: Roles.ROLE_CUSTOMER,
+        ));
       }
       // Added alongside any account already signed in on this device, so the
       // switcher can move between them without a password.
@@ -80,11 +81,12 @@ class CustomerProfileService {
         // NearzyHttp already refreshed and retried, so the session is over
         // rather than merely stale.
         await SessionManager.instance.signOutActive();
-        throw CustomerException('Not Valid Credentials');
+        throw CustomerException(
+            'Your session has ended. Please sign in again.');
       } else {
         log("${response.statusCode} -> ${response.body}");
         throw CustomerException(
-            'onternal error, ${response.statusCode} -> ${response.body}');
+            'Nearzy could not load your profile. Please try again.');
       }
     } catch (e) {
       rethrow;

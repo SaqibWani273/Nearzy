@@ -7,13 +7,14 @@ import '../../../../theme/app_text_styles.dart';
 import '/data/repositories/shop/shop_data_repository.dart';
 import '/presentation/common/widgets/image_upload_field.dart';
 import '/presentation/common/widgets/location_widget.dart';
+import 'auth_error_banner.dart';
 import '/utils/utils.dart';
 import '../../../services/api_service.dart';
 import '/utils/extensions/form_validation.dart';
 
 enum FormType { login, register, forgotpassword }
 
-enum UserType { customer, shop }
+enum UserType { customer, shop, admin }
 
 class FormWidget extends StatefulWidget {
   final UserType userType;
@@ -26,12 +27,26 @@ class FormWidget extends StatefulWidget {
   final void Function({required String email, required String password})
       loginCallback;
 
+  /// A failure to show above the fields, or null. The form is never rebuilt
+  /// from scratch to report one — whatever was typed stays typed.
+  final String? errorMessage;
+
+  /// Called when the person dismisses [errorMessage], or edits a field it
+  /// pointed at. Optional: without it the banner simply has no close button.
+  final VoidCallback? onDismissError;
+
   const FormWidget({
     super.key,
     required this.registerCallback,
     required this.loginCallback,
     required this.userType,
+    this.errorMessage,
+    this.onDismissError,
   });
+
+  /// Admin accounts are created out of band — `/admin/register` needs a
+  /// secret code — so the admin form is sign-in only.
+  bool get canRegister => userType != UserType.admin;
 
   @override
   State<FormWidget> createState() => _FormWidgetState();
@@ -42,9 +57,22 @@ class _FormWidgetState extends State<FormWidget> {
       GlobalKey<_OtherShopDetailsWidgetState>();
   FormType currentForm = FormType.login;
   final _formKey = GlobalKey<FormState>();
+
+  // Held rather than read back through onSaved so "Confirm Password" has
+  // something to compare against while the form is still being filled in.
+  final _passwordController = TextEditingController();
+  final _confirmController = TextEditingController();
+
   String _email = "";
   String _password = "";
   String _username = "";
+
+  @override
+  void dispose() {
+    _passwordController.dispose();
+    _confirmController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -67,13 +95,25 @@ class _FormWidgetState extends State<FormWidget> {
             const SizedBox(height: 6),
             Text(
               currentForm == FormType.login
-                  ? 'Sign in to access your ${widget.userType == UserType.customer ? 'account' : 'store'}'
+                  ? switch (widget.userType) {
+                      UserType.customer => 'Sign in to access your account',
+                      UserType.shop => 'Sign in to access your store',
+                      UserType.admin =>
+                        'Sign in with your Nearzy admin account',
+                    }
                   : currentForm == FormType.register
                       ? 'Join Nearzy and discover local products'
                       : 'Enter your registered email below',
               style: AppTextStyles.bodySmall,
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 28),
+
+            // Above the fields, not over them: the person has to be able to
+            // read the reason and see what they typed at the same time.
+            AuthErrorBanner(
+              message: widget.errorMessage,
+              onDismiss: widget.onDismissError,
+            ),
 
             if (currentForm == FormType.register) ...[
               Text(
@@ -126,6 +166,7 @@ class _FormWidgetState extends State<FormWidget> {
               Text("Password", style: AppTextStyles.inputLabel),
               const SizedBox(height: 6),
               TextFormField(
+                controller: _passwordController,
                 textInputAction: currentForm == FormType.register
                     ? TextInputAction.next
                     : TextInputAction.done,
@@ -143,7 +184,7 @@ class _FormWidgetState extends State<FormWidget> {
                 },
                 onSaved: (value) => _password = value!,
               ),
-              if (currentForm == FormType.login)
+              if (currentForm == FormType.login && widget.canRegister)
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
@@ -160,19 +201,25 @@ class _FormWidgetState extends State<FormWidget> {
               Text("Confirm Password", style: AppTextStyles.inputLabel),
               const SizedBox(height: 6),
               TextFormField(
+                controller: _confirmController,
                 textInputAction: TextInputAction.done,
                 obscureText: true,
                 decoration: const InputDecoration(
                   hintText: '••••••••',
                   prefixIcon: Icon(Icons.lock_outline_rounded),
                 ),
+                // Compared against the password rather than saved over it:
+                // this field used to write into `_password`, so a mismatched
+                // pair silently registered whatever was typed second.
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Please confirm your password';
                   }
+                  if (value != _passwordController.text) {
+                    return 'Both passwords must match';
+                  }
                   return null;
                 },
-                onSaved: (value) => _password = value!,
               ),
               const SizedBox(height: 24),
             ],
@@ -189,6 +236,9 @@ class _FormWidgetState extends State<FormWidget> {
                 onPressed: () async {
                   if (_formKey.currentState!.validate()) {
                     _formKey.currentState!.save();
+                    // The banner describes the *previous* attempt; leaving it
+                    // up beside a spinner reads as a fresh failure.
+                    widget.onDismissError?.call();
 
                     // Both checks only ever gate registration, so running
                     // them on sign-in just added two round trips ahead of the
@@ -262,36 +312,42 @@ class _FormWidgetState extends State<FormWidget> {
             ),
             const SizedBox(height: 24.0),
 
-            Center(
-              child: RichText(
-                text: TextSpan(
-                  children: [
-                    TextSpan(
-                      text: currentForm == FormType.login ||
-                              currentForm == FormType.forgotpassword
-                          ? "Don't have an account? "
-                          : "Already have an account? ",
-                      style: AppTextStyles.bodyMedium,
-                    ),
-                    TextSpan(
-                      text: currentForm == FormType.login ||
-                              currentForm == FormType.forgotpassword
-                          ? 'Sign Up'
-                          : 'Sign In',
-                      style: AppTextStyles.link,
-                      recognizer: TapGestureRecognizer()
-                        ..onTap = () {
-                          setState(() {
-                            currentForm = currentForm == FormType.login
-                                ? FormType.register
-                                : FormType.login;
-                          });
-                        },
-                    ),
-                  ],
+            // Admins have no self-serve sign-up, so the toggle would be a
+            // dead end for them.
+            if (widget.canRegister)
+              Center(
+                child: RichText(
+                  text: TextSpan(
+                    children: [
+                      TextSpan(
+                        text: currentForm == FormType.login ||
+                                currentForm == FormType.forgotpassword
+                            ? "Don't have an account? "
+                            : "Already have an account? ",
+                        style: AppTextStyles.bodyMedium,
+                      ),
+                      TextSpan(
+                        text: currentForm == FormType.login ||
+                                currentForm == FormType.forgotpassword
+                            ? 'Sign Up'
+                            : 'Sign In',
+                        style: AppTextStyles.link,
+                        recognizer: TapGestureRecognizer()
+                          ..onTap = () {
+                            // A failure that belonged to the other form would
+                            // read as nonsense here.
+                            widget.onDismissError?.call();
+                            setState(() {
+                              currentForm = currentForm == FormType.login
+                                  ? FormType.register
+                                  : FormType.login;
+                            });
+                          },
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
           ],
         ),
       ),

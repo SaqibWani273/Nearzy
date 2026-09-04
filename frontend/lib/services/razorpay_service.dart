@@ -182,7 +182,7 @@ class RazorpayService {
   /// Confirms the payment with the backend.
   ///
   /// The token is resolved here rather than captured at the start of checkout:
-  /// a shopper can sit on the Razorpay sheet for several minutes, which is
+  /// a customer can sit on the Razorpay sheet for several minutes, which is
   /// long enough for an access token to lapse — and this is the call that
   /// actually marks the order paid, so it is the worst possible one to lose.
   static Future<PaymentResult> _verifyPayment(

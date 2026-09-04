@@ -32,6 +32,18 @@ class CustomerDataBloc extends Bloc<CustomerDataEvent, CustomerDataState> {
   /// Monotonic counter handed to every emitted state so favourite toggles
   /// produce a distinguishable state object.
   int _favouritesRevision = 0;
+
+  /// Builds the next loaded state, carrying forward the fields nothing in
+  /// this event touched.
+  ///
+  /// [shops] and [loadedCategories] describe data the repository is holding,
+  /// not the event being handled — but every call site that did not name them
+  /// used to reset them to null. So adding one item to the cart emitted a
+  /// state claiming no shops and no categories, and the Explore tab fell back
+  /// to "no shops nearby" while Browse fell back to its skeleton, both
+  /// permanently. That is the "categories sometimes don't load" report.
+  ///
+  /// Pass a value to change one; omit it to keep what the last state had.
   CustomerDataLoadedState _loaded({
     bool? isChangingLocation,
     bool? loadingProducts,
@@ -39,15 +51,36 @@ class CustomerDataBloc extends Bloc<CustomerDataEvent, CustomerDataState> {
     List<Product>? searchProducts,
     List<ShopModel1>? shops,
     bool? loadedCategories,
-  }) => CustomerDataLoadedState(
-    isChangingLocation: isChangingLocation,
-    loadingProducts: loadingProducts,
-    canAddToCart: canAddToCart,
-    searchProducts: searchProducts,
-    shops: shops,
-    loadedCategories: loadedCategories,
-    favouritesRevision: _favouritesRevision,
-  );
+  }) {
+    final next = CustomerDataLoadedState(
+      isChangingLocation: isChangingLocation,
+      loadingProducts: loadingProducts,
+      canAddToCart: canAddToCart,
+      searchProducts: searchProducts,
+      shops: shops ?? _lastLoaded?.shops,
+      loadedCategories: loadedCategories ?? _lastLoaded?.loadedCategories,
+      favouritesRevision: _favouritesRevision,
+    );
+    return next;
+  }
+
+  /// The last loaded state to leave this bloc, held separately from [state].
+  ///
+  /// Several handlers emit a non-loaded state on the way — the global loading
+  /// state, the cart-details state — so `state` is not a reliable place to
+  /// read the previous values from. `LoadCustomerDataEvent`, which the home
+  /// feed fires on mount, does exactly that: it emits
+  /// `CustomerDataLoadingState` and only then builds its loaded state.
+  CustomerDataLoadedState? _lastLoaded;
+
+  /// Recorded here rather than in [_loaded] so it tracks what was actually
+  /// emitted, whichever code path produced it.
+  @override
+  void onChange(Change<CustomerDataState> change) {
+    super.onChange(change);
+    final next = change.nextState;
+    if (next is CustomerDataLoadedState) _lastLoaded = next;
+  }
 
   Future<void> _handleEvent(
     CustomerDataEvent event,
@@ -65,6 +98,11 @@ class CustomerDataBloc extends Bloc<CustomerDataEvent, CustomerDataState> {
           event is CustomerDataSearchProductEvent ||
           event is CustomerDataToggleFavouriteEvent ||
           event is CustomerDataClearSearchEvent ||
+          // Categories are a rail on the feed and a grid on Browse, never the
+          // whole screen. Emitting the global loading state for them turned
+          // the entire home feed into a skeleton while a decorative strip
+          // refreshed.
+          event is CustomerDataFetchCategoriesEvent ||
           event is CustomerDataLoadProductsEvent) {
         //do nothing
       } else {
@@ -150,8 +188,15 @@ class CustomerDataBloc extends Bloc<CustomerDataEvent, CustomerDataState> {
           final shops = await customerDataRepository.fetchNearbyShops();
           emit(_loaded(shops: shops));
           break;
-        case CustomerDataFetchCategoriesEvent _:
-          await customerDataRepository.loadCategories();
+        case CustomerDataFetchCategoriesEvent fetchCategories:
+          // Two emits: the first moves the grid onto its skeleton, the second
+          // reports whatever the repository settled on. `loadCategories` never
+          // throws, so a failure lands here as a `failed` status the grid
+          // renders as a retry rather than as the bloc's generic error state.
+          emit(_loaded(loadedCategories: false));
+          await customerDataRepository.loadCategories(
+            force: fetchCategories.force,
+          );
           emit(_loaded(loadedCategories: true));
           break;
       }

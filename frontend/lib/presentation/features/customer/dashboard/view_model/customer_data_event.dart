@@ -45,7 +45,13 @@ final class CustomerDataLoadProductsEvent extends CustomerDataEvent {}
 
 final class CustomerDataFetchNearbyShopsEvent extends CustomerDataEvent {}
 
-final class CustomerDataFetchCategoriesEvent extends CustomerDataEvent {}
+/// Loads the category list. [force] refetches one already held — what the
+/// Browse tab's retry sends after a failure.
+final class CustomerDataFetchCategoriesEvent extends CustomerDataEvent {
+  CustomerDataFetchCategoriesEvent({this.force = false});
+
+  final bool force;
+}
 
 /// Applies a location already resolved by the map picker — no geocoding
 /// round trip, unlike [ChangeCustomerCurrentLocationEvent] which takes a

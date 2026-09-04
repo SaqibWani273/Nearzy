@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '/presentation/common/widgets/email_sent_widget.dart';
 import '/presentation/common/widgets/form_widget.dart';
+import '../../../../../theme/app_colors.dart';
 
 import '../view_model/customer_auth_bloc.dart';
 
@@ -15,6 +16,10 @@ class CustomerLogin extends StatefulWidget {
 }
 
 class _CustomerLoginState extends State<CustomerLogin> {
+  /// The failure to show above the form, held here rather than read straight
+  /// off the bloc state so dismissing it does not need an event of its own.
+  String? _error;
+
   @override
   void initState() {
     context.read<CustomerAuthBloc>().add(CustomerAuthInitialEvent());
@@ -24,12 +29,22 @@ class _CustomerLoginState extends State<CustomerLogin> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.paper,
+      // This screen is pushed (from the account switcher and the profile
+      // tab), so it needs a way back out that does not depend on the device
+      // button. It had neither, which left the sheet a dead end.
+      appBar: AppBar(
+        backgroundColor: AppColors.paper,
+        leading: const BackButton(),
+      ),
       body: BlocConsumer<CustomerAuthBloc, CustomerAuthState>(
           listener: (context, state) {
         if (state is CustomerAuthErrorState) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(state.message),
-          ));
+          // Reported in the form itself, not in a snackbar that slides away
+          // before it has been read.
+          setState(() => _error = state.message);
+        } else if (state is CustomerAuthLoadingState) {
+          if (_error != null) setState(() => _error = null);
         } else if (state is CustomerAuthLoggedInState) {
           // Signing in publishes a session event and the app shell rebuilds
           // onto the right home screen, taking this route with it — so pop
@@ -74,6 +89,10 @@ class _CustomerLoginState extends State<CustomerLogin> {
   Widget _buildForm(BuildContext context) {
     return FormWidget(
       userType: UserType.customer,
+      errorMessage: _error,
+      onDismissError: () {
+        if (_error != null) setState(() => _error = null);
+      },
       registerCallback: (
         _, {
         required email,
