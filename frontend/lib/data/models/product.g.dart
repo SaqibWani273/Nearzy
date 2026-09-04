@@ -21,6 +21,7 @@ Product _$ProductFromJson(Map<String, dynamic> json) => Product(
   category: GeneralSpecificCategory.fromJson(
     json['category'] as Map<String, dynamic>,
   ),
+  categoryId: (json['categoryId'] as num?)?.toInt(),
   colors: (json['colors'] as List<dynamic>?)?.map((e) => e as String).toList(),
   available: json['available'] as bool,
   sku: json['sku'] as String,
@@ -39,6 +40,7 @@ Map<String, dynamic> _$ProductToJson(Product instance) => <String, dynamic>{
   'stockQuantity': instance.stockQuantity,
   'rating': instance.rating,
   'category': instance.category,
+  'categoryId': ?instance.categoryId,
   'colors': instance.colors,
   'available': instance.available,
   'sku': instance.sku,

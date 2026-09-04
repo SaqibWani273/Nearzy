@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const shopService = require('../services/shopService');
+const listingDraftService = require('../services/listingDraftService');
 const orderService = require('../services/orderService');
 const authorize = require('../middleware/authorize');
 const { toShopDto } = require('../dto/productDto');
@@ -122,16 +123,90 @@ router.post('/me', authorize('SHOP'), async (req, res, next) => {
  * /shop/add-product:
  *   post:
  *     tags: [Shop]
- *     summary: Add a new product
+ *     summary: Add a product to the signed-in shop's inventory
+ *     description: >
+ *       The shop is taken from the token; a `shopId` in the body is ignored.
+ *       Price is in paise, like every other money field in the API.
  *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name, categoryId, priceInPaise]
+ *             properties:
+ *               name: { type: string }
+ *               categoryId: { type: integer }
+ *               priceInPaise: { type: integer, description: Whole paise, must be > 0 }
+ *               stockQuantity: { type: integer, default: 0 }
+ *               discountPercent: { type: number, default: 0 }
+ *               brand: { type: string }
+ *               sku: { type: string }
+ *               shortDescription: { type: string }
+ *               completeDescription: { type: string }
+ *               images: { type: array, items: { type: string } }
+ *               colors: { type: array, items: { type: string } }
  *     responses:
  *       200: { description: Product added }
+ *       400: { description: Missing or invalid field (the message names it) }
+ *       404: { description: No shop profile for this account }
  */
 router.post('/add-product', authorize('SHOP'), async (req, res, next) => {
   try {
-    const result = await shopService.addProduct(req.body);
+    const result = await shopService.addProduct(req.user.id, req.body);
     if (result.error) {
-      return res.status(result.status || 400).json(result.error);
+      return res.status(result.status || 400).json({ message: result.error });
+    }
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * @swagger
+ * /shop/products/draft:
+ *   post:
+ *     tags: [Shop]
+ *     summary: Read a product photo and return a draft listing to confirm
+ *     description: >
+ *       Answers the "listing takes too long" objection: the owner photographs
+ *       the packet and confirms what comes back instead of typing seven fields.
+ *       Creates nothing — the draft goes to the app, the owner corrects it and
+ *       adds the price, and POST /shop/add-product does the writing.
+ *       Never returns a price: a wrong name is a nuisance, a wrong price costs
+ *       the shop money.
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               imageUrl: { type: string, description: Cloudinary URL of the uploaded photo }
+ *               imageBase64: { type: string, description: Fallback for a photo not yet uploaded }
+ *               mimeType: { type: string, default: image/jpeg }
+ *     responses:
+ *       200: { description: Draft fields, per-field confidence, and what needs attention }
+ *       400: { description: No image supplied }
+ *       502: { description: The photo could not be read — fill the form in by hand }
+ *       504: { description: The model took too long — fill the form in by hand }
+ *       503: { description: Listing assistant not configured (GEMINI_API_KEY unset) }
+ */
+router.post('/products/draft', authorize('SHOP'), async (req, res, next) => {
+  try {
+    const result = await listingDraftService.draftFromImage({
+      imageUrl: req.body?.imageUrl,
+      imageBase64: req.body?.imageBase64,
+      mimeType: req.body?.mimeType,
+    });
+    if (result.error) {
+      return res.status(result.status || 400).json({
+        message: result.error,
+        code: result.code,
+      });
     }
     res.json(result);
   } catch (err) {

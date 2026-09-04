@@ -2,16 +2,25 @@
 <html lang="en">
 <head>
 <!--
-  Nearzy — engineering reference. Local copy of the published artifact at
+  Nearzy -- engineering reference.
+
+  Local copy of the published artifact:
   https://claude.ai/code/artifact/d2188cd8-c17a-48e5-90f2-5693cfd764ef
+
+  Companion doc: docs/inside-nearzy.html
+  (the same product, written for non-technical readers). Keep both in step -- see CLAUDE.md.
 
   This file is the source of truth: edit it here.
 
   The doctype, meta tags and reset below exist only so this opens correctly as
   a standalone local page. The artifact runtime supplies its own wrapper, so
-  republishing means sending the content WITHOUT them — everything from
-  <div class="shell"> onward, preceded by the title tag. Handing over this file
-  as-is would nest one document inside another.
+  republishing means sending the content WITHOUT them: everything from the
+  outermost content container onward, preceded by the title tag. Handing over
+  this file as-is would nest one document inside another.
+
+  Note: no HTML tag is written literally above, deliberately. An earlier version
+  named the content container in this comment, and a search-and-replace that was
+  meant to insert the body tag matched the mention in here instead.
 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -538,10 +547,10 @@ html { scroll-behavior: smooth; }
 
     <div class="stats">
       <div class="stat"><b>19</b><span>DB models</span></div>
-      <div class="stat"><b>61</b><span>Routes</span></div>
+      <div class="stat"><b>62</b><span>Routes</span></div>
       <div class="stat"><b>3</b><span>Actor types</span></div>
       <div class="stat"><b>3</b><span>Cron jobs</span></div>
-      <div class="stat"><b>157</b><span>Dart files</span></div>
+      <div class="stat"><b>158</b><span>Dart files</span></div>
     </div>
 
     <div class="chips">
@@ -552,6 +561,7 @@ html { scroll-behavior: smooth; }
       <span class="chip">JWT · bcrypt</span>
       <span class="chip">Razorpay 2.9</span>
       <span class="chip">node-cron</span>
+      <span class="chip">Gemini (vision)</span>
       <span class="chip">Swagger / OpenAPI 3</span>
       <span class="chip">Flutter 3.44.7 (fvm)</span>
       <span class="chip">flutter_bloc 9.1</span>
@@ -573,6 +583,7 @@ html { scroll-behavior: smooth; }
       <li><a href="#api" class="sub">API reference</a></li>
       <li><a href="#payments" class="sub">Payments</a></li>
       <li><a href="#jobs" class="sub">Background jobs</a></li>
+      <li><a href="#listing" class="sub">Photo &rarr; listing</a></li>
       <li><a href="#discovery" class="sub">Location discovery</a></li>
       <li><a href="#dto" class="sub">The DTO layer</a></li>
       <li><a href="#schema">Data model</a></li>
@@ -635,7 +646,7 @@ html { scroll-behavior: smooth; }
 │   └── src/
 │       ├── server.js           <span class="c"># boot: connect → sync → listen</span>
 │       ├── app.js              <span class="c"># middleware chain + route mounting</span>
-│       ├── config/             <span class="c"># swagger spec, razorpay client</span>
+│       ├── config/             <span class="c"># swagger spec, razorpay + gemini clients</span>
 │       ├── middleware/         <span class="c"># auth (JWT), authorize (roles), errorHandler</span>
 │       ├── models/             <span class="c"># 19 Sequelize models + index.js associations</span>
 │       ├── routes/             <span class="c"># admin / customer / shop / common / health</span>
@@ -654,6 +665,7 @@ html { scroll-behavior: smooth; }
         │   ├── models/         <span class="c"># json_serializable DTOs (*.g.dart generated)</span>
         │   └── repositories/   <span class="c"># CustomerDataRepository, ShopDataRepository</span>
         ├── services/           <span class="c"># api_client, session_manager, razorpay, cloudinary…</span>
+        │                        <span class="c">#   ApiService.draftProductFromImage reads a packet</span>
         ├── presentation/
         │   ├── common/         <span class="c"># shared widgets, animations, error screens</span>
         │   └── features/       <span class="c"># customer / shop / admin / onboarding</span>
@@ -812,11 +824,12 @@ html { scroll-behavior: smooth; }
             <tr><td class="p"><span class="m m-get">GET</span> <span class="m m-post">POST</span> /shop/verify-email</td><td><span class="badge badge-open">public</span></td><td><code>?token=</code></td></tr>
             <tr><td class="p"><span class="m m-post">POST</span> /shop/login</td><td><span class="badge badge-open">public</span></td><td>Rejects unverified emails and non-shop roles</td></tr>
             <tr><td class="p"><span class="m m-post">POST</span> /shop/me</td><td><span class="badge badge-shop">S</span></td><td>Shop with location, verification, categories and the full product tree</td></tr>
-            <tr><td class="p"><span class="m m-post">POST</span> /shop/add-product</td><td><span class="badge badge-shop">S</span></td><td>Accepts <code>images</code> as URL strings or objects and <code>colors</code> as names or objects; maps the legacy <code>price</code> / <code>discountInPercentage</code> field names</td></tr>
+            <tr><td class="p"><span class="m m-post">POST</span> /shop/add-product</td><td><span class="badge badge-shop">S</span></td><td>Requires <code>name</code>, <code>categoryId</code> and <code>priceInPaise</code>; <code>brand</code>, <code>sku</code> and both descriptions are optional. The shop comes from the token — a body <code>shopId</code> is ignored. Each missing or invalid field answers <strong>400 naming the field</strong> rather than a Sequelize 500. Still accepts <code>images</code> as URL strings or objects and <code>colors</code> as names or objects; the legacy <code>price</code> alias is <em>gone</em> (it accepted rupees and stored them as paise)</td></tr>
             <tr><td class="p"><span class="m m-get">GET</span> /shop/my-products</td><td><span class="badge badge-shop">S</span></td><td><code>?page=1&amp;limit=50&amp;q=</code> (limit capped at 200). Resolves the shop from the JWT and includes items marked unavailable</td></tr>
             <tr><td class="p"><span class="m m-get">GET</span> /shop/products/:id</td><td><span class="badge badge-shop">S</span></td><td>One product. <code>404</code> — not <code>403</code> — for an id outside this shop: a shop has no business learning which ids exist elsewhere</td></tr>
             <tr><td class="p"><span class="m m-patch">PATCH</span> /shop/products/:id</td><td><span class="badge badge-shop">S</span></td><td>Validated per field: <code>priceInPaise</code> (&gt;0), <code>discountPercent</code> / <code>markdownFloorPercent</code> (0–100), <code>stockQuantity</code> (≥0), <code>available</code>, <code>markdownEnabled</code>. Editing <code>discountPercent</code> by hand also becomes the new <code>baseDiscountPercent</code>, so the midnight reset returns to the edit rather than reverting it</td></tr>
             <tr><td class="p"><span class="m m-post">POST</span> /shop/products/bulk-stock</td><td><span class="badge badge-shop">S</span></td><td>Backs the barcode scanner. <code>entries:[{sku, delta | stockQuantity}]</code> — relative or absolute. Unknown SKUs are reported per row instead of failing the batch</td></tr>
+            <tr><td class="p"><span class="m m-post">POST</span> /shop/products/draft</td><td><span class="badge badge-shop">S</span></td><td>Reads a product photo (<code>imageUrl</code>, or <code>imageBase64</code> for one not yet uploaded) and returns draft fields plus per-field confidence and a <code>needsAttention</code> list. <strong>Creates nothing</strong> and <strong>never returns a price</strong>. <code>503 DRAFT_UNAVAILABLE</code> without <code>GEMINI_API_KEY</code>, <code>502</code> when the photo can't be read — the form still works by hand either way</td></tr>
             <tr><td class="p"><span class="m m-get">GET</span> /shop/dashboard</td><td><span class="badge badge-shop">S</span></td><td>The <em>Today</em> screen: orders awaiting dispatch (counted over <em>distinct</em> orders, since one order can hold several of this shop's lines), open alerts, stock totals, verification state</td></tr>
             <tr><td class="p"><span class="m m-get">GET</span> /shop/alerts</td><td><span class="badge badge-shop">S</span></td><td><code>?status=</code> — <code>OPEN</code> (default), <code>ALL</code>, or one of <code>UNREAD</code> / <code>READ</code> / <code>RESOLVED</code>. Ordered <code>CRITICAL → WARNING → INFO</code></td></tr>
             <tr><td class="p"><span class="m m-patch">PATCH</span> /shop/alerts/:id</td><td><span class="badge badge-shop">S</span></td><td>Mark read or resolved</td></tr>
@@ -878,6 +891,41 @@ html { scroll-behavior: smooth; }
       <p>The markdown engine is the one piece of this system that <strong>rewrites a price a merchant chose</strong>, so it is opt-in per product via <code>markdownEnabled</code> and never passes <code>markdownFloorPercent</code>. Within a day discounts only ever move <em>up</em>, so a shopper who saw 30% off never finds it back at 20%.</p>
 
       <p>Alerts are <strong>upserted, never appended</strong>. Identity is <code>(shop, product, type)</code> among rows that are not yet <code>RESOLVED</code>, so a scheduled scan refreshes one alert instead of turning one real problem into twenty-four identical rows a day. A <em>resolved</em> alert is deliberately not matched — the owner dealt with it, and the problem recurring later is genuinely new news.</p>
+
+      <h3 id="listing">Drafting a listing from a photo</h3>
+      <p>The supply side's hardest problem is not technical: listing stock by hand is days of unpaid work for a shop with a few hundred lines, and it is the usual reason a marketplace never gets any supply. <code>services/listingDraftService.js</code> reads the packaging instead — one photo yields name, brand, net quantity, category and both descriptions, leaving the owner to confirm and type a price.</p>
+
+      <div class="tw">
+        <table>
+          <thead><tr><th>Concern</th><th>How</th></tr></thead>
+          <tbody>
+            <tr><td>Provider</td><td>Google AI Studio via <code>@google/genai</code>, wrapped in <code>config/gemini.js</code>. Model from <code>GEMINI_MODEL</code>. The one provider-specific function is <code>extractFromImage</code> — swapping vendors, or running two side by side to compare, is a change to that function rather than to the service</td></tr>
+            <tr><td>Structured result</td><td>A JSON Schema is sent as the response contract, so the reply is parsed data rather than prose to scrape</td></tr>
+            <tr><td>Category</td><td><code>categoryId</code> is an <strong>enum of this deployment's real ids</strong>, not a free integer. Asked for "a category id" a model will invent one, and an invented id fails the foreign key later with an error the shopkeeper cannot act on. The id is re-checked against the set on the way out</td></tr>
+            <tr><td>Degradation</td><td>Not configured → <code>503 DRAFT_UNAVAILABLE</code>; unreadable photo or provider error → <code>502 DRAFT_FAILED</code>; over the time ceiling → <code>504 DRAFT_TIMEOUT</code>. All three leave the manual path untouched. Mirrors how <code>paymentService</code> handles absent Razorpay keys</td></tr>
+            <tr><td>Timeout</td><td><code>GEMINI_TIMEOUT_MS</code>, default 25 s, raced against the SDK call (which offers no abort handle, so a losing request is abandoned). <strong>Not optional</strong> — see the measured latency below</td></tr>
+            <tr><td>Confidence</td><td>Each field carries <code>high</code>/<code>medium</code>/<code>low</code>, and anything low — plus a category the model couldn't pick — is listed in <code>needsAttention</code> so the app can mark what to check rather than hiding a guess</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note">
+        <p class="note-t">Why it never drafts a price</p>
+        <p>The schema has no price field and the prompt forbids naming any amount of money, including inside the descriptions. The asymmetry is deliberate: a wrong name is a nuisance the owner fixes in a second, while a wrong price costs them money on a real sale and loses the shop. If a later version reads a printed MRP it must land in a field the owner still confirms — never in the price itself.</p>
+      </div>
+
+      <div class="note">
+        <p class="note-t">Measured latency, and why there is a ceiling</p>
+        <p>On Google AI Studio's free tier the <em>same</em> request against the same image returned in <strong>14 s</strong> once and was still running past <strong>90 s</strong> another time. That is not a latency budget a counter-side interaction can be designed around, and with no ceiling the request never returns — leaving a shopkeeper holding a phone that looks frozen with no way back to typing. Hence <code>GEMINI_TIMEOUT_MS</code>: a fast, honest "fill it in yourself" beats an indefinite spinner. Whether a paid tier is steadier is untested.</p>
+      </div>
+
+      <h4>In the app</h4>
+      <p>Once a photo is chosen, the upload screen offers <em>Fill this in from the photo</em> — the one lime CTA on the screen, since it is the highest-intent action there. It sends the image <strong>inline as base64</strong> rather than uploading first: the photo is still on the device at that point, and uploading every picked image would leave Cloudinary orphans for products the owner never finishes. It reuses <code>CloudinaryService</code>'s existing compression so a phone photo doesn't become a multi-megabyte body.</p>
+      <p>Two rules in <code>_readPacket</code> matter more than the plumbing. It <strong>only fills a field the owner has not typed into</strong>, so re-reading a photo can never overwrite a correction they just made. And it only sets the category when none is selected. Everything it writes is an ordinary controller value — editable, clearable, and the controllers remain the source of truth on submit.</p>
+      <p>Server error text is written for API clients — "Set <code>GEMINI_API_KEY</code>" is not something to put in front of a shopkeeper — so <code>ApiService</code> logs the raw message and translates the <code>code</code> into counter-side copy ("That took too long", "Couldn't read that photo"). The screen appends the remedy, since that is a UI concern.</p>
+      <p><code>data/models/listing_draft.dart</code> carries the response and has <strong>no price member at all</strong>, which is the client-side half of the same guarantee. <code>test/listing_draft_test.dart</code> pins the degraded shapes: an unpicked category stays null rather than defaulting, low-confidence fields surface in <code>needsAttention</code>, and a thin or empty response must not throw — the form still has to be usable by hand.</p>
+
+      <p class="muted">The endpoint deliberately does not write. A path that both reads a photo and inserts a row is one bad extraction away from a catalogue full of confident nonsense, so creation stays with <code>POST /shop/add-product</code> after the owner has seen the draft.</p>
 
       <h3 id="discovery">How "nearby" is computed</h3>
       <p>There is no PostGIS. Radius filtering is a raw Haversine expression injected as a Sequelize <code>literal</code> into the <code>location_infos</code> where-clause:</p>
@@ -1085,7 +1133,7 @@ html { scroll-behavior: smooth; }
       <p>Shared widgets in <code>lib/presentation/common/widgets/</code> carry most of the visual weight: <code>NearzyProductCard</code>, <code>NearzyShopCard</code>, <code>NearzySearchBar</code>, <code>NearzyMap</code>, <code>ShimmerLoading</code>, <code>AnimatedBottomNav</code>, <code>NearzyNetworkImage</code>. Paged lists use <code>infinite_scroll_pagination</code>; the dashboard's controller is registered on the repository so a location change can refresh it from anywhere.</p>
 
       <h4>Tests</h4>
-      <p>Six files under <code>frontend/test/</code>, each written against something that is genuinely hard to check by hand rather than for coverage:</p>
+      <p>Seven files under <code>frontend/test/</code>, each written against something that is genuinely hard to check by hand rather than for coverage:</p>
       <div class="tw">
         <table>
           <thead><tr><th>File</th><th>Covers</th></tr></thead>
@@ -1095,6 +1143,7 @@ html { scroll-behavior: smooth; }
             <tr><td class="p">location_screens_test.dart</td><td>The location picker and map surfaces — two navigations deep behind a network fetch, and the ones most likely to break on a layout constraint</td></tr>
             <tr><td class="p">verification_swipe_test.dart</td><td>Direction-to-outcome on the admin swipe. A swipe is the only route to an irreversible decision about a real business, and that mapping silently inverts during refactors</td></tr>
             <tr><td class="p">cross_fade_test.dart</td><td>The "Duplicate keys found" crash <code>CrossFade</code> exists to prevent — it only appears when phases change faster than the fade, which is what tapping the budget chips does and what nobody does by hand</td></tr>
+            <tr><td class="p">listing_draft_test.dart</td><td>The listing assistant's degraded shapes — an unpicked category, unreadable fields, a response missing keys — plus the guarantee that no price ever reaches the client model</td></tr>
             <tr><td class="p">widget_test.dart</td><td>App shell smoke test, via onboarding — the only entry point that renders without hitting the network</td></tr>
           </tbody>
         </table>
@@ -1181,6 +1230,9 @@ fvm flutter run</code></pre>
             <tr><td class="p">ADMIN_PASSWORD</td><td>The <code>secretCode</code> gating admin registration, and the seeded admin's password</td><td class="muted">a hardcoded fallback in <code>adminService.js</code></td></tr>
             <tr><td class="p">MAIL_HOST · MAIL_PORT · MAIL_USER · MAIL_PASS</td><td>SMTP. <code>MAIL_USER</code> doubles as the From address; AUTH is offered only when <code>MAIL_PASS</code> is set</td><td class="muted">smtp.gmail.com:587</td></tr>
             <tr><td class="p">RAZORPAY_KEY_ID · RAZORPAY_KEY_SECRET</td><td>Checkout and signature verification</td><td class="muted">payment routes answer 503; the rest of the API is unaffected</td></tr>
+            <tr><td class="p">GEMINI_API_KEY</td><td>Google AI Studio key for the photo&rarr;listing assistant</td><td class="muted"><code>/shop/products/draft</code> answers 503; the manual form is unaffected</td></tr>
+            <tr><td class="p">GEMINI_MODEL</td><td>Override the vision model</td><td class="muted">a current default in <code>config/gemini.js</code></td></tr>
+            <tr><td class="p">GEMINI_TIMEOUT_MS</td><td>Ceiling on one photo-read</td><td class="muted">25000</td></tr>
             <tr><td class="p">SEED_FORCE</td><td><code>1</code> lets <code>seed.js</code> run against a non-empty user table</td><td class="muted">seed skips</td></tr>
           </tbody>
         </table>
@@ -1198,8 +1250,8 @@ fvm flutter run</code></pre>
 
         <div class="edge sec">
           <div class="k"><i></i>Authorization</div>
-          <h4>Three writes trust the body, not the token</h4>
-          <p><code>POST /customer/update-cart-items</code> takes <code>customerId</code> from the request body, <code>POST /customer/update</code> uses <code>body.id</code>, and <code>POST /shop/add-product</code> trusts <code>shopId</code>. Any authenticated account with the right role can act on another account's rows. The payment routes and <code>/shop/my-products</code> show the intended pattern — resolve the owner from <code>req.user</code>.</p>
+          <h4>Two writes trust the body, not the token</h4>
+          <p><code>POST /customer/update-cart-items</code> takes <code>customerId</code> from the request body and <code>POST /customer/update</code> uses <code>body.id</code>, so any authenticated customer can act on another customer's rows. <code>/shop/add-product</code> was the third and now resolves its shop from <code>req.user</code>; the payment routes, <code>/shop/my-products</code> and the inventory writes show the same intended pattern. These two are the remaining work.</p>
         </div>
 
         <div class="edge sec">
@@ -1268,18 +1320,21 @@ fvm flutter run</code></pre>
             <tr><td>Shop approval implemented but not routed</td><td><code>GET /admin/shop-verifications</code> and <code>POST /admin/shop-verifications/:shopId/decide</code>, with a swipe UI on the admin <em>Shops</em> tab</td></tr>
             <tr><td>No refresh token; logout is client-side only</td><td>Rotating refresh tokens in <code>refresh_tokens</code>, family-based reuse detection, <code>POST /user/refresh</code> and <code>/user/logout</code> (optionally all devices)</td></tr>
             <tr><td>Login returns a quoted string</td><td>All three logins return a session object; <code>normalizeToken</code> survives only for the legacy path</td></tr>
+            <tr><td>Product creation never worked</td><td><code>addProduct</code> received the client's whole <code>Product</code> model — nested <code>shop</code> and <code>category</code> objects — and mapped nothing, so <code>shop_id</code> / <code>category_id</code> arrived null and every insert failed. Ownership now comes from the token, <code>categoryId</code> is resolved and validated, and the client posts a purpose-built create payload instead of its read serialiser</td></tr>
+            <tr><td>The upload form priced everything at 1/100th</td><td>The form collected "price in Rupees" and the server assigned it straight to <code>priceInPaise</code>. Conversion now happens once at the client boundary (<code>FormHandler.rupeesToPaise</code>), matching the inventory edit sheet, and the server's <code>price</code> alias is removed so only paise crosses the wire</td></tr>
+            <tr><td>The refresh test suite failed to load</td><td><code>session_refresh_test.dart</code> probed the backend in <code>setUpAll</code> but read the result in each test's <code>skip:</code> expression — evaluated earlier, at registration — so the file died with a <code>LateInitializationError</code> instead of skipping politely. The probe now runs before the tests are registered</td></tr>
             <tr><td><code>frontend/README.md</code> describes the old stack</td><td>Rewritten as the Flutter app doc, with a new root <code>README.md</code> covering the monorepo. Neither mentions Spring Boot or AWS any more</td></tr>
           </tbody>
         </table>
       </div>
-      <p class="muted">Still open, and still worth fixing first: the three writes that trust the request body over the token, and the two committed credential fallbacks.</p>
+      <p class="muted">Still open, and still worth fixing first: the two customer writes that trust the request body over the token, and the two committed credential fallbacks.</p>
     </section>
 
   </main>
 
   <footer>
     <span>Nearzy — engineering reference</span>
-    <span>Revision 2 — generated from the working tree at <code>main</code> · 3 September 2026</span>
+    <span>Revision 4 — generated from the working tree at <code>main</code> · 3 September 2026</span>
     <span>Live API docs: <code>/swagger-ui</code></span>
   </footer>
 

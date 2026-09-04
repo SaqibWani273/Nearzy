@@ -1,0 +1,714 @@
+<!doctype html>
+<html lang="en">
+<head>
+<!--
+  Inside Nearzy -- product overview for non-technical readers
+  (investors, collaborators, marketing, partners).
+
+  Local copy of the published artifact:
+  https://claude.ai/code/artifact/e9ab2116-f416-4788-bf28-48b132f16e75
+
+  Companion doc: docs/nearzy-engineering-reference.html
+  (the same product, written for engineers). Keep both in step -- see CLAUDE.md.
+
+  This file is the source of truth: edit it here.
+
+  The doctype, meta tags and reset below exist only so this opens correctly as
+  a standalone local page. The artifact runtime supplies its own wrapper, so
+  republishing means sending the content WITHOUT them: everything from the
+  outermost content container onward, preceded by the title tag. Handing over
+  this file as-is would nest one document inside another.
+
+  Note: no HTML tag is written literally above, deliberately. An earlier version
+  named the content container in this comment, and a search-and-replace that was
+  meant to insert the body tag matched the mention in here instead.
+-->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Inside Nearzy</title>
+<style>
+:root { color-scheme: light dark; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* ─────────────────────────────────────────────────────────────────────
+   Palette inherited from the product's own design system
+   (frontend/lib/theme/app_colors.dart) so this reads as the same company
+   as the app it describes. Ink and paper, with lime as the only accent.
+   ───────────────────────────────────────────────────────────────────── */
+:root {
+  --ink: #0F1A15;
+  --lime: #C9F24E;
+  --lime-deep: #A8D62F;
+  --lime-wash: #EEF9D2;
+
+  --ground: #F7F6F1;
+  --ground-2: #EFEDE5;
+  --surface: #FFFFFF;
+  --rule: #E1DFD6;
+  --rule-soft: #EAE8E0;
+
+  --text: #0F1A15;
+  --text-2: #5D6B63;
+  --text-3: #8B978F;
+
+  /* The three sides of the marketplace. Roles, not decoration. */
+  --shopper: #4C6357;
+  --keeper: #B37C1F;
+  --platform: #0F1A15;
+
+  --pin-fill: #C9F24E;
+  --pin-ring: #0F1A15;
+  --highlight: #C9F24E;
+
+  --measure: 64ch;
+  --display: "Plus Jakarta Sans", "Segoe UI", -apple-system, sans-serif;
+  --body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --pin-fill: #0F1A15;
+    --pin-ring: #A8D62F;
+    --highlight: rgba(201,242,78,0.28);
+    --ground: #0D1712;
+    --ground-2: #131F19;
+    --surface: #18251E;
+    --rule: #2C3A33;
+    --rule-soft: #223029;
+    --text: #F2F1EB;
+    --text-2: #A3B1A7;
+    --text-3: #79877E;
+    --lime-wash: #26331A;
+    --shopper: #9BB3A3;
+    --keeper: #E0A03C;
+    --platform: #C9F24E;
+  }
+}
+
+:root[data-theme="dark"] {
+  --pin-fill: #0F1A15;
+  --pin-ring: #A8D62F;
+  --highlight: rgba(201,242,78,0.28);
+  --ground: #0D1712;
+  --ground-2: #131F19;
+  --surface: #18251E;
+  --rule: #2C3A33;
+  --rule-soft: #223029;
+  --text: #F2F1EB;
+  --text-2: #A3B1A7;
+  --text-3: #79877E;
+  --lime-wash: #26331A;
+  --shopper: #9BB3A3;
+  --keeper: #E0A03C;
+  --platform: #C9F24E;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 16.5px;
+  line-height: 1.68;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 28px 104px;
+}
+
+/* Anything that should sit at reading width. */
+.col { max-width: var(--measure); }
+
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
+
+/* ── Masthead ─────────────────────────────────────────────────────── */
+.top {
+  padding: 56px 0 0;
+}
+.mark {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 19px;
+  letter-spacing: -0.02em;
+}
+.mark .pin {
+  width: 13px; height: 13px;
+  border-radius: 999px;
+  background: var(--pin-fill);
+  border: 3.5px solid var(--pin-ring);
+  flex: none;
+}
+
+h1 {
+  font-weight: 800;
+  font-size: clamp(40px, 6.6vw, 74px);
+  line-height: 1.02;
+  letter-spacing: -0.038em;
+  margin: 44px 0 0;
+  max-width: 21ch;
+}
+h1 em {
+  font-style: normal;
+  /* The accent lands once, on the phrase the whole product turns on. */
+  background: linear-gradient(transparent 62%, var(--highlight) 62%);
+  padding: 0 0.06em;
+}
+
+.standfirst {
+  font-size: 19.5px;
+  line-height: 1.62;
+  color: var(--text-2);
+  max-width: 58ch;
+  margin: 26px 0 0;
+}
+
+.status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 34px 0 0;
+  padding: 0 0 52px;
+  border-bottom: 1px solid var(--rule);
+}
+.tag {
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 5px 12px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--rule);
+  color: var(--text-2);
+  background: var(--surface);
+}
+.tag.live { border-color: var(--lime-deep); color: var(--text); background: var(--lime-wash); }
+
+/* ── Sections ─────────────────────────────────────────────────────── */
+section { padding: 62px 0 0; }
+
+.eyebrow {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin: 0 0 14px;
+}
+
+h2 {
+  font-weight: 800;
+  font-size: clamp(27px, 3.3vw, 38px);
+  line-height: 1.14;
+  letter-spacing: -0.028em;
+  max-width: 26ch;
+}
+
+h3 {
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: -0.012em;
+  margin: 0 0 7px;
+}
+
+p { margin: 18px 0 0; max-width: var(--measure); }
+p.lead { font-size: 18.5px; color: var(--text-2); line-height: 1.6; }
+
+strong { font-weight: 600; }
+
+/* A single-sentence claim, set large, used sparingly. */
+.pull {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(21px, 2.5vw, 27px);
+  line-height: 1.34;
+  letter-spacing: -0.018em;
+  color: var(--text);
+  max-width: 40ch;
+  margin: 40px 0 0;
+  padding: 0 0 0 22px;
+  border-left: 3px solid var(--lime-deep);
+}
+
+/* ── The three sides ──────────────────────────────────────────────── */
+.sides {
+  display: grid;
+  gap: 40px 44px;
+  margin: 42px 0 0;
+}
+@media (min-width: 900px) { .sides { grid-template-columns: repeat(3, 1fr); } }
+
+.side { border-top: 3px solid var(--accent, var(--rule)); padding-top: 20px; }
+.side.shopper { --accent: var(--shopper); }
+.side.keeper { --accent: var(--keeper); }
+.side.platform { --accent: var(--platform); }
+
+.side .who {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 12px;
+}
+.side h3 { max-width: 20ch; }
+.side p { font-size: 15px; margin: 12px 0 0; max-width: none; color: var(--text-2); }
+
+.does { list-style: none; margin: 20px 0 0; padding: 0; }
+.does li {
+  position: relative;
+  padding: 0 0 0 20px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text);
+}
+.does li + li { margin-top: 11px; }
+.does li::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0.62em;
+  width: 7px; height: 7px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+.does li span { display: block; color: var(--text-2); font-size: 14px; margin-top: 2px; }
+
+/* ── Numbered sequence (only where order carries meaning) ─────────── */
+ol.flow { list-style: none; counter-reset: f; margin: 38px 0 0; padding: 0; max-width: 74ch; }
+ol.flow > li {
+  counter-increment: f;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 0 18px;
+  padding: 18px 0;
+  border-top: 1px solid var(--rule-soft);
+}
+ol.flow > li:last-child { border-bottom: 1px solid var(--rule-soft); }
+ol.flow > li::before {
+  content: counter(f, decimal-leading-zero);
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+  padding-top: 3px;
+}
+ol.flow b { font-weight: 600; display: block; font-size: 16px; }
+ol.flow span { color: var(--text-2); font-size: 15px; display: block; margin-top: 3px; }
+
+/* ── The markdown clock: a real time axis ─────────────────────────── */
+.clock {
+  margin: 38px 0 0;
+  padding: 26px 26px 20px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 18px;
+  max-width: 78ch;
+  overflow-x: auto;
+}
+.clock figcaption {
+  font-size: 14.5px;
+  color: var(--text-2);
+  margin: 16px 0 0;
+  max-width: 62ch;
+}
+.clock svg { display: block; width: 100%; min-width: 460px; height: auto; color: var(--text-3); }
+
+/* ── Promise / how it's kept ──────────────────────────────────────── */
+.pairs { margin: 36px 0 0; max-width: 82ch; }
+.pair {
+  display: grid;
+  gap: 4px 32px;
+  padding: 20px 0;
+  border-top: 1px solid var(--rule-soft);
+}
+@media (min-width: 760px) { .pair { grid-template-columns: 15.5em minmax(0, 1fr); } }
+.pair:last-child { border-bottom: 1px solid var(--rule-soft); }
+.pair dt { font-family: var(--display); font-weight: 700; font-size: 16px; }
+.pair dd { margin: 0; color: var(--text-2); font-size: 15.5px; }
+
+/* ── Built / next ─────────────────────────────────────────────────── */
+.ledger { display: grid; gap: 34px; margin: 38px 0 0; }
+@media (min-width: 820px) { .ledger { grid-template-columns: 1fr 1fr; gap: 54px; } }
+.ledger h3 { display: flex; align-items: baseline; gap: 9px; margin-bottom: 16px; }
+.ledger h3 i {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.ticks { list-style: none; margin: 0; padding: 0; font-size: 15.5px; }
+.ticks li { padding: 11px 0 11px 26px; position: relative; border-top: 1px solid var(--rule-soft); line-height: 1.5; }
+.ticks li::before {
+  position: absolute; left: 0; top: 11px;
+  font-size: 13px; font-weight: 700;
+}
+.ticks.done li::before { content: "✓"; color: var(--lime-deep); }
+.ticks.todo li::before { content: "—"; color: var(--text-3); }
+.ticks li b { font-weight: 600; }
+.ticks li span { display: block; color: var(--text-2); font-size: 14.5px; margin-top: 1px; }
+
+/* ── Honesty note ─────────────────────────────────────────────────── */
+.note {
+  margin: 44px 0 0;
+  padding: 20px 24px;
+  background: var(--ground-2);
+  border-radius: 14px;
+  max-width: 74ch;
+}
+.note p { margin: 0; font-size: 15px; color: var(--text-2); max-width: none; }
+.note p + p { margin-top: 10px; }
+.note b { color: var(--text); font-weight: 600; }
+
+footer {
+  margin: 78px 0 0;
+  padding: 24px 0 0;
+  border-top: 1px solid var(--rule);
+  font-size: 13.5px;
+  color: var(--text-3);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 26px;
+}
+
+a { color: var(--text); text-decoration-color: var(--lime-deep); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+a:focus-visible { outline: 2px solid var(--lime-deep); outline-offset: 3px; border-radius: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+</style>
+
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="top">
+    <div class="mark"><span class="pin" aria-hidden="true"></span> Nearzy</div>
+
+    <h1>The shops you already walk past, <em>open on your phone</em>.</h1>
+
+    <p class="standfirst">Most shopping apps ship to you from a warehouse in another state. Nearzy's
+      catalogue is the shops on your own street — their real shelves, their real stock, ready in
+      minutes rather than days.</p>
+
+    <div class="status">
+      <span class="tag live">Working build</span>
+      <span class="tag">iOS &amp; Android</span>
+      <span class="tag">Shoppers, shopkeepers &amp; platform team in one app</span>
+      <span class="tag">Pre-launch</span>
+    </div>
+  </header>
+
+  <main>
+
+    <section>
+      <p class="eyebrow">The idea</p>
+      <h2>Location isn't a filter here. It's the whole catalogue.</h2>
+      <p class="lead">On an ordinary marketplace you search for a thing, then discover what it costs
+        to get it to you. Nearzy works the other way round: you tell it where you are, and it shows
+        you what the shops around you actually have on their shelves right now.</p>
+      <p>That one inversion changes everything downstream. Delivery is short because the seller is
+        close. Stock is honest because it belongs to a shopkeeper who counted it. And the money
+        stays in the neighbourhood, which is the part that makes a small shop want to join at all.</p>
+
+      <p class="pull">A shop three streets away can compete on the thing a national warehouse can
+        never match: being three streets away.</p>
+    </section>
+
+    <section>
+      <p class="eyebrow">Who it serves</p>
+      <h2>Three kinds of people, one app.</h2>
+      <p class="lead">Nearzy isn't three products. It's one app that recognises who has signed in
+        and shows them their own version of it — which is why a shopkeeper needs nothing more than
+        the phone already in their pocket.</p>
+
+      <div class="sides">
+
+        <div class="side shopper">
+          <p class="who">Shoppers</p>
+          <h3>Browse what's genuinely nearby</h3>
+          <p>Set your spot on a map — home, office, the place you're headed — and the catalogue
+            rebuilds around it.</p>
+          <ul class="does">
+            <li>Nearby shops on a map, sorted by distance
+              <span>Each one shows how far it is and whether it's open</span></li>
+            <li>Browse by category, or search across every nearby shelf</li>
+            <li>Budget picks and today's discounts
+              <span>Two ready-made ways in for people shopping to a number</span></li>
+            <li>Cart and checkout by card, UPI, netbanking or wallet</li>
+            <li>Several saved addresses, one marked default</li>
+            <li>Order history with live status
+              <span>Placed, confirmed, on its way, delivered</span></li>
+            <li>Save favourites for later</li>
+          </ul>
+        </div>
+
+        <div class="side keeper">
+          <p class="who">Shopkeepers</p>
+          <h3>Run the shop from behind the counter</h3>
+          <p>Sign up, get verified, and list what's on the shelves. The app is built to be used
+            standing up, between customers.</p>
+          <ul class="does">
+            <li>A <strong>Today</strong> screen, not a dashboard
+              <span>What needs packing, what's running out, where verification stands</span></li>
+            <li>List products with photos, prices and colours</li>
+            <li><strong>List a product from one photo</strong>
+              <span>The packet is read for you. Seven fields become a photo and
+                a price</span></li>
+            <li>Restock by scanning barcodes
+              <span>For items already listed — point the camera instead of
+                typing item codes</span></li>
+            <li>Change a price or a count in two taps</li>
+            <li>Move orders along: confirm, ship, mark delivered</li>
+            <li>Warnings that arrive before the shelf is empty
+              <span>See <em>The part that runs itself</em> below</span></li>
+          </ul>
+        </div>
+
+        <div class="side platform">
+          <p class="who">Platform team</p>
+          <h3>Decide who trades, and where to grow</h3>
+          <p>The tools an operator needs to keep the marketplace trustworthy and to choose the
+            next neighbourhood.</p>
+          <ul class="does">
+            <li>Approve or reject shops with their documents in view</li>
+            <li>A demand map of where orders actually go
+              <span>Built from delivery addresses, so it shows where customers are — not where
+                shops already happen to be</span></li>
+            <li>Curate the category tree every shop lists against</li>
+            <li>Counts at a glance: shops, products, customers, pending approvals</li>
+          </ul>
+        </div>
+
+      </div>
+    </section>
+
+    <section>
+      <p class="eyebrow">How an order works</p>
+      <h2>From tap to doorstep.</h2>
+      <p class="lead">Six steps, and two of them exist purely to make sure nobody — shopper,
+        shopkeeper or platform — has to take the others on trust.</p>
+
+      <ol class="flow">
+        <li><b>A shopper picks their spot</b>
+          <span>Current location, or any point on the map. Everything they see from here on is
+            filtered to what's reachable from it.</span></li>
+        <li><b>They fill a cart from nearby shelves</b>
+          <span>Possibly from more than one shop — the order keeps track of which items came from
+            where, so each shopkeeper only ever sees their own lines.</span></li>
+        <li><b>Nearzy prices the order, not the phone</b>
+          <span>The app sends a list of items and quantities; the total is calculated on Nearzy's
+            side from its own price list. A modified app can't invent a cheaper price.</span></li>
+        <li><b>The shopper pays</b>
+          <span>Razorpay handles the card, UPI, netbanking or wallet. Nearzy then re-checks the
+            payment's signature with Razorpay before treating it as real.</span></li>
+        <li><b>The shopkeeper packs and dispatches</b>
+          <span>The order appears on their Today screen and moves forward one step at a time —
+            it can't skip from placed straight to delivered.</span></li>
+        <li><b>Stock comes off the shelf, or goes back on it</b>
+          <span>Paying reduces the count automatically. Cancelling a paid order returns it, so
+            the shelf figure stays true either way.</span></li>
+      </ol>
+    </section>
+
+    <section>
+      <p class="eyebrow">The part that runs itself</p>
+      <h2>Two problems every small shop has, handled overnight.</h2>
+      <p class="lead">This is the part a shopkeeper couldn't do alone with a notebook, and the
+        reason to be on Nearzy rather than simply on the high street.</p>
+
+      <h3 style="margin-top:40px">Knowing what's about to run out</h3>
+      <p>A rule like "warn me under ten units" is useless in a marketplace. One shop sells three
+        shawls a month; another sells forty loaves a day. The same threshold is either constant
+        noise or a warning that turns up after the shelf is already bare.</p>
+      <p>So Nearzy measures <strong>days of cover</strong> instead: how long this shop's stock of
+        this item will last at the rate it is actually selling. An item is flagged only when it is
+        both running low <em>and</em> selling faster than its own recent normal — so a genuine rush
+        gets noticed, and a slow-moving item sitting quietly does not cry wolf.</p>
+
+      <h3 style="margin-top:38px">Selling today's stock today</h3>
+      <p>Fresh stock unsold at closing time is a loss. Fresh stock discounted at seven in the
+        evening is a sale. Nearzy runs that discount on a clock so the shopkeeper doesn't have to
+        stand there rewriting labels.</p>
+
+      <figure class="clock">
+        <svg viewBox="0 0 640 190" role="img" aria-label="Discount rises from its base at 3pm to the shopkeeper's floor by 9pm, then resets to normal pricing just after midnight.">
+          <!-- baseline -->
+          <line x1="52" y1="132" x2="600" y2="132" stroke="var(--rule)" stroke-width="1"/>
+          <!-- the shopkeeper's floor -->
+          <line x1="52" y1="44" x2="600" y2="44" stroke="var(--keeper)" stroke-width="1" stroke-dasharray="4 4"/>
+          <text x="52" y="34" fill="var(--keeper)" font-size="12" font-family="Inter, sans-serif" font-weight="600">The shopkeeper's floor — never passed</text>
+          <!-- the ramp -->
+          <path d="M 92 132 L 452 44 L 500 44 L 500 132 Z" fill="var(--lime-wash)"/>
+          <path d="M 92 132 L 452 44 L 500 44" fill="none" stroke="var(--lime-deep)" stroke-width="2.5" stroke-linejoin="round"/>
+          <!-- midnight reset -->
+          <path d="M 500 132 L 560 132" fill="none" stroke="var(--lime-deep)" stroke-width="2.5" stroke-dasharray="5 4"/>
+          <circle cx="92" cy="132" r="4" fill="var(--lime-deep)"/>
+          <circle cx="500" cy="44" r="4" fill="var(--lime-deep)"/>
+          <!-- ticks -->
+          <g fill="currentColor" font-size="12.5" font-family="Inter, sans-serif" text-anchor="middle">
+            <text x="92" y="156">3 pm</text>
+            <text x="296" y="156">6 pm</text>
+            <text x="500" y="156">9 pm</text>
+            <text x="566" y="156">12:05 am</text>
+          </g>
+          <g fill="currentColor" font-size="12" font-family="Inter, sans-serif">
+            <text x="100" y="124" font-weight="600">Normal price</text>
+            <text x="566" y="124" text-anchor="middle" font-weight="600">Reset</text>
+          </g>
+        </svg>
+        <figcaption>The discount only ever deepens as the day closes — a shopper who saw 30% off
+          at six never comes back at eight to find 20%. Just after midnight the shop's own pricing
+          returns. Every product is opted in individually, and the shopkeeper sets the floor the
+          discount can never pass.</figcaption>
+      </figure>
+
+      <p class="pull">Nothing here rewrites a price a shopkeeper didn't agree to. The opt-in and
+        the floor are the whole point.</p>
+    </section>
+
+    <section>
+      <p class="eyebrow">Getting a shop online</p>
+      <h2>The reason shops say no, and what we did about it.</h2>
+      <p class="lead">Ask any shopkeeper why they aren't on a marketplace and the
+        answer is rarely about commission. It's that putting three hundred items
+        online means three hundred forms — photograph it, name it, describe it
+        twice, invent a code for it. That's days of unpaid work before a single
+        sale, and it is where most apps like this quietly die.</p>
+
+      <p>So Nearzy reads the packet instead. The shopkeeper photographs a
+        product and the name, brand, net quantity, category and description come
+        back filled in. They check what's there, type the price, and it's live.
+        Anything the photo didn't show clearly is flagged rather than guessed at,
+        so nothing wrong slips through unnoticed.</p>
+
+      <p class="pull">One photo and a price, instead of seven fields. That is the
+        difference between a shop signing up and a shop meaning to, later.</p>
+
+      <p>Two deliberate limits are worth stating. <strong>It never sets a
+        price</strong> — that is always the shopkeeper's own number, because a
+        wrong name is a nuisance they fix in a second while a wrong price costs
+        them real money. And it drafts rather than publishes: nothing reaches the
+        catalogue until a person has looked at it.</p>
+
+      <p class="muted">It works best on packaged goods, where the packet states
+        what the thing is. Loose produce and unbranded local goods give thinner
+        results, and the shopkeeper fills the gaps — which is still far less
+        typing than starting from an empty form. Reading a photo takes a few
+        seconds, and occasionally longer; if it is taking too long the form
+        hands itself back rather than leaving anyone waiting.</p>
+    </section>
+
+    <section>
+      <p class="eyebrow">Why it can be trusted</p>
+      <h2>Four promises, and how each one is actually kept.</h2>
+
+      <dl class="pairs">
+        <div class="pair">
+          <dt>The shop is real</dt>
+          <dd>No shop can trade until a person on the platform team has approved it — with the
+            owner's name and photo, PAN card, photo ID and business licence on screen while they
+            decide. Approvals are recorded against the admin who made them.</dd>
+        </div>
+        <div class="pair">
+          <dt>The price is the real price</dt>
+          <dd>Totals are worked out on Nearzy's side from its own price list, never accepted from
+            the phone. Money is held in whole paise throughout, so nothing drifts by a rounding
+            error between the shelf label and the receipt.</dd>
+        </div>
+        <div class="pair">
+          <dt>The payment actually happened</dt>
+          <dd>Every payment is verified against Razorpay's own cryptographic signature before an
+            order is treated as paid. If verification fails the order is marked failed rather than
+            quietly confirmed, and the same payment can't be counted twice.</dd>
+        </div>
+        <div class="pair">
+          <dt>The account is yours</dt>
+          <dd>Signing in on a device creates a session that can be ended from anywhere — including
+            every device at once. Sessions renew silently while in use, so people aren't asked for
+            a password mid-shop, and a stolen session can be revoked without changing anything else.</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section>
+      <p class="eyebrow">Where it stands</p>
+      <h2>What's built, and what's deliberately still open.</h2>
+      <p class="lead">Nearzy works end to end today: a shopper can sign up, find a nearby shop, pay
+        for something and watch it arrive, while the shopkeeper packs it and the platform team
+        approves who's allowed to sell. What follows is an honest ledger, not a roadmap pitch.</p>
+
+      <div class="ledger">
+        <div>
+          <h3>Working now <i>shipped</i></h3>
+          <ul class="ticks done">
+            <li><b>All three sides, end to end</b>
+              <span>Shopper, shopkeeper and platform team, from sign-up to delivery</span></li>
+            <li><b>Listing by photograph</b>
+              <span>Point the camera at the packet and the name, brand, size,
+                category and description fill themselves in. The shopkeeper
+                checks them and types the price</span></li>
+            <li><b>One app, both platforms</b>
+              <span>iOS and Android from a single codebase — one team, not two</span></li>
+            <li><b>Payments</b>
+              <span>Live card, UPI, netbanking and wallet checkout in rupees</span></li>
+            <li><b>Maps without licence fees</b>
+              <span>Built on open map data rather than a metered commercial provider</span></li>
+            <li><b>The automation</b>
+              <span>Restock warnings and the end-of-day discount clock</span></li>
+            <li><b>Operator tooling</b>
+              <span>Shop approvals, category curation and the demand map</span></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Not yet <i>known gaps</i></h3>
+          <ul class="ticks todo">
+            <li><b>Shoppers can't write reviews</b>
+              <span>Ratings are shown and already order the listings, but there's no way yet for a
+                customer to leave one</span></li>
+            <li><b>Automation is switched off by default</b>
+              <span>Deliberate — it changes prices, so it's opt-in per deployment until launch</span></li>
+            <li><b>Delivery is the shop's own</b>
+              <span>No courier network or rider tracking; shopkeepers dispatch how they already do</span></li>
+            <li><b>Not yet hardened for scale</b>
+              <span>Some groundwork remains before running with real customer data at volume</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="note">
+        <p><b>About the figures in the app.</b> Nearzy is pre-launch. Everything currently visible
+          in a demo — the shops, the customers, the orders, the ratings — is illustrative sample
+          data, built to show how the product behaves. It should not be read as traction.</p>
+        <p>That sample catalogue is deliberately specific rather than generic: Kashmiri craft and
+          produce — Kani shawls, saffron, walnut woodcraft, silk — alongside everyday grocery in
+          Delhi, Mumbai and Bangalore. It's the mix the product was designed against, and a fair
+          picture of the first market it's aimed at.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    <span>Nearzy — product overview</span>
+    <span>For investors, collaborators and commercial partners</span>
+    <span>Revised 3 September 2026</span>
+  </footer>
+
+</div>
+</body>
+</html>

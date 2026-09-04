@@ -19,6 +19,12 @@ class Product {
   final int stockQuantity;
   final double? rating;
   final GeneralSpecificCategory category;
+
+  /// The category's database id, set only when the shop module is creating a
+  /// product. Server responses describe the category with a nested object, so
+  /// this stays null on anything read back from the API.
+  @JsonKey(includeIfNull: false)
+  final int? categoryId;
   final List<String>? colors;
   final bool available;
   // final List<ProductReview>? reviews;
@@ -36,6 +42,7 @@ class Product {
     required this.stockQuantity,
     this.rating,
     required this.category,
+    this.categoryId,
     required this.colors,
     required this.available,
     required this.sku,
@@ -47,6 +54,31 @@ class Product {
       _$ProductFromJson(json);
 
   Map<String, dynamic> toJson() => _$ProductToJson(this);
+
+  /// The payload `POST /shop/add-product` expects.
+  ///
+  /// Deliberately not [toJson]: that serialiser exists for reading products
+  /// back and emits a nested `shop` and `category` plus a `price` in the
+  /// screen's own units. The create endpoint wants ids and paise, and sending
+  /// the read shape is what made every upload fail the not-null constraint on
+  /// `shop_id` / `category_id`.
+  ///
+  /// The shop is intentionally absent — the server takes it from the token.
+  Map<String, dynamic> toCreateJson() => <String, dynamic>{
+        'name': name,
+        'categoryId': categoryId,
+        'priceInPaise': price,
+        'stockQuantity': stockQuantity,
+        if (discountInPercentage != null) 'discountPercent': discountInPercentage,
+        if (brand.isNotEmpty) 'brand': brand,
+        if (sku.isNotEmpty) 'sku': sku,
+        if (shortDescription.isNotEmpty) 'shortDescription': shortDescription,
+        if (completeDescription.isNotEmpty)
+          'completeDescription': completeDescription,
+        'available': available,
+        'images': images,
+        if (colors != null && colors!.isNotEmpty) 'colors': colors,
+      };
   int get disCountedPrice => discountInPercentage == null
       ? price
       :

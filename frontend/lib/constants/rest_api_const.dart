@@ -79,6 +79,10 @@ class ApiConst {
   // ── Shop Profile & Products ─────────────────────────────────────────
   static final String shopProfileUrl = '$baseShopUrl/me';
   static final String uploadProductUrl = '$baseShopUrl/add-product';
+
+  /// Reads a product photo and returns draft fields to confirm. Optional
+  /// feature: answers 503 when the server has no GEMINI_API_KEY.
+  static final String draftProductUrl = '$baseShopUrl/products/draft';
   static final String shopMyProductsUrl = '$baseShopUrl/my-products';
 
   static String shopProductUrl(int productId) =>

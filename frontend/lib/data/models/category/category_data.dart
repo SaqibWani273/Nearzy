@@ -5,6 +5,13 @@ part 'category_data.g.dart';
 
 @JsonSerializable()
 class CategoryData {
+  /// The category's database id.
+  ///
+  /// Needed because product creation identifies a category by id, not name —
+  /// the API sends this and the model previously dropped it, leaving the
+  /// upload form with nothing to send.
+  final int id;
+
   final String name;
   // The wire names differ from the Dart names. These were previously only
   // present in the generated file, so regenerating it silently broke parsing.
@@ -15,6 +22,7 @@ class CategoryData {
   @JsonKey(name: 'catSpecificOptionalAttributes')
   final CategoryFields? optionalFields;
   CategoryData({
+    required this.id,
     required this.name,
     required this.image,
     required this.mustFields,

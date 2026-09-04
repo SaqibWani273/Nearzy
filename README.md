@@ -125,6 +125,18 @@ device can't reach your laptop's `localhost`; expose the backend with
 See [frontend/README.md](frontend/README.md) for app structure, the design
 system and tests.
 
+## Documentation
+
+| Document | For |
+|---|---|
+| [Inside Nearzy](docs/inside-nearzy.html) | Non-technical overview — features, the three user journeys, how an order flows. Written for investors, collaborators and commercial partners |
+| [Engineering reference](docs/nearzy-engineering-reference.html) | The full technical reference — request pipeline, auth, API surface, data model, background jobs, sharp edges |
+| [frontend/README.md](frontend/README.md) | App structure, toolchain, tests |
+| [nearzy-design/SKILL.md](.claude/skills/nearzy-design/SKILL.md) | The "Local Premium" design system |
+
+Both HTML docs are standalone — open them in a browser directly. Each is also
+published as a shareable page; the URL is in a comment at the top of the file.
+
 ## API surface
 
 Five route groups, all mounted in [app.js](backend/src/app.js):

@@ -55,17 +55,19 @@ Future<void> _clearSessions() async {
   await SessionManager.instance.reloadForTesting();
 }
 
-void main() {
-  late bool live;
+// `main` is async because every `skip:` below is evaluated while the tests are
+// being *registered*, which happens before any `setUpAll` callback runs. Probing
+// the backend in `setUpAll` therefore read the flag before it was assigned and
+// the whole file failed to load with a LateInitializationError — so the suite
+// that was written to skip itself politely instead took the run down with it.
+Future<void> main() async {
+  TestWidgetsFlutterBinding.ensureInitialized();
 
-  setUpAll(() async {
-    TestWidgetsFlutterBinding.ensureInitialized();
-    live = await _backendIsUp();
-    if (!live) {
-      // ignore: avoid_print
-      print('Backend not reachable at ${ApiConst.baseApiUrl} — skipping.');
-    }
-  });
+  final live = await _backendIsUp();
+  if (!live) {
+    // ignore: avoid_print
+    print('Backend not reachable at ${ApiConst.baseApiUrl} — skipping.');
+  }
 
   setUp(() async {
     if (live) await _clearSessions();

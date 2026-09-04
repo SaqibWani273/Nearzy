@@ -451,18 +451,78 @@ const shopService = {
     ];
   },
 
-  async addProduct(productData) {
-    console.log('adding product', productData);
+  /**
+   * Creates a product in the caller's own shop.
+   *
+   * Ownership comes from the JWT, never the body. The client used to post its
+   * whole `Product` model — including nested `shop` and `category` objects —
+   * and nothing mapped those to the `shop_id` / `category_id` the table
+   * actually requires, so every create failed the not-null constraint. Both
+   * ids are now resolved here, and a body-supplied `shopId` is ignored rather
+   * than trusted.
+   *
+   * Price is paise, like everywhere else. The old `price` alias is gone: it
+   * silently accepted rupees from the upload form and stored them as paise,
+   * pricing everything at a hundredth of what the owner typed.
+   */
+  async addProduct(userId, productData = {}) {
+    const shop = await Shop.findOne({ where: { user_id: userId }, attributes: ['id'] });
+    if (!shop) return { error: 'No shop profile for this account', status: 404 };
 
-    // Map legacy fields if passed
-    if (productData.price !== undefined && productData.priceInPaise === undefined) {
-      productData.priceInPaise = productData.price;
-    }
-    if (productData.discountInPercentage !== undefined && productData.discountPercent === undefined) {
-      productData.discountPercent = productData.discountInPercentage;
+    const name = typeof productData.name === 'string' ? productData.name.trim() : '';
+    if (!name) return { error: 'name is required', status: 400 };
+
+    // Accept an id directly, or dig one out of the nested object older clients
+    // send. Anything else is a client bug worth surfacing as a 400.
+    const rawCategory =
+      productData.categoryId ??
+      (productData.category && typeof productData.category === 'object'
+        ? productData.category.id
+        : productData.category);
+    const categoryId = Number.parseInt(rawCategory, 10);
+    if (Number.isNaN(categoryId)) return { error: 'categoryId is required', status: 400 };
+
+    const category = await ProductCategory.findByPk(categoryId, { attributes: ['id'] });
+    if (!category) return { error: `Unknown categoryId ${categoryId}`, status: 400 };
+
+    const priceInPaise = Number.parseInt(productData.priceInPaise, 10);
+    if (Number.isNaN(priceInPaise) || priceInPaise <= 0) {
+      return { error: 'priceInPaise must be a positive whole number of paise', status: 400 };
     }
 
-    const product = await Product.create(productData);
+    const discountPercent = Number(
+      productData.discountPercent ?? productData.discountInPercentage ?? 0
+    );
+    if (!Number.isFinite(discountPercent) || discountPercent < 0 || discountPercent > 100) {
+      return { error: 'discountPercent must be between 0 and 100', status: 400 };
+    }
+
+    const stockQuantity = Number.parseInt(productData.stockQuantity ?? 0, 10);
+    if (Number.isNaN(stockQuantity) || stockQuantity < 0) {
+      return { error: 'stockQuantity cannot be negative', status: 400 };
+    }
+
+    const optionalText = (value) => {
+      const text = typeof value === 'string' ? value.trim() : '';
+      return text.length > 0 ? text : null;
+    };
+
+    const product = await Product.create({
+      shopId: shop.id,
+      categoryId,
+      name,
+      priceInPaise,
+      discountPercent,
+      // The owner's standing discount, so the overnight markdown reset returns
+      // here rather than to zero.
+      baseDiscountPercent: discountPercent,
+      stockQuantity,
+      brand: optionalText(productData.brand),
+      sku: optionalText(productData.sku),
+      shortDescription: optionalText(productData.shortDescription),
+      completeDescription: optionalText(productData.completeDescription),
+      available: productData.available === undefined ? true : Boolean(productData.available),
+    });
 
     // Handle product images if provided as array of URLs or objects
     if (Array.isArray(productData.images)) {
@@ -504,8 +564,10 @@ const shopService = {
       ],
     });
 
+    // The message used to embed the whole serialised product, duplicating the
+    // `product` field and making the response unreadable in a log.
     return {
-      message: `Product Added -> ${JSON.stringify(createdProduct)}`,
+      message: `Added "${createdProduct.name}"`,
       product: createdProduct,
     };
   },

@@ -10,6 +10,15 @@ import '/presentation/common/screens/error_screen.dart';
 import '/presentation/common/widgets/loading_widgets.dart';
 import '../../../../../data/models/category/specific_category/specific_category.dart';
 import '/constants/product_const.dart';
+import '/data/models/listing_draft.dart';
+import '/utils/exceptions/custom_exception.dart';
+import '/presentation/common/animations/cross_fade.dart';
+import '/presentation/common/animations/pressable_scale.dart';
+import '/services/api_service.dart';
+import '/services/cloudinary_service.dart';
+import '/theme/app_colors.dart';
+import '/theme/app_spacing.dart';
+import '/theme/app_text_styles.dart';
 
 import '../../../../../utils/image_picker.dart';
 import '/data/models/category/category_data.dart';
@@ -27,7 +36,7 @@ class UploadProductScreen extends StatefulWidget {
 }
 
 class _UploadProductScreenState extends State<UploadProductScreen> {
-  late List<String> _formFields;
+  late List<ProductFormField> _formFields;
   final Map<String, TextEditingController> _formControllers = {};
   final _formKey = GlobalKey<FormState>();
   XFile? _mainProductImage;
@@ -39,6 +48,13 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
   late SpecificAttributesMap _mustHaveSpecificAttributes;
 
   late SpecificAttributesMap _canHaveSpecificAttributes;
+
+  /// Listing assistant state. A draft is a suggestion the owner confirms, so
+  /// it is kept only to show what still needs checking — every field stays
+  /// editable and the controllers remain the source of truth on submit.
+  bool _readingPacket = false;
+  ListingDraft? _draft;
+  String? _draftError;
 
 //... till here
   @override
@@ -52,8 +68,8 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
     resetSpecificCategoryAttributes();
     _formFields = ProductConstants.formFields;
 
-    for (var i = 0; i < _formFields.length; i++) {
-      _formControllers[_formFields[i].split(' ')[0]] = TextEditingController();
+    for (final field in _formFields) {
+      _formControllers[field.key] = TextEditingController();
     }
 
     _picker = ImagePicker();
@@ -92,6 +108,152 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
       SpecificAttributesMap mustAtt, SpecificAttributesMap canAtt) {
     _generalSpecificCategory = _generalSpecificCategory.copyWith(
         mustHaveSpecificAttributes: mustAtt, canHaveSpecificAttributes: canAtt);
+  }
+
+  /// Reads the chosen photo and fills the form in from the packaging.
+  ///
+  /// Everything it writes is an ordinary controller value the owner can edit or
+  /// clear. Price is never touched — the server does not draft one.
+  Future<void> _readPacket(List<CategoryData> categories) async {
+    final image = _mainProductImage;
+    if (image == null || _readingPacket) return;
+
+    setState(() {
+      _readingPacket = true;
+      _draftError = null;
+    });
+
+    try {
+      final bytes = kIsWeb
+          ? await CloudinaryService.compressImageUsingUnit8List(
+              await image.readAsBytes())
+          : await CloudinaryService.compressImageUsingPath(image.path);
+
+      final draft = await ApiService.draftProductFromImage(imageBytes: bytes);
+      if (!mounted) return;
+
+      // Only fill a field the owner hasn't already typed into, so re-reading a
+      // photo never overwrites their own correction.
+      void fill(String key, String value) {
+        final controller = _formControllers[key];
+        if (controller != null && controller.text.trim().isEmpty) {
+          controller.text = value;
+        }
+      }
+
+      fill('name', draft.name);
+      fill('brand', draft.brand);
+      fill('shortDescription', draft.shortDescription);
+      fill('completeDescription', draft.completeDescription);
+
+      final match = draft.categoryId == null
+          ? null
+          : categories.where((c) => c.id == draft.categoryId).firstOrNull;
+      if (match != null && _selectedCategory == null) {
+        _changeSelectedCategory(match);
+      }
+
+      setState(() => _draft = draft);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _draftError =
+          e is CustomException ? e.message : 'Could not read that photo.');
+    } finally {
+      if (mounted) setState(() => _readingPacket = false);
+    }
+  }
+
+  /// The assistant's offer, its progress, and what it wants checked.
+  Widget _assistantPanel(List<CategoryData> categories) {
+    final draft = _draft;
+    final flagged = draft?.needsAttention ?? const <String>[];
+
+    return CrossFade(
+      state: (_readingPacket, draft != null, _draftError),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (draft == null)
+            PressableScale(
+              onTap: _readingPacket ? null : () => _readPacket(categories),
+              child: Container(
+                height: 56,
+                decoration: BoxDecoration(
+                  // The one highest-intent action on this screen.
+                  color: _readingPacket ? AppColors.limeSurface : AppColors.lime,
+                  borderRadius: AppSpacing.borderRadiusFull,
+                ),
+                child: Center(
+                  child: _readingPacket
+                      ? Text('Reading the packet…',
+                          style: AppTextStyles.buttonText
+                              .copyWith(color: AppColors.textOnLime))
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.auto_awesome,
+                                size: 18, color: AppColors.textOnLime),
+                            const SizedBox(width: AppSpacing.sm),
+                            Text('Fill this in from the photo',
+                                style: AppTextStyles.buttonText
+                                    .copyWith(color: AppColors.textOnLime)),
+                          ],
+                        ),
+                ),
+              ),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.base),
+              decoration: BoxDecoration(
+                color: AppColors.limeSurface,
+                borderRadius: AppSpacing.borderRadiusLg,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    flagged.isEmpty
+                        ? 'Filled in from the photo — check it and add the price'
+                        : 'Filled in from the photo — please check these',
+                    style: AppTextStyles.labelLarge,
+                  ),
+                  if (flagged.isNotEmpty) ...[
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      flagged.map(_fieldLabel).join(' · '),
+                      style: AppTextStyles.bodySmall,
+                    ),
+                  ],
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'The price is never filled in for you.',
+                    style: AppTextStyles.caption,
+                  ),
+                ],
+              ),
+            ),
+          if (_draftError != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              '$_draftError You can still fill the form in yourself.',
+              style: AppTextStyles.bodySmall
+                  .copyWith(color: AppColors.textSecondary),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Field key to the label the owner actually saw.
+  String _fieldLabel(String key) {
+    if (key == 'categoryId') return 'Category';
+    return ProductConstants.formFields
+            .where((f) => f.key == key)
+            .firstOrNull
+            ?.label ??
+        key;
   }
 
   void _changeSelectedCategory(CategoryData? category) {
@@ -246,7 +408,8 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
               key: _formKey,
               child: Column(
                 children: [
-                  Text("Fields Marked with ** are Compulsory"),
+                  Text('Fields marked * are required',
+                      style: AppTextStyles.caption),
                   SizedBox(height: 20),
                   GestureDetector(
                     onTap: _getImage,
@@ -279,6 +442,12 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
                             ),
                           ),
                   ),
+                  // Offered once there is a photo to read, since that photo is
+                  // the whole input.
+                  if (_mainProductImage != null) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    _assistantPanel(categories),
+                  ],
                   SizedBox(
                     height: 10,
                   ),
@@ -323,36 +492,54 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
                   SizedBox(
                     height: 20,
                   ),
-                  ..._formFields.map((e) {
-                    final bool isNumField = e.split(' ')[0] == 'price' ||
-                        e.split(' ')[0] == 'stockQuantity';
+                  ..._formFields.map((field) {
                     return Column(
                       children: [
                         TextFormField(
                           //move to next field
                           textInputAction: TextInputAction.next,
-                          controller: _formControllers[e.split(' ')[0]],
-                          decoration: FormHandler.inputDec(e),
-                          keyboardType:
-                              isNumField ? TextInputType.number : null,
-                          inputFormatters: isNumField
-                              ? [
-                                  FilteringTextInputFormatter.digitsOnly,
-                                ]
-                              : null,
-                          validator:
-                              isNumField ? null : FormHandler.stringValidator,
+                          controller: _formControllers[field.key],
+                          decoration: FormHandler.inputDec(
+                            field.required ? '${field.label} *' : field.label,
+                          ).copyWith(helperText: field.hint),
+                          keyboardType: switch (field.kind) {
+                            ProductFieldKind.rupees =>
+                              const TextInputType.numberWithOptions(
+                                  decimal: true),
+                            ProductFieldKind.whole => TextInputType.number,
+                            ProductFieldKind.text => null,
+                          },
+                          inputFormatters: switch (field.kind) {
+                            // A price needs its decimal point; a count doesn't.
+                            ProductFieldKind.rupees => [
+                                FilteringTextInputFormatter.allow(
+                                    RegExp(r'[0-9.]')),
+                              ],
+                            ProductFieldKind.whole => [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                            ProductFieldKind.text => null,
+                          },
+                          // Optional fields carry no validator at all, so a
+                          // shopkeeper can leave brand, long description and
+                          // item code blank.
+                          validator: !field.required
+                              ? null
+                              : switch (field.kind) {
+                                  ProductFieldKind.rupees =>
+                                    FormHandler.rupeeValidator,
+                                  ProductFieldKind.whole =>
+                                    FormHandler.wholeNumberValidator,
+                                  ProductFieldKind.text =>
+                                    FormHandler.stringValidator,
+                                },
                         ),
                         SizedBox(
                           height: 20,
                         )
                       ],
                     );
-                  }
-                      // SizedBox(
-                      //   height: 20,
-                      // ),
-                      ),
+                  }),
                   DropdownButtonFormField<CategoryData?>(
                     initialValue: null, //categories[0].name,
                     validator: FormHandler.nullCheck,
@@ -413,8 +600,10 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
                                       .text
                                       .trim(),
                               images: [], //will get updated before uploading the product to db
-                              price: int.parse(
-                                  _formControllers['price']!.text.trim()),
+                              // Rupees on screen, paise on the wire. Mirrors
+                              // the inventory edit sheet.
+                              price: FormHandler.rupeesToPaise(
+                                  _formControllers['price']!.text),
                               completeDescription:
                                   _formControllers['completeDescription']!
                                       .text
@@ -426,6 +615,10 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
                                       .text
                                       .trim()),
                               category: _generalSpecificCategory,
+                              // The server identifies a category by id; the
+                              // nested object it used to receive carried only
+                              // a name.
+                              categoryId: _selectedCategory?.id,
                               colors: [],
                               available: true,
                               sku: _formControllers['sku']!.text.trim(),

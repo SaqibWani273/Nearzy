@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'dart:developer';
 
 import 'package:mca_project/data/models/order.dart';
@@ -12,6 +13,7 @@ import '/utils/exceptions/custom_exception.dart';
 import '../constants/bottom_navbar_items.dart';
 import '../data/models/category/category_data.dart';
 import '../data/models/address.dart';
+import '../data/models/listing_draft.dart';
 import '../data/models/customer.dart';
 import '../data/models/product.dart';
 import 'package:http/http.dart' as http;
@@ -181,7 +183,7 @@ class ApiService {
       final response = await NearzyHttp.postJson(
           Uri.parse(ApiConst.uploadProductUrl),
           auth: true,
-          json: product.toJson());
+          json: product.toCreateJson());
       if (response.statusCode != 200) {
         final String errorMessage =
             jsonDecode(response.body)["message"].toString();
@@ -190,6 +192,50 @@ class ApiService {
             message:
                 "Server Error ->  ${response.statusCode} -> ${errorMessage.length > 40 ? errorMessage.substring(0, 40) : errorMessage}");
       }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Reads a product photo and returns fields for the owner to confirm.
+  ///
+  /// Sends the image inline rather than uploading it first: the photo is on the
+  /// device and not yet in Cloudinary at this point in the flow, and uploading
+  /// every picked image would leave orphans behind for products the owner never
+  /// finishes. Compressed with the same helper the Cloudinary path uses, so a
+  /// phone photo doesn't become a multi-megabyte JSON body.
+  static Future<ListingDraft> draftProductFromImage({
+    required Uint8List imageBytes,
+    String mimeType = 'image/jpeg',
+  }) async {
+    try {
+      final response = await NearzyHttp.postJson(
+        Uri.parse(ApiConst.draftProductUrl),
+        auth: true,
+        json: {
+          'imageBase64': base64Encode(imageBytes),
+          'mimeType': mimeType,
+        },
+      );
+      if (response.statusCode != 200) {
+        // The manual form still works, so this is a degraded feature rather
+        // than a failed upload. The server's own wording is written for API
+        // clients — "Set GEMINI_API_KEY" is not something to show a
+        // shopkeeper — so translate by code and keep the raw message for the
+        // log only.
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        log('draftProductFromImage ${response.statusCode}: ${body['message']}');
+        throw CustomException(
+          errorType: ErrorType.unknown,
+          message: switch (body['code']) {
+            'DRAFT_TIMEOUT' => 'That took too long.',
+            'DRAFT_UNAVAILABLE' => "Photo reading isn't switched on.",
+            _ => "Couldn't read that photo.",
+          },
+        );
+      }
+      return ListingDraft.fromJson(
+          jsonDecode(response.body) as Map<String, dynamic>);
     } catch (e) {
       rethrow;
     }
